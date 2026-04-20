@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time Wise Tracker</title>
+  <link rel="stylesheet" href="src/ui/common.css" />
+  <link rel="stylesheet" href="src/ui/popup.css" />
+</head>
+<body>
+  <main class="shell popup-shell">
+    <section class="hero">
+      <p class="eyebrow">Today</p>
+      <h1>Time Wise Tracker</h1>
+      <p class="hero-status" id="statusText">Connecting to backend...</p>
+      <div class="metric-grid">
+        <article class="metric-card">
+          <span class="metric-label">Total time</span>
+          <strong class="metric-value" id="totalTime">0 min</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Focus time</span>
+          <strong class="metric-value" id="focusTime">0 min</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Top sites</h2>
+        <button id="refreshBtn" class="button subtle" type="button">Refresh</button>
+      </div>
+      <div id="sitesList" class="stack-list muted">No synced data yet.</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Recommendations</h2>
+      </div>
+      <div id="recommendations" class="stack-list muted">Recommendations will appear after sync.</div>
+    </section>
+
+    <footer class="footer-actions">
+      <button id="openDashboardBtn" class="button primary" type="button">Open dashboard</button>
+      <button id="openSettingsBtn" class="button" type="button">Settings</button>
+    </footer>
+  </main>
+
+  <script type="module" src="src/ui/popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Time Wise Tracker",
+  "version": "0.2.0",
+  "description": "Tracks website time, syncs activity to the backend, and shows analytics plus recommendations.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "alarms",
+    "idle"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background/index.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Time Wise Tracker",
+    "default_popup": "popup.html"
+  },
+  "options_page": "settings.html"
+}

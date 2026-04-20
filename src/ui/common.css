@@ -1,0 +1,245 @@
+:root {
+  color-scheme: light;
+  --bg: #f4efe6;
+  --panel: rgba(255, 251, 245, 0.92);
+  --panel-strong: #fffaf2;
+  --border: rgba(102, 72, 40, 0.14);
+  --text: #24190d;
+  --muted: #6b5a47;
+  --accent: #cc6b2c;
+  --accent-strong: #a44d15;
+  --success: #1f7a51;
+  --shadow: 0 24px 60px rgba(83, 48, 20, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.7), transparent 30%),
+    linear-gradient(160deg, #f9f3e7 0%, #f0e2cb 100%);
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.eyebrow {
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  color: var(--accent-strong);
+}
+
+.hero,
+.dashboard-hero,
+.panel,
+.metric-card {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+}
+
+.hero,
+.dashboard-hero {
+  border-radius: 28px;
+  padding: 24px;
+}
+
+.hero-status,
+.muted {
+  color: var(--muted);
+}
+
+.metric-grid,
+.stats-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.metric-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 20px;
+}
+
+.stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.metric-card {
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.metric-card.large {
+  min-height: 126px;
+}
+
+.metric-label {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.metric-value {
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.panel {
+  border-radius: 24px;
+  padding: 20px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.stack-list {
+  display: grid;
+  gap: 12px;
+}
+
+.stack-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+}
+
+.stack-item strong {
+  font-weight: 600;
+}
+
+.button {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.button.primary {
+  background: linear-gradient(135deg, var(--accent) 0%, #f09a53 100%);
+  color: #fff7ef;
+  border-color: transparent;
+}
+
+.button.subtle {
+  padding-inline: 12px;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--border);
+}
+
+.segmented button {
+  border: 0;
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: #fffdf8;
+  color: var(--accent-strong);
+}
+
+.chart {
+  display: grid;
+  gap: 12px;
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 72px;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-bar {
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(204, 107, 44, 0.14);
+  overflow: hidden;
+}
+
+.chart-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-strong), #f09a53);
+}
+
+.recommendation-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #fff8f0;
+}
+
+.recommendation-card[data-priority="high"] {
+  border-color: rgba(164, 77, 21, 0.35);
+  background: #fff0e4;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .shell {
+    padding: 16px;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-row {
+    grid-template-columns: 56px 1fr 64px;
+  }
+}

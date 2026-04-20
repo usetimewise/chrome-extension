@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time Wise Tracker Settings</title>
+  <link rel="stylesheet" href="src/ui/common.css" />
+  <link rel="stylesheet" href="src/ui/settings.css" />
+</head>
+<body>
+  <main class="shell settings-shell">
+    <section class="dashboard-hero">
+      <div>
+        <p class="eyebrow">Configuration</p>
+        <h1>Tracker settings</h1>
+        <p id="settingsStatus" class="muted">Local settings are stored in the extension and mirrored to the backend.</p>
+      </div>
+      <button id="openDashboardFromSettingsBtn" class="button primary" type="button">Back to dashboard</button>
+    </section>
+
+    <form id="settingsForm" class="settings-grid">
+      <label class="field">
+        <span>API base URL</span>
+        <input id="apiBaseUrl" name="apiBaseUrl" type="url" placeholder="http://localhost:8080" required />
+      </label>
+
+      <label class="field">
+        <span>Timezone</span>
+        <input id="timezone" name="timezone" type="text" placeholder="Europe/Berlin" required />
+      </label>
+
+      <label class="field checkbox-field">
+        <input id="trackingPaused" name="trackingPaused" type="checkbox" />
+        <span>Pause tracking</span>
+      </label>
+
+      <label class="field">
+        <span>Daily social limit, minutes</span>
+        <input id="socialLimit" name="socialLimit" type="number" min="0" step="5" />
+      </label>
+
+      <label class="field">
+        <span>Daily entertainment limit, minutes</span>
+        <input id="entertainmentLimit" name="entertainmentLimit" type="number" min="0" step="5" />
+      </label>
+
+      <label class="field full-width">
+        <span>Allow list, one host per line</span>
+        <textarea id="allowList" name="allowList" rows="4" placeholder="docs.google.com"></textarea>
+      </label>
+
+      <label class="field full-width">
+        <span>Block list, one host per line</span>
+        <textarea id="blockList" name="blockList" rows="4" placeholder="youtube.com"></textarea>
+      </label>
+
+      <label class="field full-width">
+        <span>Category overrides, one per line as host=category</span>
+        <textarea id="categoryOverrides" name="categoryOverrides" rows="6" placeholder="github.com=work"></textarea>
+      </label>
+
+      <div class="actions full-width">
+        <button class="button primary" type="submit">Save settings</button>
+        <button id="syncSettingsBtn" class="button" type="button">Push to backend</button>
+      </div>
+    </form>
+  </main>
+
+  <script type="module" src="src/ui/settings.js"></script>
+</body>
+</html>

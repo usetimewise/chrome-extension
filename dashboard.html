@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time Wise Tracker Dashboard</title>
+  <link rel="stylesheet" href="src/ui/common.css" />
+  <link rel="stylesheet" href="src/ui/dashboard.css" />
+</head>
+<body>
+  <main class="shell dashboard-shell">
+    <section class="dashboard-hero">
+      <div>
+        <p class="eyebrow">Analytics</p>
+        <h1>Usage dashboard</h1>
+        <p id="dashboardStatus" class="muted">Loading analytics...</p>
+      </div>
+      <div class="toolbar">
+        <div class="segmented" id="rangePicker">
+          <button data-range="today" class="active" type="button">Today</button>
+          <button data-range="week" type="button">Week</button>
+          <button data-range="month" type="button">Month</button>
+        </div>
+        <button id="dashboardRefreshBtn" class="button primary" type="button">Sync now</button>
+        <button id="openSettingsFromDashboardBtn" class="button" type="button">Settings</button>
+      </div>
+    </section>
+
+    <section class="stats-grid">
+      <article class="metric-card large">
+        <span class="metric-label">Total tracked</span>
+        <strong class="metric-value" id="dashboardTotal">0 min</strong>
+      </article>
+      <article class="metric-card large">
+        <span class="metric-label">Focus score</span>
+        <strong class="metric-value" id="dashboardFocusScore">0%</strong>
+      </article>
+      <article class="metric-card large">
+        <span class="metric-label">Top category</span>
+        <strong class="metric-value" id="dashboardTopCategory">No data</strong>
+      </article>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>Time series</h2>
+        </div>
+        <div id="timeseriesChart" class="chart"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>Category split</h2>
+        </div>
+        <div id="categoryBreakdown" class="stack-list muted">No category data yet.</div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>Top sites</h2>
+        </div>
+        <div id="dashboardSites" class="stack-list muted">No site data yet.</div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>Recommendations</h2>
+        </div>
+        <div id="dashboardRecommendations" class="stack-list muted">No recommendations yet.</div>
+      </article>
+    </section>
+  </main>
+
+  <script type="module" src="src/ui/dashboard.js"></script>
+</body>
+</html>
