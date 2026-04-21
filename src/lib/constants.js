@@ -15,7 +15,7 @@ export const MESSAGE_TYPES = {
 };
 
 export const DEFAULT_SETTINGS = {
-  apiBaseUrl: "http://localhost:8080",
+  apiBaseUrl: "http://80.74.24.127:8081",
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   trackingPaused: false,
   syncIntervalMinutes: 5,
