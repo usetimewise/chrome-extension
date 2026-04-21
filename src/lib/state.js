@@ -35,7 +35,13 @@ export async function saveSettings(settingsPatch) {
     blockList: settingsPatch.blockList ?? settings.blockList,
     categoryOverrides: settingsPatch.categoryOverrides ?? settings.categoryOverrides
   };
-  return setInStorage(STORAGE_KEYS.settings, next);
+  await setInStorage(STORAGE_KEYS.settings, next);
+
+  if (settings.apiBaseUrl !== next.apiBaseUrl) {
+    await resetDeviceRegistration();
+  }
+
+  return next;
 }
 
 export async function getDeviceState() {
@@ -55,6 +61,17 @@ export async function getDeviceState() {
 
 export async function saveDeviceState(deviceState) {
   return setInStorage(STORAGE_KEYS.device, deviceState);
+}
+
+export async function resetDeviceRegistration() {
+  const deviceState = await getDeviceState();
+  const next = {
+    ...deviceState,
+    deviceId: null,
+    registeredAt: null
+  };
+  await setInStorage(STORAGE_KEYS.device, next);
+  return next;
 }
 
 export async function getQueue() {

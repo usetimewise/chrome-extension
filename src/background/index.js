@@ -10,6 +10,7 @@ import {
   getRuntimeState,
   getSettings,
   replaceQueue,
+  resetDeviceRegistration,
   saveDashboardCache,
   saveDeviceState,
   saveRuntimeState
@@ -46,10 +47,17 @@ function ensureAlarms() {
   chrome.alarms.create("sync", { periodInMinutes: 5 });
 }
 
-async function ensureDeviceRegistration() {
+function isDeviceRegistrationMismatch(error) {
+  const message = String(error?.message || "").toLowerCase();
+  return message.includes("device is not registered") ||
+    message.includes("activity_events_device_id_fkey") ||
+    message.includes("preferences_device_id_fkey");
+}
+
+async function ensureDeviceRegistration(force = false) {
   const settings = await getSettings();
   const deviceState = await getDeviceState();
-  if (deviceState.deviceId) {
+  if (deviceState.deviceId && !force) {
     return deviceState;
   }
 
@@ -74,6 +82,31 @@ async function ensureDeviceRegistration() {
       lastError: error.message
     });
     return deviceState;
+  }
+}
+
+async function withRegisteredDevice(action) {
+  let settings = await getSettings();
+  let deviceState = await ensureDeviceRegistration();
+
+  if (!deviceState.deviceId) {
+    throw new Error("Device is not registered yet");
+  }
+
+  try {
+    return await action(settings, deviceState);
+  } catch (error) {
+    if (!isDeviceRegistrationMismatch(error)) {
+      throw error;
+    }
+
+    await resetDeviceRegistration();
+    settings = await getSettings();
+    deviceState = await ensureDeviceRegistration(true);
+    if (!deviceState.deviceId) {
+      throw error;
+    }
+    return action(settings, deviceState);
   }
 }
 
@@ -154,28 +187,28 @@ async function refreshActiveTab() {
 }
 
 async function syncQueue() {
-  const settings = await getSettings();
-  const deviceState = await ensureDeviceRegistration();
   const queue = await getQueue();
 
-  if (!deviceState.deviceId || queue.length === 0) {
+  if (queue.length === 0) {
     return { synced: 0, queueSize: queue.length };
   }
 
   try {
-    const batch = queue.slice(0, 100);
-    const response = await pushEvents(settings.apiBaseUrl, deviceState.deviceId, batch);
-    const acceptedIds = new Set(response.accepted_event_ids || []);
-    const remaining = queue.filter((item) => !acceptedIds.has(item.event_id));
-    await replaceQueue(remaining);
-    await saveDashboardCache({
-      lastSyncAt: new Date().toISOString(),
-      lastError: null
+    return await withRegisteredDevice(async (settings, deviceState) => {
+      const batch = queue.slice(0, 100);
+      const response = await pushEvents(settings.apiBaseUrl, deviceState.deviceId, batch);
+      const acceptedIds = new Set(response.accepted_event_ids || []);
+      const remaining = queue.filter((item) => !acceptedIds.has(item.event_id));
+      await replaceQueue(remaining);
+      await saveDashboardCache({
+        lastSyncAt: new Date().toISOString(),
+        lastError: null
+      });
+      return {
+        synced: acceptedIds.size,
+        queueSize: remaining.length
+      };
     });
-    return {
-      synced: acceptedIds.size,
-      queueSize: remaining.length
-    };
   } catch (error) {
     await saveDashboardCache({
       lastError: error.message
@@ -185,27 +218,22 @@ async function syncQueue() {
 }
 
 async function refreshDashboard(range = "today") {
-  const settings = await getSettings();
-  const deviceState = await ensureDeviceRegistration();
-
-  if (!deviceState.deviceId) {
-    return getDashboardCache();
-  }
-
   try {
-    const [summary, timeseries, recommendations] = await Promise.all([
-      fetchSummary(settings.apiBaseUrl, deviceState.deviceId, range),
-      fetchTimeseries(settings.apiBaseUrl, deviceState.deviceId, range),
-      fetchRecommendations(settings.apiBaseUrl, deviceState.deviceId, range)
-    ]);
+    return await withRegisteredDevice(async (settings, deviceState) => {
+      const [summary, timeseries, recommendations] = await Promise.all([
+        fetchSummary(settings.apiBaseUrl, deviceState.deviceId, range),
+        fetchTimeseries(settings.apiBaseUrl, deviceState.deviceId, range),
+        fetchRecommendations(settings.apiBaseUrl, deviceState.deviceId, range)
+      ]);
 
-    return saveDashboardCache({
-      summary,
-      timeseries: timeseries.points || [],
-      recommendations: recommendations.items || [],
-      lastSyncAt: new Date().toISOString(),
-      lastError: null,
-      range
+      return saveDashboardCache({
+        summary,
+        timeseries: timeseries.points || [],
+        recommendations: recommendations.items || [],
+        lastSyncAt: new Date().toISOString(),
+        lastError: null,
+        range
+      });
     });
   } catch (error) {
     return saveDashboardCache({
@@ -216,20 +244,15 @@ async function refreshDashboard(range = "today") {
 }
 
 async function pushPreferencesToBackend() {
-  const settings = await getSettings();
-  const deviceState = await ensureDeviceRegistration();
-
-  if (!deviceState.deviceId) {
-    throw new Error("Device is not registered yet");
-  }
-
-  return pushPreferences(settings.apiBaseUrl, deviceState.deviceId, {
-    timezone: settings.timezone,
-    paused: settings.trackingPaused,
-    limits: settings.limits,
-    allow_list: settings.allowList,
-    block_list: settings.blockList,
-    category_overrides: settings.categoryOverrides
+  return withRegisteredDevice((settings, deviceState) => {
+    return pushPreferences(settings.apiBaseUrl, deviceState.deviceId, {
+      timezone: settings.timezone,
+      paused: settings.trackingPaused,
+      limits: settings.limits,
+      allow_list: settings.allowList,
+      block_list: settings.blockList,
+      category_overrides: settings.categoryOverrides
+    });
   });
 }
 
