@@ -9,40 +9,61 @@
 </head>
 <body>
   <main class="shell popup-shell">
-    <section class="hero">
-      <p class="eyebrow">Today</p>
-      <h1>Time Wise Tracker</h1>
-      <p class="hero-status" id="statusText">Connecting to backend...</p>
-      <div class="metric-grid">
-        <article class="metric-card">
-          <span class="metric-label">Total time</span>
-          <strong class="metric-value" id="totalTime">0 min</strong>
+    <header class="page-header page-header-compact">
+      <div class="page-heading">
+        <p class="eyebrow">Private daily brief</p>
+        <h1>Time Wise Tracker</h1>
+      </div>
+      <button id="refreshBtn" class="button subtle" type="button">Refresh</button>
+    </header>
+
+    <section class="hero-panel hero-panel-compact">
+      <div class="hero-copy">
+        <p class="section-kicker">Today</p>
+        <h2 id="popupInsightTitle">A calm view of the day.</h2>
+        <p id="popupInsightBody" class="lede">Your latest reflection will appear after the first sync.</p>
+      </div>
+
+      <div class="status-block">
+        <span class="status-chip">Sync</span>
+        <p class="hero-status" id="statusText">Preparing a private connection...</p>
+      </div>
+
+      <div class="metric-pair-grid">
+        <article class="metric-tile">
+          <span class="metric-label">Tracked time</span>
+          <strong class="metric-value" id="totalTime">0s</strong>
         </article>
-        <article class="metric-card">
+        <article class="metric-tile">
           <span class="metric-label">Focus time</span>
-          <strong class="metric-value" id="focusTime">0 min</strong>
+          <strong class="metric-value" id="focusTime">0s</strong>
         </article>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-header">
-        <h2>Top sites</h2>
-        <button id="refreshBtn" class="button subtle" type="button">Refresh</button>
+    <section class="panel panel-spacious">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Attention</p>
+          <h2>Where time stayed</h2>
+        </div>
       </div>
-      <div id="sitesList" class="stack-list muted">No synced data yet.</div>
+      <div id="sitesList" class="reflection-list muted">No synced data yet.</div>
     </section>
 
-    <section class="panel">
-      <div class="panel-header">
-        <h2>Recommendations</h2>
+    <section class="panel panel-spacious">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Guidance</p>
+          <h2>One gentle suggestion</h2>
+        </div>
       </div>
-      <div id="recommendations" class="stack-list muted">Recommendations will appear after sync.</div>
+      <div id="recommendations" class="reflection-list muted">Recommendations will appear after sync.</div>
     </section>
 
     <footer class="footer-actions">
-      <button id="openDashboardBtn" class="button primary" type="button">Open dashboard</button>
-      <button id="openSettingsBtn" class="button" type="button">Settings</button>
+      <button id="openDashboardBtn" class="button primary" type="button">Open reflection</button>
+      <button id="openSettingsBtn" class="button quiet" type="button">Settings</button>
     </footer>
   </main>
 

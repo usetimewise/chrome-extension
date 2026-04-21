@@ -9,60 +9,104 @@
 </head>
 <body>
   <main class="shell settings-shell">
-    <section class="dashboard-hero">
-      <div>
+    <header class="page-header dashboard-header">
+      <div class="page-heading page-heading-wide">
         <p class="eyebrow">Configuration</p>
-        <h1>Tracker settings</h1>
-        <p id="settingsStatus" class="muted">Local settings are stored in the extension and mirrored to the backend.</p>
+        <h1>Tracker preferences</h1>
+        <p class="lede">Set the boundaries and sync details that shape your private time record.</p>
+        <p id="settingsStatus" class="status-copy muted">Preferences are stored locally in the extension and can be mirrored to the backend when you choose.</p>
       </div>
-      <button id="openDashboardFromSettingsBtn" class="button primary" type="button">Back to dashboard</button>
-    </section>
+      <button id="openDashboardFromSettingsBtn" class="button quiet" type="button">Back to reflection</button>
+    </header>
 
-    <form id="settingsForm" class="settings-grid">
-      <label class="field">
-        <span>API base URL</span>
-        <input id="apiBaseUrl" name="apiBaseUrl" type="url" placeholder="http://80.74.24.127:8081" required />
-      </label>
+    <form id="settingsForm" class="settings-form">
+      <section class="panel panel-spacious settings-section">
+        <div class="section-heading section-heading-stack">
+          <div>
+            <p class="section-kicker">Connection</p>
+            <h2>Private sync</h2>
+          </div>
+          <p class="section-copy muted">These fields define where the extension syncs and which local timezone shapes your summaries.</p>
+        </div>
+        <div class="settings-grid">
+          <label class="field">
+            <span class="field-label">API base URL</span>
+            <span class="field-hint">The backend endpoint used for sync and analytics.</span>
+            <input id="apiBaseUrl" name="apiBaseUrl" type="url" placeholder="http://80.74.24.127:8081" required />
+          </label>
 
-      <label class="field">
-        <span>Timezone</span>
-        <input id="timezone" name="timezone" type="text" placeholder="Europe/Berlin" required />
-      </label>
+          <label class="field">
+            <span class="field-label">Timezone</span>
+            <span class="field-hint">Used to calculate daily, weekly, and monthly ranges.</span>
+            <input id="timezone" name="timezone" type="text" placeholder="Europe/Berlin" required />
+          </label>
 
-      <label class="field checkbox-field">
-        <input id="trackingPaused" name="trackingPaused" type="checkbox" />
-        <span>Pause tracking</span>
-      </label>
+          <label class="field field-toggle full-width">
+            <div>
+              <span class="field-label">Pause tracking</span>
+              <span class="field-hint">Temporarily stop recording activity without changing the rest of your preferences.</span>
+            </div>
+            <input id="trackingPaused" name="trackingPaused" type="checkbox" />
+          </label>
+        </div>
+      </section>
 
-      <label class="field">
-        <span>Daily social limit, minutes</span>
-        <input id="socialLimit" name="socialLimit" type="number" min="0" step="5" />
-      </label>
+      <section class="panel panel-spacious settings-section">
+        <div class="section-heading section-heading-stack">
+          <div>
+            <p class="section-kicker">Boundaries</p>
+            <h2>Gentle limits</h2>
+          </div>
+          <p class="section-copy muted">Optional daily limits for categories you want to keep in view.</p>
+        </div>
+        <div class="settings-grid">
+          <label class="field">
+            <span class="field-label">Daily social limit</span>
+            <span class="field-hint">Minutes per day before social time is flagged for reflection.</span>
+            <input id="socialLimit" name="socialLimit" type="number" min="0" step="5" />
+          </label>
 
-      <label class="field">
-        <span>Daily entertainment limit, minutes</span>
-        <input id="entertainmentLimit" name="entertainmentLimit" type="number" min="0" step="5" />
-      </label>
+          <label class="field">
+            <span class="field-label">Daily entertainment limit</span>
+            <span class="field-hint">Minutes per day before entertainment time is called out.</span>
+            <input id="entertainmentLimit" name="entertainmentLimit" type="number" min="0" step="5" />
+          </label>
+        </div>
+      </section>
 
-      <label class="field full-width">
-        <span>Allow list, one host per line</span>
-        <textarea id="allowList" name="allowList" rows="4" placeholder="docs.google.com"></textarea>
-      </label>
+      <section class="panel panel-spacious settings-section">
+        <div class="section-heading section-heading-stack">
+          <div>
+            <p class="section-kicker">Rules</p>
+            <h2>Hosts and categories</h2>
+          </div>
+          <p class="section-copy muted">Adjust which hosts are always allowed, always blocked, or mapped into a specific category.</p>
+        </div>
+        <div class="settings-grid">
+          <label class="field full-width">
+            <span class="field-label">Allow list</span>
+            <span class="field-hint">One host per line. These hosts are treated as explicitly allowed.</span>
+            <textarea id="allowList" name="allowList" rows="4" placeholder="docs.google.com"></textarea>
+          </label>
 
-      <label class="field full-width">
-        <span>Block list, one host per line</span>
-        <textarea id="blockList" name="blockList" rows="4" placeholder="youtube.com"></textarea>
-      </label>
+          <label class="field full-width">
+            <span class="field-label">Block list</span>
+            <span class="field-hint">One host per line. These hosts are treated as explicitly blocked.</span>
+            <textarea id="blockList" name="blockList" rows="4" placeholder="youtube.com"></textarea>
+          </label>
 
-      <label class="field full-width">
-        <span>Category overrides, one per line as host=category</span>
-        <textarea id="categoryOverrides" name="categoryOverrides" rows="6" placeholder="github.com=work"></textarea>
-      </label>
+          <label class="field full-width">
+            <span class="field-label">Category overrides</span>
+            <span class="field-hint">Use one line per host in the form <code>host=category</code>.</span>
+            <textarea id="categoryOverrides" name="categoryOverrides" rows="6" placeholder="github.com=work"></textarea>
+          </label>
+        </div>
 
-      <div class="actions full-width">
-        <button class="button primary" type="submit">Save settings</button>
-        <button id="syncSettingsBtn" class="button" type="button">Push to backend</button>
-      </div>
+        <div class="actions">
+          <button class="button primary" type="submit">Save locally</button>
+          <button id="syncSettingsBtn" class="button quiet" type="button">Push to backend</button>
+        </div>
+      </section>
     </form>
   </main>
 

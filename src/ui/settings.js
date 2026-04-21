@@ -5,7 +5,7 @@ import { getSettings, saveSettings } from "../lib/state.js";
 function setStatus(message, isError = false) {
   const status = document.getElementById("settingsStatus");
   status.textContent = message;
-  status.style.color = isError ? "#9a3412" : "";
+  status.classList.toggle("is-error", isError);
 }
 
 function populateForm(settings) {
@@ -41,7 +41,7 @@ document.getElementById("settingsForm").addEventListener("submit", async (event)
   };
 
   await saveSettings(payload);
-  setStatus("Settings saved locally.");
+  setStatus("Preferences saved locally.");
 });
 
 document.getElementById("syncSettingsBtn").addEventListener("click", async () => {
@@ -50,7 +50,7 @@ document.getElementById("syncSettingsBtn").addEventListener("click", async () =>
     if (!response.ok) {
       throw new Error(response.error || "Failed to sync settings");
     }
-    setStatus("Settings pushed to the backend.");
+    setStatus("Preferences pushed to the backend.");
   } catch (error) {
     setStatus(error.message, true);
   }
