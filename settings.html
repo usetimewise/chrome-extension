@@ -48,6 +48,20 @@
             </div>
             <input id="trackingPaused" name="trackingPaused" type="checkbox" />
           </label>
+
+          <label class="field">
+            <span class="field-label">Idle timeout</span>
+            <span class="field-hint">How long Chrome waits without input before the tracker treats you as idle.</span>
+            <select id="idleDetectionSeconds" name="idleDetectionSeconds"></select>
+          </label>
+
+          <label class="field field-toggle">
+            <div>
+              <span class="field-label">Track media while idle</span>
+              <span class="field-hint">Keep counting the active tab while audio or video is still playing, even if you stop moving the mouse.</span>
+            </div>
+            <input id="trackMediaWhenIdle" name="trackMediaWhenIdle" type="checkbox" />
+          </label>
         </div>
       </section>
 

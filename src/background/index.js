@@ -33,10 +33,31 @@ import {
 
 let runtimeState = { ...DEFAULT_RUNTIME_STATE };
 
+async function applyTrackingSettings(settings = null) {
+  const resolvedSettings = settings || await getSettings();
+  const idleDetectionSeconds = Number(resolvedSettings.idleDetectionSeconds) > 0
+    ? Number(resolvedSettings.idleDetectionSeconds)
+    : 60;
+  await chrome.idle.setDetectionInterval(idleDetectionSeconds);
+  return resolvedSettings;
+}
+
+async function queryMediaState(tabId) {
+  if (!tabId) {
+    return false;
+  }
+
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { type: MESSAGE_TYPES.getMediaState });
+    return response?.isPlayingMedia === true;
+  } catch {
+    return false;
+  }
+}
+
 async function boot() {
   runtimeState = await getRuntimeState();
-  await getSettings();
-  await chrome.idle.setDetectionInterval(60);
+  await applyTrackingSettings();
   await ensureDeviceRegistration();
   await refreshActiveTab();
   ensureAlarms();
@@ -115,10 +136,6 @@ function isTrackingEligible(host, settings) {
     return false;
   }
 
-  if (!runtimeState.isWindowFocused || runtimeState.idleState !== "active") {
-    return false;
-  }
-
   if (settings.blockList.some((rule) => hostMatchesRule(host, rule))) {
     return false;
   }
@@ -127,11 +144,19 @@ function isTrackingEligible(host, settings) {
     return false;
   }
 
-  return true;
+  if (!runtimeState.isWindowFocused) {
+    return false;
+  }
+
+  if (runtimeState.idleState === "active") {
+    return true;
+  }
+
+  return settings.trackMediaWhenIdle && runtimeState.isPlayingMedia;
 }
 
-async function flushCurrentSession(reason = "transition") {
-  const settings = await getSettings();
+async function flushCurrentSession(reason = "transition", settingsOverride = null) {
+  const settings = settingsOverride || await getSettings();
   const startedAt = runtimeState.sessionStartedAt;
 
   if (!startedAt) {
@@ -169,6 +194,8 @@ async function setActiveFromTab(tab) {
     runtimeState.currentHost = null;
     runtimeState.currentUrl = null;
     runtimeState.currentTabId = tab?.id ?? null;
+    runtimeState.isPlayingMedia = false;
+    runtimeState.mediaStateUpdatedAt = new Date().toISOString();
     runtimeState.sessionStartedAt = Date.now();
     await saveRuntimeState(runtimeState);
     return;
@@ -177,6 +204,8 @@ async function setActiveFromTab(tab) {
   runtimeState.currentHost = normalizeHost(tab.url);
   runtimeState.currentUrl = tab.url;
   runtimeState.currentTabId = tab.id ?? null;
+  runtimeState.isPlayingMedia = await queryMediaState(runtimeState.currentTabId);
+  runtimeState.mediaStateUpdatedAt = new Date().toISOString();
   runtimeState.sessionStartedAt = Date.now();
   await saveRuntimeState(runtimeState);
 }
@@ -244,14 +273,17 @@ async function refreshDashboard(range = "today") {
 }
 
 async function pushPreferencesToBackend() {
-  return withRegisteredDevice((settings, deviceState) => {
+  return withRegisteredDevice(async (settings, deviceState) => {
+    const resolvedSettings = await applyTrackingSettings(settings);
     return pushPreferences(settings.apiBaseUrl, deviceState.deviceId, {
-      timezone: settings.timezone,
-      paused: settings.trackingPaused,
-      limits: settings.limits,
-      allow_list: settings.allowList,
-      block_list: settings.blockList,
-      category_overrides: settings.categoryOverrides
+      timezone: resolvedSettings.timezone,
+      paused: resolvedSettings.trackingPaused,
+      idle_detection_seconds: resolvedSettings.idleDetectionSeconds,
+      track_media_when_idle: resolvedSettings.trackMediaWhenIdle,
+      limits: resolvedSettings.limits,
+      allow_list: resolvedSettings.allowList,
+      block_list: resolvedSettings.blockList,
+      category_overrides: resolvedSettings.categoryOverrides
     });
   });
 }
@@ -343,13 +375,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
       }
       case MESSAGE_TYPES.saveSettings: {
-        const saved = await saveRuntimeState(runtimeState);
-        void saved;
+        await flushCurrentSession("settings-change", message.previousSettings || null);
+        await applyTrackingSettings();
+        runtimeState.isPlayingMedia = await queryMediaState(runtimeState.currentTabId);
+        runtimeState.mediaStateUpdatedAt = new Date().toISOString();
+        runtimeState.sessionStartedAt = Date.now();
+        await saveRuntimeState(runtimeState);
         return { ok: true };
       }
       case MESSAGE_TYPES.pushPreferences: {
         const payload = await pushPreferencesToBackend();
         return { ok: true, payload };
+      }
+      case MESSAGE_TYPES.mediaStateUpdate: {
+        if (!sender.tab?.id || sender.tab.id !== runtimeState.currentTabId) {
+          return { ok: true, ignored: true };
+        }
+
+        const nextState = message.isPlayingMedia === true;
+        if (nextState !== runtimeState.isPlayingMedia) {
+          await flushCurrentSession("media-state-change");
+          runtimeState.sessionStartedAt = Date.now();
+        }
+        runtimeState.isPlayingMedia = nextState;
+        runtimeState.mediaStateUpdatedAt = new Date().toISOString();
+        await saveRuntimeState(runtimeState);
+        return { ok: true };
       }
       default:
         return { ok: false, error: "Unknown message type" };

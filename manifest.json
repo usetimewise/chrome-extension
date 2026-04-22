@@ -16,6 +16,19 @@
     "service_worker": "src/background/index.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "src/content/media-monitor.js"
+      ],
+      "all_frames": false,
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_title": "Time Wise Tracker",
     "default_popup": "popup.html"
