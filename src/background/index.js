@@ -1,5 +1,6 @@
 import {
   DEFAULT_RUNTIME_STATE,
+  DISTRACTION_CATEGORIES,
   MESSAGE_TYPES
 } from "../lib/constants.js";
 import {
@@ -16,12 +17,18 @@ import {
   saveRuntimeState
 } from "../lib/state.js";
 import {
-  fetchRecommendations,
-  fetchSummary,
-  fetchTimeseries,
+  fetchFocusSessionsView,
+  fetchInsightsView,
+  fetchSitesView,
+  fetchTodayView,
+  fetchTrendsView,
   pushEvents,
   pushPreferences,
-  registerDevice
+  registerDevice,
+  resolveCategories,
+  startFocusSession,
+  updateFocusSessionState,
+  updateSiteRule
 } from "../lib/api-client.js";
 import {
   generateId,
@@ -61,6 +68,7 @@ async function boot() {
   await ensureDeviceRegistration();
   await refreshActiveTab();
   ensureAlarms();
+  await refreshViews();
 }
 
 function ensureAlarms() {
@@ -72,7 +80,8 @@ function isDeviceRegistrationMismatch(error) {
   const message = String(error?.message || "").toLowerCase();
   return message.includes("device is not registered") ||
     message.includes("activity_events_device_id_fkey") ||
-    message.includes("preferences_device_id_fkey");
+    message.includes("preferences_device_id_fkey") ||
+    message.includes("focus_sessions_device_id_fkey");
 }
 
 async function ensureDeviceRegistration(force = false) {
@@ -136,11 +145,7 @@ function isTrackingEligible(host, settings) {
     return false;
   }
 
-  if (settings.blockList.some((rule) => hostMatchesRule(host, rule))) {
-    return false;
-  }
-
-  if (settings.allowList.length > 0 && !settings.allowList.some((rule) => hostMatchesRule(host, rule))) {
+  if (settings.excludedHosts.some((rule) => hostMatchesRule(host, rule))) {
     return false;
   }
 
@@ -246,28 +251,43 @@ async function syncQueue() {
   }
 }
 
-async function refreshDashboard(range = "today") {
+async function refreshViews() {
   try {
     return await withRegisteredDevice(async (settings, deviceState) => {
-      const [summary, timeseries, recommendations] = await Promise.all([
-        fetchSummary(settings.apiBaseUrl, deviceState.deviceId, range),
-        fetchTimeseries(settings.apiBaseUrl, deviceState.deviceId, range),
-        fetchRecommendations(settings.apiBaseUrl, deviceState.deviceId, range)
+      const [
+        todayView,
+        trendsView,
+        sitesView,
+        insightsView,
+        focusSessionsView
+      ] = await Promise.all([
+        fetchTodayView(settings.apiBaseUrl, deviceState.deviceId),
+        fetchTrendsView(settings.apiBaseUrl, deviceState.deviceId),
+        fetchSitesView(settings.apiBaseUrl, deviceState.deviceId),
+        fetchInsightsView(settings.apiBaseUrl, deviceState.deviceId),
+        fetchFocusSessionsView(settings.apiBaseUrl, deviceState.deviceId)
       ]);
 
+      let currentHostCategory = null;
+      if (runtimeState.currentHost) {
+        const resolved = await resolveCategories(settings.apiBaseUrl, deviceState.deviceId, [runtimeState.currentHost]);
+        currentHostCategory = resolved?.categories?.[runtimeState.currentHost] || null;
+      }
+
       return saveDashboardCache({
-        summary,
-        timeseries: timeseries.points || [],
-        recommendations: recommendations.items || [],
+        todayView,
+        trendsView,
+        sitesView,
+        insightsView,
+        focusSessionsView,
+        currentHostCategory,
         lastSyncAt: new Date().toISOString(),
-        lastError: null,
-        range
+        lastError: null
       });
     });
   } catch (error) {
     return saveDashboardCache({
-      lastError: error.message,
-      range
+      lastError: error.message
     });
   }
 }
@@ -280,20 +300,97 @@ async function pushPreferencesToBackend() {
       paused: resolvedSettings.trackingPaused,
       idle_detection_seconds: resolvedSettings.idleDetectionSeconds,
       track_media_when_idle: resolvedSettings.trackMediaWhenIdle,
-      limits: resolvedSettings.limits,
-      allow_list: resolvedSettings.allowList,
-      block_list: resolvedSettings.blockList,
+      work_hours_start: resolvedSettings.workHoursStart,
+      work_hours_end: resolvedSettings.workHoursEnd,
+      workdays: resolvedSettings.workdays,
+      deep_work_blocks: resolvedSettings.deepWorkBlocks,
+      nudges_enabled: resolvedSettings.nudgesEnabled,
+      nudge_sensitivity: resolvedSettings.nudgeSensitivity,
+      snooze_minutes: resolvedSettings.snoozeMinutes,
+      work_hours_only: resolvedSettings.workHoursOnly,
+      ai_insights_enabled: resolvedSettings.aiInsightsEnabled,
+      ai_tone: resolvedSettings.aiTone,
+      excluded_hosts: resolvedSettings.excludedHosts,
       category_overrides: resolvedSettings.categoryOverrides
     });
   });
 }
 
+function driftThresholdMinutes(sensitivity = "balanced") {
+  switch (sensitivity) {
+    case "gentle":
+      return 18;
+    case "direct":
+      return 6;
+    default:
+      return 10;
+  }
+}
+
+function buildPopupModel(cache, settings) {
+  const today = cache.todayView;
+  const activeSession = cache.focusSessionsView?.active_session || null;
+  const currentDwellMs = runtimeState.sessionStartedAt ? Date.now() - runtimeState.sessionStartedAt : 0;
+  const currentCategory = cache.currentHostCategory;
+  const thresholdMs = driftThresholdMinutes(settings.nudgeSensitivity) * 60 * 1000;
+  const isDistractingCurrent = DISTRACTION_CATEGORIES.has(currentCategory);
+  const isDrifting = isDistractingCurrent && currentDwellMs >= thresholdMs;
+
+  let state = "empty";
+  if (today?.summary?.total_duration_ms > 0) {
+    state = "default";
+  }
+  if (activeSession?.status === "active") {
+    state = "focus_active";
+  } else if (isDrifting) {
+    state = "drifting";
+  }
+
+  const focusSession = activeSession
+    ? {
+        ...activeSession,
+        remaining_ms: Math.max(0, (activeSession.planned_minutes * 60 * 1000) - (activeSession.active_duration_ms || 0))
+      }
+    : null;
+
+  return {
+    state,
+    statusLabel: today?.status?.label || "Welcome",
+    statusMessage: today?.status?.message || "Your focus data will appear here soon.",
+    focusedTimeMs: today?.summary?.focus_duration_ms || 0,
+    distractedTimeMs: today?.summary?.distraction_duration_ms || 0,
+    focusAlignment: today?.summary?.focus_alignment || 0,
+    comparisonLabel: today?.comparison?.label || "vs yesterday",
+    comparisonValue: today?.comparison?.focus_alignment_delta || 0,
+    topCategories: (today?.top_categories || []).slice(0, 3),
+    insight: today?.main_insight || {
+      title: "Your focus picture is still forming",
+      body: "Keep browsing normally. The first useful pattern appears after enough tracked time accumulates."
+    },
+    currentSite: runtimeState.currentHost
+      ? {
+          host: runtimeState.currentHost,
+          category: currentCategory || "other",
+          dwellMs: currentDwellMs
+        }
+      : null,
+    focusSession,
+    primaryAction: state === "focus_active"
+      ? { type: MESSAGE_TYPES.pauseFocusSession, label: "Pause focus" }
+      : { type: MESSAGE_TYPES.startFocusSession, label: state === "drifting" ? "Return to focus" : "Start focus mode" },
+    secondaryActions: state === "focus_active"
+      ? [{ type: MESSAGE_TYPES.endFocusSession, label: "End session" }]
+      : [{ type: "OPEN_DASHBOARD", label: "Open dashboard" }],
+    canReclassify: Boolean(runtimeState.currentHost)
+  };
+}
+
 chrome.runtime.onInstalled.addListener(() => {
-  boot();
+  void boot();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  boot();
+  void boot();
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -304,13 +401,14 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
   if (alarm.name === "sync") {
     await syncQueue();
-    await refreshDashboard();
+    await refreshViews();
   }
 });
 
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   const tab = await chrome.tabs.get(tabId);
   await setActiveFromTab(tab);
+  await refreshViews();
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -320,6 +418,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   if (changeInfo.url || changeInfo.status === "complete") {
     await setActiveFromTab(tab);
+    await refreshViews();
   }
 });
 
@@ -357,21 +456,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           device,
           queueSize: queue.length,
           runtimeState,
-          dashboardCache
+          dashboardCache,
+          popupModel: buildPopupModel(dashboardCache, settings)
         };
       }
-      case MESSAGE_TYPES.refreshDashboard: {
+      case MESSAGE_TYPES.refreshViews: {
         await flushCurrentSession("manual-refresh");
         await syncQueue();
-        return refreshDashboard(message.range || "today");
+        const dashboardCache = await refreshViews();
+        const settings = await getSettings();
+        return {
+          dashboardCache,
+          popupModel: buildPopupModel(dashboardCache, settings)
+        };
       }
       case MESSAGE_TYPES.syncNow: {
         await flushCurrentSession("manual-sync");
         const sync = await syncQueue();
-        const dashboard = await refreshDashboard(message.range || "today");
+        const dashboardCache = await refreshViews();
+        const settings = await getSettings();
         return {
           sync,
-          dashboard
+          dashboardCache,
+          popupModel: buildPopupModel(dashboardCache, settings)
         };
       }
       case MESSAGE_TYPES.saveSettings: {
@@ -385,7 +492,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       case MESSAGE_TYPES.pushPreferences: {
         const payload = await pushPreferencesToBackend();
-        return { ok: true, payload };
+        const dashboardCache = await refreshViews();
+        return { ok: true, payload, dashboardCache };
+      }
+      case MESSAGE_TYPES.startFocusSession: {
+        const session = await withRegisteredDevice(async (settings, deviceState) => {
+          return startFocusSession(settings.apiBaseUrl, deviceState.deviceId, {
+            intent: message.intent || "Focus block",
+            duration_minutes: Number(message.minutes || 45)
+          });
+        });
+        const dashboardCache = await refreshViews();
+        return { ok: true, session, dashboardCache };
+      }
+      case MESSAGE_TYPES.pauseFocusSession:
+      case MESSAGE_TYPES.resumeFocusSession:
+      case MESSAGE_TYPES.endFocusSession: {
+        const actionMap = {
+          [MESSAGE_TYPES.pauseFocusSession]: "pause",
+          [MESSAGE_TYPES.resumeFocusSession]: "resume",
+          [MESSAGE_TYPES.endFocusSession]: "end"
+        };
+        const session = await withRegisteredDevice(async (settings, deviceState) => {
+          return updateFocusSessionState(settings.apiBaseUrl, deviceState.deviceId, message.sessionId, actionMap[message.type]);
+        });
+        const dashboardCache = await refreshViews();
+        return { ok: true, session, dashboardCache };
+      }
+      case MESSAGE_TYPES.saveSiteRule: {
+        const payload = await withRegisteredDevice(async (settings, deviceState) => {
+          return updateSiteRule(settings.apiBaseUrl, deviceState.deviceId, {
+            host: message.host,
+            category: message.category,
+            excluded: Boolean(message.excluded)
+          });
+        });
+        const dashboardCache = await refreshViews();
+        return { ok: true, payload, dashboardCache };
       }
       case MESSAGE_TYPES.mediaStateUpdate: {
         if (!sender.tab?.id || sender.tab.id !== runtimeState.currentTabId) {

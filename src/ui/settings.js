@@ -1,6 +1,6 @@
 import { IDLE_DETECTION_OPTIONS, MESSAGE_TYPES } from "../lib/constants.js";
-import { overridesToText, textToLines, textToOverrides } from "../lib/utils.js";
 import { getSettings, saveSettings } from "../lib/state.js";
+import { blocksToText, overridesToText, parseWorkdaysFromForm, textToBlocks, textToLines, textToOverrides } from "../lib/utils.js";
 
 function setStatus(message, isError = false) {
   const status = document.getElementById("settingsStatus");
@@ -8,67 +8,65 @@ function setStatus(message, isError = false) {
   status.classList.toggle("is-error", isError);
 }
 
-function describeIdleOption(seconds) {
-  if (seconds < 120) {
-    return `${seconds} seconds`;
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
-}
-
-function renderIdleOptions() {
+function renderIdleOptions(selectedValue) {
   const select = document.getElementById("idleDetectionSeconds");
-  select.textContent = "";
-
-  for (const seconds of IDLE_DETECTION_OPTIONS) {
-    const option = document.createElement("option");
-    option.value = String(seconds);
-    option.textContent = describeIdleOption(seconds);
-    select.append(option);
-  }
+  select.innerHTML = IDLE_DETECTION_OPTIONS.map((seconds) => `
+    <option value="${seconds}" ${Number(selectedValue) === seconds ? "selected" : ""}>${seconds >= 60 ? `${Math.floor(seconds / 60)} min` : `${seconds}s`}</option>
+  `).join("");
 }
 
 function populateForm(settings) {
+  renderIdleOptions(settings.idleDetectionSeconds);
   document.getElementById("apiBaseUrl").value = settings.apiBaseUrl;
   document.getElementById("timezone").value = settings.timezone;
   document.getElementById("trackingPaused").checked = settings.trackingPaused;
-  document.getElementById("idleDetectionSeconds").value = String(settings.idleDetectionSeconds);
   document.getElementById("trackMediaWhenIdle").checked = settings.trackMediaWhenIdle;
-  document.getElementById("socialLimit").value = settings.limits.social ?? "";
-  document.getElementById("entertainmentLimit").value = settings.limits.entertainment ?? "";
-  document.getElementById("allowList").value = (settings.allowList || []).join("\n");
-  document.getElementById("blockList").value = (settings.blockList || []).join("\n");
+  document.getElementById("workHoursStart").value = settings.workHoursStart;
+  document.getElementById("workHoursEnd").value = settings.workHoursEnd;
+  document.getElementById("deepWorkBlocks").value = blocksToText(settings.deepWorkBlocks);
+  document.getElementById("nudgesEnabled").checked = settings.nudgesEnabled;
+  document.getElementById("nudgeSensitivity").value = settings.nudgeSensitivity;
+  document.getElementById("snoozeMinutes").value = String(settings.snoozeMinutes);
+  document.getElementById("workHoursOnly").checked = settings.workHoursOnly;
+  document.getElementById("aiInsightsEnabled").checked = settings.aiInsightsEnabled;
+  document.getElementById("aiTone").value = settings.aiTone;
+  document.getElementById("excludedHosts").value = (settings.excludedHosts || []).join("\n");
   document.getElementById("categoryOverrides").value = overridesToText(settings.categoryOverrides);
+
+  for (const checkbox of document.querySelectorAll('input[name="workdays"]')) {
+    checkbox.checked = settings.workdays.includes(Number(checkbox.value));
+  }
 }
 
-async function loadSettingsPage() {
-  renderIdleOptions();
-  const settings = await getSettings();
-  populateForm(settings);
+function collectSettings(form) {
+  const formData = new FormData(form);
+  return {
+    apiBaseUrl: String(formData.get("apiBaseUrl") || "").trim(),
+    timezone: String(formData.get("timezone") || "").trim(),
+    trackingPaused: formData.get("trackingPaused") === "on",
+    idleDetectionSeconds: Number(formData.get("idleDetectionSeconds") || 60),
+    trackMediaWhenIdle: formData.get("trackMediaWhenIdle") === "on",
+    workHoursStart: String(formData.get("workHoursStart") || "09:00"),
+    workHoursEnd: String(formData.get("workHoursEnd") || "18:00"),
+    workdays: parseWorkdaysFromForm(formData),
+    deepWorkBlocks: textToBlocks(String(formData.get("deepWorkBlocks") || "")),
+    nudgesEnabled: formData.get("nudgesEnabled") === "on",
+    nudgeSensitivity: String(formData.get("nudgeSensitivity") || "balanced"),
+    snoozeMinutes: Number(formData.get("snoozeMinutes") || 20),
+    workHoursOnly: formData.get("workHoursOnly") === "on",
+    aiInsightsEnabled: formData.get("aiInsightsEnabled") === "on",
+    aiTone: String(formData.get("aiTone") || "balanced"),
+    excludedHosts: textToLines(String(formData.get("excludedHosts") || "")),
+    categoryOverrides: textToOverrides(String(formData.get("categoryOverrides") || ""))
+  };
 }
 
 document.getElementById("settingsForm").addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const previousSettings = await getSettings();
-  const payload = {
-    apiBaseUrl: document.getElementById("apiBaseUrl").value.trim(),
-    timezone: document.getElementById("timezone").value.trim(),
-    trackingPaused: document.getElementById("trackingPaused").checked,
-    idleDetectionSeconds: Number(document.getElementById("idleDetectionSeconds").value || 60),
-    trackMediaWhenIdle: document.getElementById("trackMediaWhenIdle").checked,
-    limits: {
-      social: Number(document.getElementById("socialLimit").value || 0),
-      entertainment: Number(document.getElementById("entertainmentLimit").value || 0)
-    },
-    allowList: textToLines(document.getElementById("allowList").value),
-    blockList: textToLines(document.getElementById("blockList").value),
-    categoryOverrides: textToOverrides(document.getElementById("categoryOverrides").value)
-  };
-
   try {
-    await saveSettings(payload);
+    const previousSettings = await getSettings();
+    await saveSettings(collectSettings(event.target));
     const response = await chrome.runtime.sendMessage({
       type: MESSAGE_TYPES.saveSettings,
       previousSettings
@@ -98,4 +96,8 @@ document.getElementById("openDashboardFromSettingsBtn").addEventListener("click"
   chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
 });
 
-void loadSettingsPage();
+async function init() {
+  populateForm(await getSettings());
+}
+
+void init();

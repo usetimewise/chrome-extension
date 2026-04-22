@@ -3,120 +3,75 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Time Wise Tracker Settings</title>
+  <title>Focus Settings</title>
   <link rel="stylesheet" href="src/ui/common.css" />
   <link rel="stylesheet" href="src/ui/settings.css" />
 </head>
 <body>
-  <main class="shell settings-shell">
-    <header class="page-header dashboard-header">
-      <div class="page-heading page-heading-wide">
-        <p class="eyebrow">Configuration</p>
-        <h1>Tracker preferences</h1>
-        <p class="lede">Set the boundaries and sync details that shape your private time record.</p>
-        <p id="settingsStatus" class="status-copy muted">Preferences are stored locally in the extension and can be mirrored to the backend when you choose.</p>
+  <main class="settings-shell">
+    <header class="settings-header">
+      <div>
+        <p class="eyebrow">Settings</p>
+        <h1>Define what focus means for you</h1>
+        <p class="lede">These preferences shape work hours, nudges, classification trust, and what is excluded from tracking.</p>
+        <p id="settingsStatus" class="micro-copy">Preferences are stored locally first and can be pushed to the backend when you choose.</p>
       </div>
-      <button id="openDashboardFromSettingsBtn" class="button quiet" type="button">Back to reflection</button>
+      <button id="openDashboardFromSettingsBtn" class="button quiet" type="button">Open dashboard</button>
     </header>
 
     <form id="settingsForm" class="settings-form">
-      <section class="panel panel-spacious settings-section">
-        <div class="section-heading section-heading-stack">
-          <div>
-            <p class="section-kicker">Connection</p>
-            <h2>Private sync</h2>
-          </div>
-          <p class="section-copy muted">These fields define where the extension syncs and which local timezone shapes your summaries.</p>
-        </div>
-        <div class="settings-grid">
+      <section class="panel wide-panel">
+        <div class="panel-head"><div><p class="eyebrow">Connection & tracking</p><h3>Core preferences</h3></div></div>
+        <div class="form-grid">
+          <label class="field"><span>API base URL</span><input id="apiBaseUrl" name="apiBaseUrl" type="url" required /></label>
+          <label class="field"><span>Timezone</span><input id="timezone" name="timezone" type="text" required /></label>
+          <label class="field"><span>Idle timeout</span><select id="idleDetectionSeconds" name="idleDetectionSeconds"></select></label>
+          <label class="field"><span>Work hours start</span><input id="workHoursStart" name="workHoursStart" type="time" /></label>
+          <label class="field"><span>Work hours end</span><input id="workHoursEnd" name="workHoursEnd" type="time" /></label>
+          <label class="field"><span>Snooze duration</span><input id="snoozeMinutes" name="snoozeMinutes" type="number" min="5" step="5" /></label>
+          <label class="toggle-row"><span>Pause tracking</span><input id="trackingPaused" name="trackingPaused" type="checkbox" /></label>
+          <label class="toggle-row"><span>Track media while idle</span><input id="trackMediaWhenIdle" name="trackMediaWhenIdle" type="checkbox" /></label>
+          <label class="toggle-row"><span>Nudges enabled</span><input id="nudgesEnabled" name="nudgesEnabled" type="checkbox" /></label>
+          <label class="toggle-row"><span>Only within work hours</span><input id="workHoursOnly" name="workHoursOnly" type="checkbox" /></label>
+          <label class="toggle-row"><span>AI insights enabled</span><input id="aiInsightsEnabled" name="aiInsightsEnabled" type="checkbox" /></label>
           <label class="field">
-            <span class="field-label">API base URL</span>
-            <span class="field-hint">The backend endpoint used for sync and analytics.</span>
-            <input id="apiBaseUrl" name="apiBaseUrl" type="url" placeholder="http://80.74.24.127:8081" required />
+            <span>Nudge sensitivity</span>
+            <select id="nudgeSensitivity" name="nudgeSensitivity">
+              <option value="direct">Direct</option>
+              <option value="balanced">Balanced</option>
+              <option value="gentle">Gentle</option>
+            </select>
           </label>
-
           <label class="field">
-            <span class="field-label">Timezone</span>
-            <span class="field-hint">Used to calculate daily, weekly, and monthly ranges.</span>
-            <input id="timezone" name="timezone" type="text" placeholder="Europe/Berlin" required />
-          </label>
-
-          <label class="field field-toggle full-width">
-            <div>
-              <span class="field-label">Pause tracking</span>
-              <span class="field-hint">Temporarily stop recording activity without changing the rest of your preferences.</span>
-            </div>
-            <input id="trackingPaused" name="trackingPaused" type="checkbox" />
-          </label>
-
-          <label class="field">
-            <span class="field-label">Idle timeout</span>
-            <span class="field-hint">How long Chrome waits without input before the tracker treats you as idle.</span>
-            <select id="idleDetectionSeconds" name="idleDetectionSeconds"></select>
-          </label>
-
-          <label class="field field-toggle">
-            <div>
-              <span class="field-label">Track media while idle</span>
-              <span class="field-hint">Keep counting the active tab while audio or video is still playing, even if you stop moving the mouse.</span>
-            </div>
-            <input id="trackMediaWhenIdle" name="trackMediaWhenIdle" type="checkbox" />
+            <span>AI tone</span>
+            <select id="aiTone" name="aiTone">
+              <option value="direct">Direct</option>
+              <option value="balanced">Balanced</option>
+              <option value="gentle">Gentle</option>
+            </select>
           </label>
         </div>
       </section>
 
-      <section class="panel panel-spacious settings-section">
-        <div class="section-heading section-heading-stack">
-          <div>
-            <p class="section-kicker">Boundaries</p>
-            <h2>Gentle limits</h2>
-          </div>
-          <p class="section-copy muted">Optional daily limits for categories you want to keep in view.</p>
+      <section class="panel wide-panel">
+        <div class="panel-head"><div><p class="eyebrow">Schedule</p><h3>Workdays and blocks</h3></div></div>
+        <div class="checkbox-row">
+          <label><input name="workdays" type="checkbox" value="1" /> Mon</label>
+          <label><input name="workdays" type="checkbox" value="2" /> Tue</label>
+          <label><input name="workdays" type="checkbox" value="3" /> Wed</label>
+          <label><input name="workdays" type="checkbox" value="4" /> Thu</label>
+          <label><input name="workdays" type="checkbox" value="5" /> Fri</label>
+          <label><input name="workdays" type="checkbox" value="6" /> Sat</label>
+          <label><input name="workdays" type="checkbox" value="7" /> Sun</label>
         </div>
-        <div class="settings-grid">
-          <label class="field">
-            <span class="field-label">Daily social limit</span>
-            <span class="field-hint">Minutes per day before social time is flagged for reflection.</span>
-            <input id="socialLimit" name="socialLimit" type="number" min="0" step="5" />
-          </label>
-
-          <label class="field">
-            <span class="field-label">Daily entertainment limit</span>
-            <span class="field-hint">Minutes per day before entertainment time is called out.</span>
-            <input id="entertainmentLimit" name="entertainmentLimit" type="number" min="0" step="5" />
-          </label>
-        </div>
+        <label class="field wide"><span>Deep work blocks</span><textarea id="deepWorkBlocks" name="deepWorkBlocks" rows="3" placeholder="09:30-11:30"></textarea></label>
       </section>
 
-      <section class="panel panel-spacious settings-section">
-        <div class="section-heading section-heading-stack">
-          <div>
-            <p class="section-kicker">Rules</p>
-            <h2>Hosts and categories</h2>
-          </div>
-          <p class="section-copy muted">Adjust which hosts are always allowed, always blocked, or mapped into a specific category.</p>
-        </div>
-        <div class="settings-grid">
-          <label class="field full-width">
-            <span class="field-label">Allow list</span>
-            <span class="field-hint">One host per line. These hosts are treated as explicitly allowed.</span>
-            <textarea id="allowList" name="allowList" rows="4" placeholder="docs.google.com"></textarea>
-          </label>
-
-          <label class="field full-width">
-            <span class="field-label">Block list</span>
-            <span class="field-hint">One host per line. These hosts are treated as explicitly blocked.</span>
-            <textarea id="blockList" name="blockList" rows="4" placeholder="youtube.com"></textarea>
-          </label>
-
-          <label class="field full-width">
-            <span class="field-label">Category overrides</span>
-            <span class="field-hint">Use one line per host in the form <code>host=category</code>.</span>
-            <textarea id="categoryOverrides" name="categoryOverrides" rows="6" placeholder="github.com=work"></textarea>
-          </label>
-        </div>
-
-        <div class="actions">
+      <section class="panel wide-panel">
+        <div class="panel-head"><div><p class="eyebrow">Classification trust</p><h3>Rules and exclusions</h3></div></div>
+        <label class="field wide"><span>Excluded hosts</span><textarea id="excludedHosts" name="excludedHosts" rows="4" placeholder="youtube.com"></textarea></label>
+        <label class="field wide"><span>Category overrides</span><textarea id="categoryOverrides" name="categoryOverrides" rows="6" placeholder="github.com=work"></textarea></label>
+        <div class="button-row">
           <button class="button primary" type="submit">Save locally</button>
           <button id="syncSettingsBtn" class="button quiet" type="button">Push to backend</button>
         </div>

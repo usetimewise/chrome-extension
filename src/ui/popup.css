@@ -1,21 +1,37 @@
-html,
 body {
-  width: 420px;
-  min-width: 420px;
+  width: 400px;
+  min-height: 640px;
+}
+
+#popupRoot {
+  position: relative;
+  z-index: 1;
 }
 
 .popup-shell {
-  width: 420px;
-  padding: 18px;
   display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.popup-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 16px;
 }
 
-.footer-actions {
-  display: flex;
-  gap: 10px;
+.popup-topbar h1 {
+  font-size: 34px;
+  line-height: 0.95;
 }
 
-.footer-actions .button {
-  flex: 1;
+.header-actions {
+  display: flex;
+  grid-template-columns: none;
+}
+
+.popup-footer {
+  display: grid;
+  gap: 12px;
 }

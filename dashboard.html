@@ -3,102 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Time Wise Tracker Dashboard</title>
+  <title>Focus Dashboard</title>
   <link rel="stylesheet" href="src/ui/common.css" />
   <link rel="stylesheet" href="src/ui/dashboard.css" />
 </head>
 <body>
-  <main class="shell dashboard-shell">
-    <header class="page-header dashboard-header">
-      <div class="page-heading page-heading-wide">
-        <p class="eyebrow">Private reflection</p>
-        <h1>Time, seen clearly</h1>
-        <p class="lede">A quieter reading of how attention moved, without pressure or guilt.</p>
-        <p id="dashboardStatus" class="status-copy muted">Loading your latest reflection...</p>
+  <main class="dashboard-shell">
+    <header class="dashboard-header">
+      <div>
+        <p class="eyebrow">Protect your time. Protect your focus.</p>
+        <h1>Focus dashboard</h1>
+        <p class="lede">A calmer reading of where attention is going, what broke it, and what to adjust next.</p>
+        <p id="dashboardStatus" class="micro-copy">Loading focus data...</p>
       </div>
-      <div class="toolbar toolbar-stacked">
-        <div class="segmented" id="rangePicker">
-          <button data-range="today" class="active" type="button">Today</button>
-          <button data-range="week" type="button">Week</button>
-          <button data-range="month" type="button">Month</button>
-        </div>
-        <div class="toolbar-actions">
-          <button id="dashboardRefreshBtn" class="button primary" type="button">Refresh view</button>
-          <button id="openSettingsFromDashboardBtn" class="button quiet" type="button">Preferences</button>
-        </div>
+      <div class="header-actions">
+        <button class="button quiet" data-open-options="true" type="button">Options</button>
+        <button class="button primary" data-refresh-dashboard="true" type="button">Refresh</button>
       </div>
     </header>
 
-    <section class="dashboard-overview">
-      <article class="hero-panel hero-panel-large">
-        <div class="hero-copy">
-          <p class="section-kicker">Current range</p>
-          <h2 id="dashboardInsightTitle">Reading the current rhythm...</h2>
-          <p id="dashboardInsightBody" class="lede">Once enough activity is synced, this view will surface the clearest signal in the range.</p>
-        </div>
-      </article>
-
-      <div class="metrics-column">
-        <article class="metric-tile metric-tile-large">
-          <span class="metric-label">Tracked time</span>
-          <strong class="metric-value" id="dashboardTotal">0s</strong>
-        </article>
-        <article class="metric-tile metric-tile-large">
-          <span class="metric-label">Focus share</span>
-          <strong class="metric-value" id="dashboardFocusScore">0%</strong>
-        </article>
-        <article class="metric-tile metric-tile-large">
-          <span class="metric-label">Main context</span>
-          <strong class="metric-value" id="dashboardTopCategory">No data</strong>
-        </article>
-      </div>
-    </section>
-
-    <section class="dashboard-flow">
-      <div class="dashboard-main-column">
-        <article class="panel panel-spacious">
-          <div class="section-heading">
-            <div>
-              <p class="section-kicker">Rhythm</p>
-              <h2>How time unfolded</h2>
-            </div>
-          </div>
-          <div id="timeseriesChart" class="chart muted">No time series data yet.</div>
-        </article>
-
-        <article class="panel panel-spacious">
-          <div class="section-heading">
-            <div>
-              <p class="section-kicker">Guidance</p>
-              <h2>Gentle suggestions</h2>
-            </div>
-          </div>
-          <div id="dashboardRecommendations" class="reflection-list muted">No recommendations yet.</div>
-        </article>
-      </div>
-
-      <aside class="dashboard-side-column">
-        <article class="panel panel-spacious">
-          <div class="section-heading">
-            <div>
-              <p class="section-kicker">Context</p>
-              <h2>Where the range leaned</h2>
-            </div>
-          </div>
-          <div id="categoryBreakdown" class="reflection-list muted">No category data yet.</div>
-        </article>
-
-        <article class="panel panel-spacious">
-          <div class="section-heading">
-            <div>
-              <p class="section-kicker">Places</p>
-              <h2>Sites that held attention</h2>
-            </div>
-          </div>
-          <div id="dashboardSites" class="reflection-list muted">No site data yet.</div>
-        </article>
-      </aside>
-    </section>
+    <nav class="dashboard-tabs" id="dashboardTabs"></nav>
+    <section id="dashboardContent" class="dashboard-content"></section>
   </main>
 
   <script type="module" src="src/ui/dashboard.js"></script>

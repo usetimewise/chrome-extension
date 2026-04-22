@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Time Wise Tracker",
   "version": "0.2.0",
-  "description": "Tracks website time, syncs activity to the backend, and shows analytics plus recommendations.",
+  "description": "A focus-first browser companion that tracks attention, surfaces drift patterns, and suggests calmer next steps.",
   "permissions": [
     "tabs",
     "storage",
@@ -30,7 +30,7 @@
     }
   ],
   "action": {
-    "default_title": "Time Wise Tracker",
+    "default_title": "Focus Snapshot",
     "default_popup": "popup.html"
   },
   "options_page": "settings.html"

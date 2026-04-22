@@ -37,24 +37,48 @@ export async function pushEvents(baseUrl, deviceId, events) {
   });
 }
 
-export async function fetchSummary(baseUrl, deviceId, range = "today") {
-  return requestJSON(baseUrl, `/v1/dashboard/summary?range=${encodeURIComponent(range)}`, {
+export async function fetchTodayView(baseUrl, deviceId) {
+  return requestJSON(baseUrl, "/v1/dashboard/today", {
     headers: buildHeaders(deviceId)
   });
 }
 
-export async function fetchTimeseries(baseUrl, deviceId, range = "today", granularity) {
-  const granularityValue = granularity || (range === "today" ? "hour" : "day");
-  return requestJSON(
-    baseUrl,
-    `/v1/dashboard/timeseries?range=${encodeURIComponent(range)}&granularity=${encodeURIComponent(granularityValue)}`,
-    { headers: buildHeaders(deviceId) }
-  );
+export async function fetchTrendsView(baseUrl, deviceId) {
+  return requestJSON(baseUrl, "/v1/dashboard/trends", {
+    headers: buildHeaders(deviceId)
+  });
 }
 
-export async function fetchRecommendations(baseUrl, deviceId, range = "today") {
-  return requestJSON(baseUrl, `/v1/recommendations?range=${encodeURIComponent(range)}`, {
+export async function fetchSitesView(baseUrl, deviceId) {
+  return requestJSON(baseUrl, "/v1/dashboard/sites", {
     headers: buildHeaders(deviceId)
+  });
+}
+
+export async function fetchInsightsView(baseUrl, deviceId) {
+  return requestJSON(baseUrl, "/v1/dashboard/insights", {
+    headers: buildHeaders(deviceId)
+  });
+}
+
+export async function fetchFocusSessionsView(baseUrl, deviceId) {
+  return requestJSON(baseUrl, "/v1/focus-sessions", {
+    headers: buildHeaders(deviceId)
+  });
+}
+
+export async function resolveCategories(baseUrl, deviceId, hosts) {
+  const query = encodeURIComponent((hosts || []).join(","));
+  return requestJSON(baseUrl, `/v1/sites/categories?hosts=${query}`, {
+    headers: buildHeaders(deviceId)
+  });
+}
+
+export async function updateSiteRule(baseUrl, deviceId, payload) {
+  return requestJSON(baseUrl, "/v1/sites/rules", {
+    method: "PUT",
+    headers: buildHeaders(deviceId),
+    body: JSON.stringify(payload)
   });
 }
 
@@ -63,5 +87,20 @@ export async function pushPreferences(baseUrl, deviceId, payload) {
     method: "PUT",
     headers: buildHeaders(deviceId),
     body: JSON.stringify(payload)
+  });
+}
+
+export async function startFocusSession(baseUrl, deviceId, payload) {
+  return requestJSON(baseUrl, "/v1/focus-sessions", {
+    method: "POST",
+    headers: buildHeaders(deviceId),
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateFocusSessionState(baseUrl, deviceId, sessionId, action) {
+  return requestJSON(baseUrl, `/v1/focus-sessions/${encodeURIComponent(sessionId)}/${encodeURIComponent(action)}`, {
+    method: "POST",
+    headers: buildHeaders(deviceId)
   });
 }

@@ -12,12 +12,9 @@ export async function getSettings() {
   return {
     ...DEFAULT_SETTINGS,
     ...(settings || {}),
-    limits: {
-      ...DEFAULT_SETTINGS.limits,
-      ...(settings?.limits || {})
-    },
-    allowList: settings?.allowList || DEFAULT_SETTINGS.allowList,
-    blockList: settings?.blockList || DEFAULT_SETTINGS.blockList,
+    workdays: settings?.workdays || DEFAULT_SETTINGS.workdays,
+    deepWorkBlocks: settings?.deepWorkBlocks || DEFAULT_SETTINGS.deepWorkBlocks,
+    excludedHosts: settings?.excludedHosts || DEFAULT_SETTINGS.excludedHosts,
     categoryOverrides: settings?.categoryOverrides || DEFAULT_SETTINGS.categoryOverrides
   };
 }
@@ -27,12 +24,9 @@ export async function saveSettings(settingsPatch) {
   const next = {
     ...settings,
     ...settingsPatch,
-    limits: {
-      ...settings.limits,
-      ...(settingsPatch.limits || {})
-    },
-    allowList: settingsPatch.allowList ?? settings.allowList,
-    blockList: settingsPatch.blockList ?? settings.blockList,
+    workdays: settingsPatch.workdays ?? settings.workdays,
+    deepWorkBlocks: settingsPatch.deepWorkBlocks ?? settings.deepWorkBlocks,
+    excludedHosts: settingsPatch.excludedHosts ?? settings.excludedHosts,
     categoryOverrides: settingsPatch.categoryOverrides ?? settings.categoryOverrides
   };
   await setInStorage(STORAGE_KEYS.settings, next);
