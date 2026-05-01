@@ -420,7 +420,7 @@ async function evaluateFocusNudgeNotification(cache = null, settings = null) {
   const duration = formatNudgeDuration(dwellMs);
   try {
     await showFocusNudge(
-      `You've been on ${runtimeState.currentHost} for ${duration}. This is categorized as ${categoryLabel}.`,
+      "Just a gentle reminder - you're browsing outside your focus areas.",
       {
         host: runtimeState.currentHost,
         category: categoryLabel,
@@ -441,6 +441,9 @@ function buildPopupModel(cache, settings) {
   const activeSession = cache.focusSessionsView?.active_session || null;
   const currentDwellStartedAt = runtimeState.currentHostStartedAt || runtimeState.sessionStartedAt;
   const currentDwellMs = currentDwellStartedAt ? Date.now() - currentDwellStartedAt : 0;
+  const liveSessionMs = runtimeState.sessionStartedAt && isTrackingEligible(runtimeState.currentHost, settings)
+    ? Math.max(0, Date.now() - runtimeState.sessionStartedAt)
+    : 0;
   const currentCategory = cache.currentHostCategory;
   const thresholdMs = driftThresholdMinutes(settings.nudgeSensitivity) * 60 * 1000;
   const isDistractingCurrent = DISTRACTION_CATEGORIES.has(currentCategory);
@@ -467,12 +470,14 @@ function buildPopupModel(cache, settings) {
     state,
     statusLabel: today?.status?.label || "Welcome",
     statusMessage: today?.status?.message || "Your focus data will appear here soon.",
+    trackedTimeMs: (today?.summary?.total_duration_ms || 0) + liveSessionMs,
     focusedTimeMs: today?.summary?.focus_duration_ms || 0,
     distractedTimeMs: today?.summary?.distraction_duration_ms || 0,
     focusAlignment: today?.summary?.focus_alignment || 0,
     comparisonLabel: today?.comparison?.label || "vs yesterday",
     comparisonValue: today?.comparison?.focus_alignment_delta || 0,
     topCategories: (today?.top_categories || []).slice(0, 3),
+    topSites: (today?.top_sites || []).slice(0, 8),
     insight: today?.main_insight || {
       title: "Your focus picture is still forming",
       body: "Keep browsing normally. The first useful pattern appears after enough tracked time accumulates."
@@ -630,7 +635,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case MESSAGE_TYPES.forceFocusNudge: {
         const host = runtimeState.currentHost || "current site";
         return showFocusNudge(
-          `Manual test nudge for ${host}. If you can see this, content script nudges work.`,
+          "Just a gentle reminder - you're browsing outside your focus areas.",
           { host }
         );
       }

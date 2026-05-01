@@ -10,18 +10,16 @@
 <body>
   <main class="dashboard-shell">
     <header class="dashboard-header">
+      <button class="back-button" data-dashboard-back="true" type="button" aria-label="Go back">
+        <span aria-hidden="true">&larr;</span>
+      </button>
       <div>
-        <p class="eyebrow">Protect your time. Protect your focus.</p>
-        <h1>Focus dashboard</h1>
-        <p class="lede">A calmer reading of where attention is going, what broke it, and what to adjust next.</p>
+        <h1>Today's Focus</h1>
+        <p id="dashboardDate" class="dashboard-date"></p>
         <p id="dashboardStatus" class="micro-copy">Loading focus data...</p>
-      </div>
-      <div class="header-actions">
-        <button class="button primary" data-refresh-dashboard="true" type="button">Refresh</button>
       </div>
     </header>
 
-    <nav class="dashboard-tabs" id="dashboardTabs"></nav>
     <section id="dashboardContent" class="dashboard-content"></section>
   </main>
 

@@ -2,154 +2,56 @@ import { MESSAGE_TYPES } from "../lib/constants.js";
 import { escapeHTML, formatDuration, formatPercent, humanizeCategory } from "../lib/utils.js";
 
 let bootstrap = null;
-let modalState = { open: false, host: "", category: "work", excluded: false };
+let refreshTimer = null;
+let bootstrapInFlight = false;
 
 async function sendMessage(message) {
   return chrome.runtime.sendMessage(message);
 }
 
-function signedPercent(value) {
-  const numeric = Math.round((value || 0) * 100);
-  if (numeric > 0) {
-    return `+${numeric}%`;
-  }
-  return `${numeric}%`;
+function sitesForCategory(category, sites = []) {
+  return sites
+    .filter((site) => site.category === category && site.host)
+    .slice(0, 2);
 }
 
-function renderCategorySnapshot(categories = []) {
+function renderCategoryRows(categories = [], sites = []) {
   if (!categories.length) {
-    return `<div class="empty-copy">No category signal yet.</div>`;
+    return `
+      <div class="category-empty">
+        <span>No category signal yet.</span>
+      </div>
+    `;
   }
 
-  return categories.map((item) => `
-    <div class="category-row">
-      <div class="category-copy">
-        <strong>${escapeHTML(humanizeCategory(item.category))}</strong>
-        <span>${escapeHTML(formatDuration(item.duration_ms))}</span>
-      </div>
-      <div class="bar-track"><span style="width: ${Math.max(8, Math.round((item.share || 0) * 100))}%"></span></div>
-    </div>
-  `).join("");
-}
+  return categories.map((item) => {
+    const categorySites = sitesForCategory(item.category, sites);
+    const chips = categorySites.map((site) => `
+      <span class="site-chip">${escapeHTML(site.host)}</span>
+    `).join("");
 
-function renderCurrentState(model) {
-  if (model.state === "focus_active" && model.focusSession) {
     return `
-      <section class="state-panel is-focus">
-        <div class="state-header">
-          <span class="status-pill is-positive">Focus mode</span>
-          <span class="micro-copy">${escapeHTML(formatDuration(model.focusSession.remaining_ms))} left</span>
+      <section class="category-row">
+        <div class="category-line">
+          <h2>${escapeHTML(humanizeCategory(item.category))}</h2>
+          <strong>${escapeHTML(formatDuration(item.duration_ms))}</strong>
         </div>
-        <h2>${escapeHTML(model.focusSession.intent || "Focused session")}</h2>
-        <p class="lede">Stay with the current task. The popup is intentionally quieter while focus mode is active.</p>
-        <div class="metric-grid">
-          <article class="metric-card">
-            <span>In session</span>
-            <strong>${escapeHTML(formatDuration(model.focusSession.active_duration_ms || 0))}</strong>
-          </article>
-          <article class="metric-card">
-            <span>Current site</span>
-            <strong>${escapeHTML(model.currentSite?.host || "No active site")}</strong>
-          </article>
-        </div>
+        ${chips ? `<div class="site-chips">${chips}</div>` : ""}
       </section>
     `;
+  }).join("");
+}
+
+function renderFooterInsight(model) {
+  if (model.state === "empty") {
+    return "Focus data will appear soon.";
   }
 
   if (model.state === "drifting") {
-    return `
-      <section class="state-panel is-drift">
-        <div class="state-header">
-          <span class="status-pill is-warning">Drifting</span>
-          <span class="micro-copy">${escapeHTML(formatDuration(model.currentSite?.dwellMs || 0))} on current site</span>
-        </div>
-        <h2>${escapeHTML(model.currentSite?.host || "This site")} is pulling attention away.</h2>
-        <p class="lede">${escapeHTML(model.statusMessage)}</p>
-        <div class="context-box">
-          <span>Category</span>
-          <strong>${escapeHTML(humanizeCategory(model.currentSite?.category))}</strong>
-        </div>
-      </section>
-    `;
+    return "A gentle reset can bring the day back on track.";
   }
 
-  if (model.state === "empty") {
-    return `
-      <section class="state-panel">
-        <div class="state-header">
-          <span class="status-pill">Welcome</span>
-        </div>
-        <h2>Your focus data will appear here soon.</h2>
-        <p class="lede">Keep browsing normally. The extension will start building your focus picture today.</p>
-      </section>
-    `;
-  }
-
-  return `
-    <section class="state-panel">
-      <div class="state-header">
-        <span class="status-pill">${escapeHTML(model.statusLabel)}</span>
-        <span class="micro-copy">${escapeHTML(signedPercent(model.comparisonValue))} ${escapeHTML(model.comparisonLabel)}</span>
-      </div>
-      <h2>${escapeHTML(model.statusMessage)}</h2>
-      <p class="lede">${escapeHTML(model.insight?.body || "One useful pattern will appear here.")}</p>
-      <div class="metric-grid">
-        <article class="metric-card">
-          <span>Focused today</span>
-          <strong>${escapeHTML(formatDuration(model.focusedTimeMs))}</strong>
-        </article>
-        <article class="metric-card">
-          <span>Distracted today</span>
-          <strong>${escapeHTML(formatDuration(model.distractedTimeMs))}</strong>
-        </article>
-      </div>
-    </section>
-  `;
-}
-
-function renderModal() {
-  if (!modalState.open) {
-    return "";
-  }
-
-  return `
-    <div class="modal-backdrop">
-      <form class="modal-card" id="reclassifyForm">
-        <div class="modal-head">
-          <div>
-            <p class="eyebrow">Reclassify site</p>
-            <h3>${escapeHTML(modalState.host)}</h3>
-          </div>
-          <button class="icon-button" data-action="close-modal" type="button">Close</button>
-        </div>
-
-        <label class="field">
-          <span>Category</span>
-          <select name="category">
-            <option value="work" ${modalState.category === "work" ? "selected" : ""}>Work</option>
-            <option value="communication" ${modalState.category === "communication" ? "selected" : ""}>Communication</option>
-            <option value="learning" ${modalState.category === "learning" ? "selected" : ""}>Learning</option>
-            <option value="tools" ${modalState.category === "tools" ? "selected" : ""}>Tools</option>
-            <option value="other" ${modalState.category === "other" ? "selected" : ""}>Neutral</option>
-            <option value="social" ${modalState.category === "social" ? "selected" : ""}>Social</option>
-            <option value="entertainment" ${modalState.category === "entertainment" ? "selected" : ""}>Entertainment</option>
-            <option value="shopping" ${modalState.category === "shopping" ? "selected" : ""}>Shopping</option>
-            <option value="news" ${modalState.category === "news" ? "selected" : ""}>News</option>
-          </select>
-        </label>
-
-        <label class="toggle-row">
-          <span>Exclude from tracking entirely</span>
-          <input name="excluded" type="checkbox" ${modalState.excluded ? "checked" : ""} />
-        </label>
-
-        <div class="modal-actions">
-          <button class="button quiet" data-action="close-modal" type="button">Cancel</button>
-          <button class="button primary" type="submit">Save rule</button>
-        </div>
-      </form>
-    </div>
-  `;
+  return model.insight?.title || "Strong focus today. Keep the momentum.";
 }
 
 function renderPopup() {
@@ -159,142 +61,89 @@ function renderPopup() {
   }
 
   const root = document.getElementById("popupRoot");
+  const alignment = Math.max(0, Math.min(100, Math.round((model.focusAlignment || 0) * 100)));
+  const progressWidth = Math.max(0, Math.min(100, alignment));
+
   root.innerHTML = `
-    <main class="popup-shell">
-      <header class="popup-topbar">
-        <div>
-          <p class="eyebrow">Focus snapshot</p>
-          <h1>Today</h1>
+    <main class="popup-shell" aria-label="Focus summary">
+      <header class="popup-status">
+        <div class="status-copy">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>Focused</span>
         </div>
-        <div class="header-actions">
-          <button class="icon-button" data-action="refresh" type="button">Refresh</button>
-        </div>
+        <button class="dashboard-button" data-action="open-dashboard" type="button" aria-label="Open dashboard">
+          <span class="dashboard-icon" aria-hidden="true"></span>
+        </button>
       </header>
 
-      ${renderCurrentState(model)}
-
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Category snapshot</p>
-            <h3>Where the day is leaning</h3>
-          </div>
-          <span class="micro-copy">${escapeHTML(formatPercent(model.focusAlignment))} alignment</span>
+      <section class="today-summary" aria-label="Tracked today">
+        <div class="tracked-line">
+          <strong>${escapeHTML(formatDuration(model.trackedTimeMs))}</strong>
+          <span>tracked today</span>
         </div>
-        ${renderCategorySnapshot(model.topCategories)}
+        <div class="alignment-line">
+          <div class="progress-track" aria-label="${escapeHTML(formatPercent(model.focusAlignment))} focus alignment">
+            <span style="width: ${progressWidth}%"></span>
+          </div>
+          <strong>${escapeHTML(formatPercent(model.focusAlignment))}</strong>
+        </div>
       </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Key insight</p>
-            <h3>${escapeHTML(model.insight?.title || "No insight yet")}</h3>
-          </div>
-        </div>
-        <p class="panel-copy">${escapeHTML(model.insight?.body || "")}</p>
+      <section class="category-list" aria-label="Top categories">
+        ${renderCategoryRows(model.topCategories, model.topSites)}
       </section>
 
-      <footer class="popup-footer">
-        <button class="button primary" data-message-type="${escapeHTML(model.primaryAction.type)}" type="button">${escapeHTML(model.primaryAction.label)}</button>
-        ${model.secondaryActions.map((action) => `
-          <button class="button quiet" data-action="${escapeHTML(action.type)}" type="button">${escapeHTML(action.label)}</button>
-        `).join("")}
-        <button class="button quiet" data-action="force-nudge" type="button">Test nudge</button>
-        ${model.canReclassify ? '<button class="link-button" data-action="open-reclassify" type="button">Reclassify current site</button>' : ""}
+      <footer class="popup-insight">
+        <span class="trend-icon" aria-hidden="true"></span>
+        <p>${escapeHTML(renderFooterInsight(model))}</p>
       </footer>
-      ${renderModal()}
     </main>
   `;
 }
 
-async function refresh() {
-  bootstrap = await sendMessage({ type: MESSAGE_TYPES.refreshViews });
-  if (bootstrap.dashboardCache) {
-    bootstrap = {
-      ...bootstrap,
-      popupModel: bootstrap.popupModel
-    };
-  } else {
-    bootstrap = await sendMessage({ type: MESSAGE_TYPES.getBootstrap });
+async function loadBootstrap(messageType = MESSAGE_TYPES.getBootstrap) {
+  if (bootstrapInFlight) {
+    return;
   }
-  renderPopup();
-}
 
-async function saveRule(form) {
-  const formData = new FormData(form);
-  const category = String(formData.get("category") || "work");
-  const excluded = formData.get("excluded") === "on";
-  await sendMessage({
-    type: MESSAGE_TYPES.saveSiteRule,
-    host: modalState.host,
-    category,
-    excluded
-  });
-  modalState = { open: false, host: "", category: "work", excluded: false };
-  bootstrap = await sendMessage({ type: MESSAGE_TYPES.getBootstrap });
-  renderPopup();
-}
-
-document.addEventListener("click", async (event) => {
-  const action = event.target.closest("[data-action]");
-  const messageButton = event.target.closest("[data-message-type]");
-
-  if (messageButton) {
-    const messageType = messageButton.dataset.messageType;
-    if (messageType === MESSAGE_TYPES.startFocusSession) {
-      await sendMessage({ type: messageType, minutes: 45 });
-    } else if (messageType === MESSAGE_TYPES.pauseFocusSession) {
-      await sendMessage({ type: messageType, sessionId: bootstrap.dashboardCache?.focusSessionsView?.active_session?.id });
-    }
-    bootstrap = await sendMessage({ type: MESSAGE_TYPES.getBootstrap });
+  bootstrapInFlight = true;
+  try {
+    bootstrap = await sendMessage({ type: messageType });
     renderPopup();
-    return;
+  } finally {
+    bootstrapInFlight = false;
   }
+}
 
-  if (!action) {
-    return;
-  }
+function openDashboard() {
+  chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
+}
 
-  switch (action.dataset.action) {
-    case "refresh":
-      await refresh();
-      break;
-    case "OPEN_DASHBOARD":
-      chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
-      break;
-    case "force-nudge":
-      await sendMessage({ type: MESSAGE_TYPES.forceFocusNudge });
-      break;
-    case "open-reclassify": {
-      modalState = {
-        open: true,
-        host: bootstrap.popupModel?.currentSite?.host || "",
-        category: bootstrap.popupModel?.currentSite?.category || "work",
-        excluded: false
-      };
-      renderPopup();
-      break;
-    }
-    case "close-modal":
-      modalState = { open: false, host: "", category: "work", excluded: false };
-      renderPopup();
-      break;
-    default:
-      break;
+document.addEventListener("click", (event) => {
+  if (event.target.closest('[data-action="open-dashboard"]')) {
+    openDashboard();
   }
 });
 
-document.addEventListener("submit", async (event) => {
-  if (event.target.id !== "reclassifyForm") {
-    return;
+window.addEventListener("pagehide", () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
   }
-  event.preventDefault();
-  await saveRule(event.target);
 });
 
-async function loadBootstrap() {
+async function init() {
+  await loadBootstrap(MESSAGE_TYPES.refreshViews);
+  refreshTimer = window.setInterval(() => {
+    void loadBootstrap(MESSAGE_TYPES.getBootstrap);
+  }, 1000);
+}
+
+async function loadInitialBootstrap() {
   bootstrap = await sendMessage({ type: MESSAGE_TYPES.getBootstrap });
   renderPopup();
 }
 
-void loadBootstrap();
+void init().catch(() => {
+  void loadInitialBootstrap();
+});

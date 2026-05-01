@@ -17,6 +17,15 @@ function removeExistingToast() {
   }
 }
 
+function compactDuration(value) {
+  return String(value || "")
+    .replace(/\bhours?\b/g, "h")
+    .replace(/\bminutes?\b/g, "m")
+    .replace(/\s+/g, " ")
+    .replace(/(\d+)\s+([hm])/g, "$1$2")
+    .trim();
+}
+
 function buildToast(message) {
   const host = document.createElement("div");
   host.id = TOAST_ID;
@@ -28,11 +37,11 @@ function buildToast(message) {
       all: initial;
       display: block;
       position: fixed;
-      top: 20px;
-      right: 20px;
+      top: 14px;
+      right: 28px;
       z-index: 2147483647;
-      max-width: 360px;
-      width: calc(100vw - 40px);
+      max-width: 363px;
+      width: calc(100vw - 56px);
       pointer-events: auto;
       color-scheme: light;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -41,56 +50,121 @@ function buildToast(message) {
     .toast {
       box-sizing: border-box;
       width: 100%;
-      border: 1px solid rgba(15, 23, 42, 0.14);
-      border-left: 4px solid #2563eb;
-      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #dbe3ee;
+      border-radius: 12px;
       background: #ffffff;
-      color: #111827;
-      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22);
-      padding: 14px 14px 13px;
+      color: #172033;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.18);
     }
 
     .header {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px 14px;
+      background: #fff8eb;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      min-width: 0;
       gap: 12px;
-      margin-bottom: 6px;
+    }
+
+    .title-copy {
+      min-width: 0;
+    }
+
+    .warning {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 31px;
+      height: 31px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: #fff0c7;
+      color: #f59e0b;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1;
     }
 
     .title {
       margin: 0;
+      overflow: hidden;
       font-size: 14px;
       line-height: 1.3;
       font-weight: 700;
       color: #0f172a;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .meta {
+      margin: 2px 0 0;
+      overflow: hidden;
+      color: #475569;
+      font-size: 13px;
+      line-height: 1.25;
+      font-weight: 500;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .body {
+      padding: 15px 16px 16px;
     }
 
     .message {
       margin: 0;
-      font-size: 13px;
-      line-height: 1.45;
-      font-weight: 400;
-      color: #334155;
+      color: #253047;
+      font-size: 14px;
+      line-height: 1.55;
+      font-weight: 500;
     }
 
     .close {
       flex: 0 0 auto;
-      width: 28px;
-      height: 28px;
+      width: 22px;
+      height: 22px;
       border: 0;
-      border-radius: 6px;
+      border-radius: 999px;
       background: transparent;
       color: #64748b;
       cursor: pointer;
       font-size: 20px;
-      line-height: 24px;
+      line-height: 20px;
       padding: 0;
     }
 
     .close:hover {
       background: #f1f5f9;
       color: #0f172a;
+    }
+
+    .return {
+      display: block;
+      width: 100%;
+      margin-top: 13px;
+      border: 0;
+      border-radius: 8px;
+      background: #111827;
+      color: #ffffff;
+      cursor: pointer;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.2;
+      padding: 12px 16px;
+      text-align: center;
+    }
+
+    .return:hover {
+      background: #0b1220;
     }
 
     @media (max-width: 480px) {
@@ -110,9 +184,26 @@ function buildToast(message) {
   const header = document.createElement("div");
   header.className = "header";
 
+  const titleRow = document.createElement("div");
+  titleRow.className = "title-row";
+
+  const warning = document.createElement("span");
+  warning.className = "warning";
+  warning.setAttribute("aria-hidden", "true");
+  warning.textContent = "!";
+
+  const titleCopy = document.createElement("div");
+  titleCopy.className = "title-copy";
+
   const title = document.createElement("p");
   title.className = "title";
-  title.textContent = message.title || "Focus mode: distraction detected";
+  title.textContent = "Attention shifted";
+
+  const meta = document.createElement("p");
+  meta.className = "meta";
+  const duration = compactDuration(message.duration);
+  const currentHost = message.host || "this site";
+  meta.textContent = duration ? `${duration} on ${currentHost} today` : currentHost;
 
   const close = document.createElement("button");
   close.className = "close";
@@ -123,10 +214,22 @@ function buildToast(message) {
 
   const body = document.createElement("p");
   body.className = "message";
-  body.textContent = message.message || "";
+  body.textContent = message.message || "Just a gentle reminder - you're browsing outside your focus areas.";
 
-  header.append(title, close);
-  toast.append(header, body);
+  const bodyWrap = document.createElement("div");
+  bodyWrap.className = "body";
+
+  const returnButton = document.createElement("button");
+  returnButton.className = "return";
+  returnButton.type = "button";
+  returnButton.textContent = "Return to focus";
+  returnButton.addEventListener("click", removeExistingToast);
+
+  titleCopy.append(title, meta);
+  titleRow.append(warning, titleCopy);
+  header.append(titleRow, close);
+  bodyWrap.append(body, returnButton);
+  toast.append(header, bodyWrap);
   shadow.append(style, toast);
 
   return host;
