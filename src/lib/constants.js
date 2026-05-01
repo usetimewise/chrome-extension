@@ -2,7 +2,10 @@ export const STORAGE_KEYS = {
   device: "twt_device_v2",
   queue: "twt_queue_v2",
   dashboardCache: "twt_dashboard_cache_v2",
-  runtimeState: "twt_runtime_state_v2"
+  runtimeState: "twt_runtime_state_v2",
+  activityEvents: "twt_activity_events_v1",
+  focusSessions: "twt_focus_sessions_v1",
+  siteRules: "twt_site_rules_v1"
 };
 
 export const MESSAGE_TYPES = {

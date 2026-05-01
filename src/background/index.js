@@ -9,9 +9,12 @@ import {
   NUDGE_SENSITIVITY_THRESHOLDS_MINUTES
 } from "../lib/app-settings.js";
 import {
+  appendActivityEvent,
   appendToQueue,
+  getActivityEvents,
   getDashboardCache,
   getDeviceState,
+  getFocusSessions,
   getQueue,
   getRuntimeState,
   getSettings,
@@ -19,21 +22,25 @@ import {
   resetDeviceRegistration,
   saveDashboardCache,
   saveDeviceState,
+  saveFocusSessions,
+  saveSiteRule as saveLocalSiteRule,
   saveRuntimeState
 } from "../lib/state.js";
 import {
-  fetchFocusSessionsView,
-  fetchInsightsView,
-  fetchSitesView,
-  fetchTodayView,
-  fetchTrendsView,
   pushEvents,
   registerDevice,
-  resolveCategories,
-  startFocusSession,
-  updateFocusSessionState,
   updateSiteRule
 } from "../lib/api-client.js";
+import {
+  buildSitesView,
+  buildTodayView,
+  resolveCategory
+} from "../lib/local-analytics.js";
+import {
+  buildFocusSessionsView,
+  startFocusSession,
+  transitionFocusSession
+} from "../lib/local-focus-sessions.js";
 import {
   generateId,
   hostMatchesRule,
@@ -75,7 +82,7 @@ async function queryMediaState(tabId) {
 async function boot() {
   runtimeState = await getRuntimeState();
   await applyTrackingSettings();
-  await ensureDeviceRegistration();
+  void ensureDeviceRegistration();
   await refreshActiveTab();
   ensureAlarms();
   await refreshViews();
@@ -184,7 +191,14 @@ async function flushCurrentSession(reason = "transition", settingsOverride = nul
   const durationMs = now - startedAt;
 
   if (durationMs > 0 && isTrackingEligible(runtimeState.currentHost, settings)) {
-    await appendToQueue({
+    const category = resolveCategory(runtimeState.currentHost, settings);
+    if (category === "excluded") {
+      runtimeState.sessionStartedAt = now;
+      await saveRuntimeState(runtimeState);
+      return;
+    }
+
+    const event = {
       event_id: generateId(),
       occurred_at: new Date(startedAt).toISOString(),
       duration_ms: durationMs,
@@ -194,8 +208,11 @@ async function flushCurrentSession(reason = "transition", settingsOverride = nul
       window_focused: runtimeState.isWindowFocused,
       idle_state: runtimeState.idleState,
       client_version: chrome.runtime.getManifest().version,
+      category,
       reason
-    });
+    };
+    await appendActivityEvent(event);
+    await appendToQueue(event);
   }
 
   runtimeState.sessionStartedAt = now;
@@ -270,40 +287,28 @@ async function syncQueue() {
 
 async function refreshViews() {
   try {
-    return await withRegisteredDevice(async (settings, deviceState) => {
-      const [
-        todayView,
-        trendsView,
-        sitesView,
-        insightsView,
-        focusSessionsView
-      ] = await Promise.all([
-        fetchTodayView(settings.apiBaseUrl, deviceState.deviceId),
-        fetchTrendsView(settings.apiBaseUrl, deviceState.deviceId),
-        fetchSitesView(settings.apiBaseUrl, deviceState.deviceId),
-        fetchInsightsView(settings.apiBaseUrl, deviceState.deviceId),
-        fetchFocusSessionsView(settings.apiBaseUrl, deviceState.deviceId)
-      ]);
+    const [settings, events, focusSessions, currentCache] = await Promise.all([
+      getSettings(),
+      getActivityEvents(),
+      getFocusSessions(),
+      getDashboardCache()
+    ]);
+    const todayView = buildTodayView(events, settings);
+    const focusSessionsView = buildFocusSessionsView(focusSessions);
+    const currentHostCategory = runtimeState.currentHost
+      ? resolveCategory(runtimeState.currentHost, settings)
+      : null;
 
-      let currentHostCategory = null;
-      if (runtimeState.currentHost) {
-        const resolved = await resolveCategories(settings.apiBaseUrl, deviceState.deviceId, [runtimeState.currentHost]);
-        currentHostCategory = resolved?.categories?.[runtimeState.currentHost] || null;
-      }
-
-      const cache = await saveDashboardCache({
-        todayView,
-        trendsView,
-        sitesView,
-        insightsView,
-        focusSessionsView,
-        currentHostCategory,
-        lastSyncAt: new Date().toISOString(),
-        lastError: null
-      });
-      await evaluateFocusNudgeNotification(cache, settings);
-      return cache;
+    const cache = await saveDashboardCache({
+      todayView,
+      sitesView: buildSitesView(events, settings),
+      trendsView: currentCache.trendsView,
+      insightsView: currentCache.insightsView,
+      focusSessionsView,
+      currentHostCategory
     });
+    await evaluateFocusNudgeNotification(cache, settings);
+    return cache;
   } catch (error) {
     return saveDashboardCache({
       lastError: error.message
@@ -578,8 +583,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       case MESSAGE_TYPES.refreshViews: {
         await flushCurrentSession("manual-refresh");
-        await syncQueue();
         const dashboardCache = await refreshViews();
+        void syncQueue().then(() => refreshViews());
         const settings = await getSettings();
         return {
           dashboardCache,
@@ -598,14 +603,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
       }
       case MESSAGE_TYPES.startFocusSession: {
-        const session = await withRegisteredDevice(async (settings, deviceState) => {
-          return startFocusSession(settings.apiBaseUrl, deviceState.deviceId, {
-            intent: message.intent || "Focus block",
-            duration_minutes: Number(message.minutes || 45)
-          });
+        const sessions = await getFocusSessions();
+        const result = startFocusSession(sessions, {
+          intent: message.intent || "Focus block",
+          duration_minutes: Number(message.minutes || 45)
         });
+        await saveFocusSessions(result.sessions);
         const dashboardCache = await refreshViews();
-        return { ok: true, session, dashboardCache };
+        return { ok: true, session: result.session, dashboardCache };
       }
       case MESSAGE_TYPES.pauseFocusSession:
       case MESSAGE_TYPES.resumeFocusSession:
@@ -615,20 +620,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           [MESSAGE_TYPES.resumeFocusSession]: "resume",
           [MESSAGE_TYPES.endFocusSession]: "end"
         };
-        const session = await withRegisteredDevice(async (settings, deviceState) => {
-          return updateFocusSessionState(settings.apiBaseUrl, deviceState.deviceId, message.sessionId, actionMap[message.type]);
-        });
+        const sessions = await getFocusSessions();
+        const result = transitionFocusSession(sessions, message.sessionId, actionMap[message.type]);
+        await saveFocusSessions(result.sessions);
         const dashboardCache = await refreshViews();
-        return { ok: true, session, dashboardCache };
+        return { ok: true, session: result.session, dashboardCache };
       }
       case MESSAGE_TYPES.saveSiteRule: {
-        const payload = await withRegisteredDevice(async (settings, deviceState) => {
+        const payload = await saveLocalSiteRule(message.host, message.category, Boolean(message.excluded));
+        void withRegisteredDevice(async (settings, deviceState) => {
           return updateSiteRule(settings.apiBaseUrl, deviceState.deviceId, {
             host: message.host,
             category: message.category,
             excluded: Boolean(message.excluded)
           });
-        });
+        }).catch((error) => saveDashboardCache({ lastError: error.message }));
         const dashboardCache = await refreshViews();
         return { ok: true, payload, dashboardCache };
       }

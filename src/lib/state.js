@@ -4,11 +4,25 @@ import {
   STORAGE_KEYS
 } from "./constants.js";
 import { getAppSettings } from "./app-settings.js";
-import { generateId } from "./utils.js";
+import { generateId, hostMatchesRule } from "./utils.js";
 import { getFromStorage, setInStorage } from "./storage.js";
 
+const ACTIVITY_EVENT_RETENTION_DAYS = 30;
+
 export async function getSettings() {
-  return getAppSettings();
+  const settings = getAppSettings();
+  const siteRules = await getSiteRules();
+  return {
+    ...settings,
+    excludedHosts: Array.from(new Set([
+      ...settings.excludedHosts,
+      ...siteRules.excludedHosts
+    ])),
+    categoryOverrides: {
+      ...settings.categoryOverrides,
+      ...siteRules.categoryOverrides
+    }
+  };
 }
 
 export async function getDeviceState() {
@@ -54,6 +68,63 @@ export async function appendToQueue(event) {
 
 export async function replaceQueue(queue) {
   return setInStorage(STORAGE_KEYS.queue, queue);
+}
+
+export async function getActivityEvents() {
+  return getFromStorage(STORAGE_KEYS.activityEvents, []);
+}
+
+export async function appendActivityEvent(event) {
+  const events = await getActivityEvents();
+  const cutoff = Date.now() - ACTIVITY_EVENT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const retained = events.filter((item) => {
+    const occurredAt = Date.parse(item.occurred_at || "");
+    return !Number.isNaN(occurredAt) && occurredAt >= cutoff;
+  });
+  retained.push(event);
+  await setInStorage(STORAGE_KEYS.activityEvents, retained);
+  return retained;
+}
+
+export async function getFocusSessions() {
+  return getFromStorage(STORAGE_KEYS.focusSessions, []);
+}
+
+export async function saveFocusSessions(sessions) {
+  return setInStorage(STORAGE_KEYS.focusSessions, sessions);
+}
+
+export async function getSiteRules() {
+  const rules = await getFromStorage(STORAGE_KEYS.siteRules, null);
+  return {
+    excludedHosts: [...(rules?.excludedHosts || [])],
+    categoryOverrides: { ...(rules?.categoryOverrides || {}) }
+  };
+}
+
+export async function saveSiteRule(host, category, excluded = false) {
+  const normalizedHost = String(host || "").trim().toLowerCase();
+  if (!normalizedHost) {
+    throw new Error("host is required");
+  }
+
+  const rules = await getSiteRules();
+  const excludedHosts = rules.excludedHosts.filter((rule) => !hostMatchesRule(normalizedHost, rule) && rule !== normalizedHost);
+  const categoryOverrides = { ...rules.categoryOverrides };
+  delete categoryOverrides[normalizedHost];
+
+  if (excluded) {
+    excludedHosts.push(normalizedHost);
+  } else if (category) {
+    categoryOverrides[normalizedHost] = category;
+  }
+
+  const next = {
+    excludedHosts: Array.from(new Set(excludedHosts)).sort(),
+    categoryOverrides
+  };
+  await setInStorage(STORAGE_KEYS.siteRules, next);
+  return next;
 }
 
 export async function getDashboardCache() {
