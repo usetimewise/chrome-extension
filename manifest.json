@@ -23,7 +23,8 @@
         "https://*/*"
       ],
       "js": [
-        "src/content/media-monitor.js"
+        "src/content/media-monitor.js",
+        "src/content/focus-nudge.js"
       ],
       "all_frames": false,
       "run_at": "document_idle"
@@ -32,6 +33,5 @@
   "action": {
     "default_title": "Focus Snapshot",
     "default_popup": "popup.html"
-  },
-  "options_page": "settings.html"
+  }
 }

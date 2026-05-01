@@ -168,7 +168,6 @@ function renderPopup() {
         </div>
         <div class="header-actions">
           <button class="icon-button" data-action="refresh" type="button">Refresh</button>
-          <button class="icon-button" data-action="settings" type="button">Settings</button>
         </div>
       </header>
 
@@ -200,6 +199,7 @@ function renderPopup() {
         ${model.secondaryActions.map((action) => `
           <button class="button quiet" data-action="${escapeHTML(action.type)}" type="button">${escapeHTML(action.label)}</button>
         `).join("")}
+        <button class="button quiet" data-action="force-nudge" type="button">Test nudge</button>
         ${model.canReclassify ? '<button class="link-button" data-action="open-reclassify" type="button">Reclassify current site</button>' : ""}
       </footer>
       ${renderModal()}
@@ -259,11 +259,11 @@ document.addEventListener("click", async (event) => {
     case "refresh":
       await refresh();
       break;
-    case "settings":
-      chrome.runtime.openOptionsPage();
-      break;
     case "OPEN_DASHBOARD":
       chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
+      break;
+    case "force-nudge":
+      await sendMessage({ type: MESSAGE_TYPES.forceFocusNudge });
       break;
     case "open-reclassify": {
       modalState = {

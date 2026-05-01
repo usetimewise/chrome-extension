@@ -1,18 +1,9 @@
-import { IDLE_DETECTION_OPTIONS, MESSAGE_TYPES } from "../lib/constants.js";
-import { getSettings, saveSettings } from "../lib/state.js";
+import { MESSAGE_TYPES } from "../lib/constants.js";
 import {
-  blocksToText,
   escapeHTML,
-  formatClock,
   formatDuration,
   formatPercent,
-  humanizeCategory,
-  overridesToText,
-  parseWorkdaysFromForm,
-  textToBlocks,
-  textToLines,
-  textToOverrides,
-  workdaysToText
+  humanizeCategory
 } from "../lib/utils.js";
 
 let bootstrap = null;
@@ -29,8 +20,7 @@ function renderTopNav() {
     ["trends", "Trends"],
     ["sites", "Sites & Categories"],
     ["insights", "Insights"],
-    ["sessions", "Focus Sessions"],
-    ["settings", "Settings"]
+    ["sessions", "Focus Sessions"]
   ];
 
   return items.map(([key, label]) => `
@@ -316,71 +306,6 @@ function renderSessions(view) {
   `;
 }
 
-function idleOptions() {
-  return IDLE_DETECTION_OPTIONS.map((seconds) => `
-    <option value="${seconds}">${seconds >= 60 ? `${Math.floor(seconds / 60)} min` : `${seconds}s`}</option>
-  `).join("");
-}
-
-function renderSettingsTab(settings) {
-  return `
-    <form id="dashboardSettingsForm" class="settings-grid">
-      <section class="panel wide-panel">
-        <div class="panel-head"><div><p class="eyebrow">Work hours</p><h3>Define what focus means for you</h3></div></div>
-        <div class="form-grid">
-          <label class="field"><span>API base URL</span><input name="apiBaseUrl" type="url" value="${escapeHTML(settings.apiBaseUrl)}" required /></label>
-          <label class="field"><span>Timezone</span><input name="timezone" type="text" value="${escapeHTML(settings.timezone)}" required /></label>
-          <label class="field"><span>Work hours start</span><input name="workHoursStart" type="time" value="${escapeHTML(formatClock(settings.workHoursStart))}" /></label>
-          <label class="field"><span>Work hours end</span><input name="workHoursEnd" type="time" value="${escapeHTML(formatClock(settings.workHoursEnd))}" /></label>
-          <label class="field"><span>Idle timeout</span><select name="idleDetectionSeconds">${idleOptions()}</select></label>
-          <label class="field"><span>Snooze duration</span><input name="snoozeMinutes" type="number" min="5" step="5" value="${escapeHTML(String(settings.snoozeMinutes))}" /></label>
-          <label class="toggle-row"><span>Pause tracking</span><input name="trackingPaused" type="checkbox" ${settings.trackingPaused ? "checked" : ""} /></label>
-          <label class="toggle-row"><span>Track media while idle</span><input name="trackMediaWhenIdle" type="checkbox" ${settings.trackMediaWhenIdle ? "checked" : ""} /></label>
-          <label class="toggle-row"><span>Nudges enabled</span><input name="nudgesEnabled" type="checkbox" ${settings.nudgesEnabled ? "checked" : ""} /></label>
-          <label class="toggle-row"><span>Only within work hours</span><input name="workHoursOnly" type="checkbox" ${settings.workHoursOnly ? "checked" : ""} /></label>
-          <label class="toggle-row"><span>AI insights enabled</span><input name="aiInsightsEnabled" type="checkbox" ${settings.aiInsightsEnabled ? "checked" : ""} /></label>
-          <label class="field">
-            <span>Nudge sensitivity</span>
-            <select name="nudgeSensitivity">
-              <option value="direct" ${settings.nudgeSensitivity === "direct" ? "selected" : ""}>Direct</option>
-              <option value="balanced" ${settings.nudgeSensitivity === "balanced" ? "selected" : ""}>Balanced</option>
-              <option value="gentle" ${settings.nudgeSensitivity === "gentle" ? "selected" : ""}>Gentle</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>AI tone</span>
-            <select name="aiTone">
-              <option value="direct" ${settings.aiTone === "direct" ? "selected" : ""}>Direct</option>
-              <option value="balanced" ${settings.aiTone === "balanced" ? "selected" : ""}>Balanced</option>
-              <option value="gentle" ${settings.aiTone === "gentle" ? "selected" : ""}>Gentle</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="field-group">
-          <span class="field-title">Workdays</span>
-          <div class="checkbox-row">
-            ${[
-              [1, "Mon"], [2, "Tue"], [3, "Wed"], [4, "Thu"], [5, "Fri"], [6, "Sat"], [7, "Sun"]
-            ].map(([value, label]) => `
-              <label><input name="workdays" type="checkbox" value="${value}" ${settings.workdays.includes(value) ? "checked" : ""} /> ${label}</label>
-            `).join("")}
-          </div>
-        </div>
-
-        <label class="field wide"><span>Deep work blocks</span><textarea name="deepWorkBlocks" rows="3">${escapeHTML(blocksToText(settings.deepWorkBlocks))}</textarea></label>
-        <label class="field wide"><span>Excluded hosts</span><textarea name="excludedHosts" rows="4">${escapeHTML((settings.excludedHosts || []).join("\n"))}</textarea></label>
-        <label class="field wide"><span>Category overrides</span><textarea name="categoryOverrides" rows="6">${escapeHTML(overridesToText(settings.categoryOverrides))}</textarea></label>
-
-        <div class="button-row">
-          <button class="button primary" type="submit">Save locally</button>
-          <button class="button quiet" data-settings-sync="true" type="button">Push to backend</button>
-        </div>
-      </section>
-    </form>
-  `;
-}
-
 function renderSiteModal() {
   if (!modalState.open) {
     return "";
@@ -412,7 +337,6 @@ function renderSiteModal() {
 
 function renderDashboard() {
   const content = document.getElementById("dashboardContent");
-  const settings = bootstrap?.settings;
   document.getElementById("dashboardTabs").innerHTML = renderTopNav();
   document.getElementById("dashboardStatus").textContent = bootstrap?.dashboardCache?.lastError
     ? `Sync needs attention: ${bootstrap.dashboardCache.lastError}`
@@ -434,48 +358,17 @@ function renderDashboard() {
     case "sessions":
       html = renderSessions(bootstrap?.dashboardCache?.focusSessionsView);
       break;
-    case "settings":
-      html = renderSettingsTab(settings);
-      break;
     default:
       html = renderToday(bootstrap?.dashboardCache?.todayView);
       break;
   }
 
   content.innerHTML = `${html}${renderSiteModal()}`;
-
-  const idleSelect = content.querySelector('select[name="idleDetectionSeconds"]');
-  if (idleSelect && settings) {
-    idleSelect.value = String(settings.idleDetectionSeconds);
-  }
 }
 
 async function reloadBootstrap() {
   bootstrap = await sendMessage({ type: MESSAGE_TYPES.getBootstrap });
   renderDashboard();
-}
-
-function collectSettings(form) {
-  const formData = new FormData(form);
-  return {
-    apiBaseUrl: String(formData.get("apiBaseUrl") || "").trim(),
-    timezone: String(formData.get("timezone") || "").trim(),
-    trackingPaused: formData.get("trackingPaused") === "on",
-    idleDetectionSeconds: Number(formData.get("idleDetectionSeconds") || 60),
-    trackMediaWhenIdle: formData.get("trackMediaWhenIdle") === "on",
-    workHoursStart: String(formData.get("workHoursStart") || "09:00"),
-    workHoursEnd: String(formData.get("workHoursEnd") || "18:00"),
-    workdays: parseWorkdaysFromForm(formData),
-    deepWorkBlocks: textToBlocks(String(formData.get("deepWorkBlocks") || "")),
-    nudgesEnabled: formData.get("nudgesEnabled") === "on",
-    nudgeSensitivity: String(formData.get("nudgeSensitivity") || "balanced"),
-    snoozeMinutes: Number(formData.get("snoozeMinutes") || 20),
-    workHoursOnly: formData.get("workHoursOnly") === "on",
-    aiInsightsEnabled: formData.get("aiInsightsEnabled") === "on",
-    aiTone: String(formData.get("aiTone") || "balanced"),
-    excludedHosts: textToLines(String(formData.get("excludedHosts") || "")),
-    categoryOverrides: textToOverrides(String(formData.get("categoryOverrides") || ""))
-  };
 }
 
 document.addEventListener("click", async (event) => {
@@ -490,12 +383,6 @@ document.addEventListener("click", async (event) => {
   if (refreshButton) {
     await sendMessage({ type: MESSAGE_TYPES.refreshViews });
     await reloadBootstrap();
-    return;
-  }
-
-  const openSettings = event.target.closest("[data-open-options]");
-  if (openSettings) {
-    chrome.runtime.openOptionsPage();
     return;
   }
 
@@ -536,28 +423,9 @@ document.addEventListener("click", async (event) => {
     renderDashboard();
     return;
   }
-
-  const syncButton = event.target.closest("[data-settings-sync]");
-  if (syncButton) {
-    await sendMessage({ type: MESSAGE_TYPES.pushPreferences });
-    await reloadBootstrap();
-  }
 });
 
 document.addEventListener("submit", async (event) => {
-  if (event.target.id === "dashboardSettingsForm") {
-    event.preventDefault();
-    const previousSettings = await getSettings();
-    await saveSettings(collectSettings(event.target));
-    await sendMessage({
-      type: MESSAGE_TYPES.saveSettings,
-      previousSettings
-    });
-    bootstrap = await sendMessage({ type: MESSAGE_TYPES.getBootstrap });
-    renderDashboard();
-    return;
-  }
-
   if (event.target.id === "dashboardSiteRuleForm") {
     event.preventDefault();
     const formData = new FormData(event.target);

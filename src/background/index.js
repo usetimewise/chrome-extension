@@ -1,8 +1,13 @@
 import {
+  CATEGORY_LABELS,
   DEFAULT_RUNTIME_STATE,
   DISTRACTION_CATEGORIES,
   MESSAGE_TYPES
 } from "../lib/constants.js";
+import {
+  APP_SETTINGS,
+  NUDGE_SENSITIVITY_THRESHOLDS_MINUTES
+} from "../lib/app-settings.js";
 import {
   appendToQueue,
   getDashboardCache,
@@ -23,7 +28,6 @@ import {
   fetchTodayView,
   fetchTrendsView,
   pushEvents,
-  pushPreferences,
   registerDevice,
   resolveCategories,
   startFocusSession,
@@ -38,13 +42,19 @@ import {
   normalizePathHash
 } from "../lib/utils.js";
 
-let runtimeState = { ...DEFAULT_RUNTIME_STATE };
+let runtimeState = {
+  ...DEFAULT_RUNTIME_STATE,
+  focusNudgeNotifications: {
+    ...DEFAULT_RUNTIME_STATE.focusNudgeNotifications,
+    hosts: {}
+  }
+};
 
 async function applyTrackingSettings(settings = null) {
   const resolvedSettings = settings || await getSettings();
   const idleDetectionSeconds = Number(resolvedSettings.idleDetectionSeconds) > 0
     ? Number(resolvedSettings.idleDetectionSeconds)
-    : 60;
+    : APP_SETTINGS.idleDetectionSeconds;
   await chrome.idle.setDetectionInterval(idleDetectionSeconds);
   return resolvedSettings;
 }
@@ -199,6 +209,7 @@ async function setActiveFromTab(tab) {
     runtimeState.currentHost = null;
     runtimeState.currentUrl = null;
     runtimeState.currentTabId = tab?.id ?? null;
+    runtimeState.currentHostStartedAt = null;
     runtimeState.isPlayingMedia = false;
     runtimeState.mediaStateUpdatedAt = new Date().toISOString();
     runtimeState.sessionStartedAt = Date.now();
@@ -206,12 +217,18 @@ async function setActiveFromTab(tab) {
     return;
   }
 
-  runtimeState.currentHost = normalizeHost(tab.url);
+  const nextHost = normalizeHost(tab.url);
+  const now = Date.now();
+  if (runtimeState.currentHost !== nextHost || !runtimeState.currentHostStartedAt) {
+    runtimeState.currentHostStartedAt = now;
+  }
+
+  runtimeState.currentHost = nextHost;
   runtimeState.currentUrl = tab.url;
   runtimeState.currentTabId = tab.id ?? null;
   runtimeState.isPlayingMedia = await queryMediaState(runtimeState.currentTabId);
   runtimeState.mediaStateUpdatedAt = new Date().toISOString();
-  runtimeState.sessionStartedAt = Date.now();
+  runtimeState.sessionStartedAt = now;
   await saveRuntimeState(runtimeState);
 }
 
@@ -274,7 +291,7 @@ async function refreshViews() {
         currentHostCategory = resolved?.categories?.[runtimeState.currentHost] || null;
       }
 
-      return saveDashboardCache({
+      const cache = await saveDashboardCache({
         todayView,
         trendsView,
         sitesView,
@@ -284,6 +301,8 @@ async function refreshViews() {
         lastSyncAt: new Date().toISOString(),
         lastError: null
       });
+      await evaluateFocusNudgeNotification(cache, settings);
+      return cache;
     });
   } catch (error) {
     return saveDashboardCache({
@@ -292,45 +311,136 @@ async function refreshViews() {
   }
 }
 
-async function pushPreferencesToBackend() {
-  return withRegisteredDevice(async (settings, deviceState) => {
-    const resolvedSettings = await applyTrackingSettings(settings);
-    return pushPreferences(settings.apiBaseUrl, deviceState.deviceId, {
-      timezone: resolvedSettings.timezone,
-      paused: resolvedSettings.trackingPaused,
-      idle_detection_seconds: resolvedSettings.idleDetectionSeconds,
-      track_media_when_idle: resolvedSettings.trackMediaWhenIdle,
-      work_hours_start: resolvedSettings.workHoursStart,
-      work_hours_end: resolvedSettings.workHoursEnd,
-      workdays: resolvedSettings.workdays,
-      deep_work_blocks: resolvedSettings.deepWorkBlocks,
-      nudges_enabled: resolvedSettings.nudgesEnabled,
-      nudge_sensitivity: resolvedSettings.nudgeSensitivity,
-      snooze_minutes: resolvedSettings.snoozeMinutes,
-      work_hours_only: resolvedSettings.workHoursOnly,
-      ai_insights_enabled: resolvedSettings.aiInsightsEnabled,
-      ai_tone: resolvedSettings.aiTone,
-      excluded_hosts: resolvedSettings.excludedHosts,
-      category_overrides: resolvedSettings.categoryOverrides
-    });
-  });
+function driftThresholdMinutes(sensitivity = APP_SETTINGS.nudgeSensitivity) {
+  return NUDGE_SENSITIVITY_THRESHOLDS_MINUTES[sensitivity] ||
+    NUDGE_SENSITIVITY_THRESHOLDS_MINUTES[APP_SETTINGS.nudgeSensitivity];
 }
 
-function driftThresholdMinutes(sensitivity = "balanced") {
-  switch (sensitivity) {
-    case "gentle":
-      return 18;
-    case "direct":
-      return 6;
-    default:
-      return 10;
+function getFocusNotificationState(activeSession) {
+  const sessionId = activeSession?.id || null;
+  const current = runtimeState.focusNudgeNotifications || {};
+
+  if (current.sessionId === sessionId && current.hosts && typeof current.hosts === "object") {
+    return current;
   }
+
+  return {
+    sessionId,
+    hosts: {}
+  };
+}
+
+function formatNudgeDuration(durationMs) {
+  const totalMinutes = Math.max(1, Math.round(durationMs / 60000));
+  if (totalMinutes < 60) {
+    return `${totalMinutes} minute${totalMinutes === 1 ? "" : "s"}`;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (minutes === 0) {
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  return `${hours} hour${hours === 1 ? "" : "s"} ${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
+function activeSessionStartedAt(activeSession) {
+  const activeSince = Date.parse(activeSession?.last_resumed_at || activeSession?.started_at || "");
+  return Number.isNaN(activeSince) ? null : activeSince;
+}
+
+async function showFocusNudge(message, details = {}) {
+  if (!runtimeState.currentTabId) {
+    const error = new Error("No active tab available for focus nudge");
+    await saveDashboardCache({ lastError: error.message });
+    throw error;
+  }
+
+  try {
+    const response = await chrome.tabs.sendMessage(runtimeState.currentTabId, {
+      type: MESSAGE_TYPES.showFocusNudge,
+      title: "Focus mode: distraction detected",
+      message,
+      host: details.host || runtimeState.currentHost || "",
+      category: details.category || "",
+      duration: details.duration || ""
+    });
+
+    await saveDashboardCache({ lastError: null });
+    return { ok: true, response };
+  } catch (error) {
+    await saveDashboardCache({
+      lastError: `Unable to show focus nudge on this page: ${error.message}`
+    });
+    throw error;
+  }
+}
+
+async function evaluateFocusNudgeNotification(cache = null, settings = null) {
+  const resolvedSettings = settings || await getSettings();
+  if (!resolvedSettings.nudgesEnabled || !runtimeState.currentHost || !runtimeState.currentHostStartedAt) {
+    return;
+  }
+
+  const resolvedCache = cache || await getDashboardCache();
+  const activeSession = resolvedCache.focusSessionsView?.active_session || null;
+  if (activeSession?.status !== "active") {
+    return;
+  }
+
+  const category = resolvedCache.currentHostCategory;
+  if (!DISTRACTION_CATEGORIES.has(category)) {
+    return;
+  }
+
+  const now = Date.now();
+  const sessionStartedAt = activeSessionStartedAt(activeSession);
+  const dwellStartedAt = Math.max(runtimeState.currentHostStartedAt, sessionStartedAt || 0);
+  const dwellMs = now - dwellStartedAt;
+  const thresholdMs = driftThresholdMinutes(resolvedSettings.nudgeSensitivity) * 60 * 1000;
+  if (dwellMs < thresholdMs) {
+    return;
+  }
+
+  const snoozeMinutes = Number(resolvedSettings.snoozeMinutes) > 0
+    ? Number(resolvedSettings.snoozeMinutes)
+    : APP_SETTINGS.snoozeMinutes;
+  const snoozeMs = snoozeMinutes * 60 * 1000;
+  const notificationState = getFocusNotificationState(activeSession);
+  const lastShownAt = Number(notificationState.hosts[runtimeState.currentHost] || 0);
+  if (lastShownAt && now - lastShownAt < snoozeMs) {
+    if (runtimeState.focusNudgeNotifications !== notificationState) {
+      runtimeState.focusNudgeNotifications = notificationState;
+      await saveRuntimeState(runtimeState);
+    }
+    return;
+  }
+
+  const categoryLabel = CATEGORY_LABELS[category] || category;
+  const duration = formatNudgeDuration(dwellMs);
+  try {
+    await showFocusNudge(
+      `You've been on ${runtimeState.currentHost} for ${duration}. This is categorized as ${categoryLabel}.`,
+      {
+        host: runtimeState.currentHost,
+        category: categoryLabel,
+        duration
+      }
+    );
+  } catch {
+    return;
+  }
+
+  notificationState.hosts[runtimeState.currentHost] = now;
+  runtimeState.focusNudgeNotifications = notificationState;
+  await saveRuntimeState(runtimeState);
 }
 
 function buildPopupModel(cache, settings) {
   const today = cache.todayView;
   const activeSession = cache.focusSessionsView?.active_session || null;
-  const currentDwellMs = runtimeState.sessionStartedAt ? Date.now() - runtimeState.sessionStartedAt : 0;
+  const currentDwellStartedAt = runtimeState.currentHostStartedAt || runtimeState.sessionStartedAt;
+  const currentDwellMs = currentDwellStartedAt ? Date.now() - currentDwellStartedAt : 0;
   const currentCategory = cache.currentHostCategory;
   const thresholdMs = driftThresholdMinutes(settings.nudgeSensitivity) * 60 * 1000;
   const isDistractingCurrent = DISTRACTION_CATEGORIES.has(currentCategory);
@@ -396,6 +506,7 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === "heartbeat") {
     await flushCurrentSession("heartbeat");
+    await evaluateFocusNudgeNotification();
     return;
   }
 
@@ -481,20 +592,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           popupModel: buildPopupModel(dashboardCache, settings)
         };
       }
-      case MESSAGE_TYPES.saveSettings: {
-        await flushCurrentSession("settings-change", message.previousSettings || null);
-        await applyTrackingSettings();
-        runtimeState.isPlayingMedia = await queryMediaState(runtimeState.currentTabId);
-        runtimeState.mediaStateUpdatedAt = new Date().toISOString();
-        runtimeState.sessionStartedAt = Date.now();
-        await saveRuntimeState(runtimeState);
-        return { ok: true };
-      }
-      case MESSAGE_TYPES.pushPreferences: {
-        const payload = await pushPreferencesToBackend();
-        const dashboardCache = await refreshViews();
-        return { ok: true, payload, dashboardCache };
-      }
       case MESSAGE_TYPES.startFocusSession: {
         const session = await withRegisteredDevice(async (settings, deviceState) => {
           return startFocusSession(settings.apiBaseUrl, deviceState.deviceId, {
@@ -529,6 +626,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
         const dashboardCache = await refreshViews();
         return { ok: true, payload, dashboardCache };
+      }
+      case MESSAGE_TYPES.forceFocusNudge: {
+        const host = runtimeState.currentHost || "current site";
+        return showFocusNudge(
+          `Manual test nudge for ${host}. If you can see this, content script nudges work.`,
+          { host }
+        );
       }
       case MESSAGE_TYPES.mediaStateUpdate: {
         if (!sender.tab?.id || sender.tab.id !== runtimeState.currentTabId) {

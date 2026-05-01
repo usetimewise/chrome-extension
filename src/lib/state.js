@@ -1,41 +1,14 @@
 import {
   DEFAULT_DASHBOARD_CACHE,
   DEFAULT_RUNTIME_STATE,
-  DEFAULT_SETTINGS,
   STORAGE_KEYS
 } from "./constants.js";
+import { getAppSettings } from "./app-settings.js";
 import { generateId } from "./utils.js";
 import { getFromStorage, setInStorage } from "./storage.js";
 
 export async function getSettings() {
-  const settings = await getFromStorage(STORAGE_KEYS.settings, null);
-  return {
-    ...DEFAULT_SETTINGS,
-    ...(settings || {}),
-    workdays: settings?.workdays || DEFAULT_SETTINGS.workdays,
-    deepWorkBlocks: settings?.deepWorkBlocks || DEFAULT_SETTINGS.deepWorkBlocks,
-    excludedHosts: settings?.excludedHosts || DEFAULT_SETTINGS.excludedHosts,
-    categoryOverrides: settings?.categoryOverrides || DEFAULT_SETTINGS.categoryOverrides
-  };
-}
-
-export async function saveSettings(settingsPatch) {
-  const settings = await getSettings();
-  const next = {
-    ...settings,
-    ...settingsPatch,
-    workdays: settingsPatch.workdays ?? settings.workdays,
-    deepWorkBlocks: settingsPatch.deepWorkBlocks ?? settings.deepWorkBlocks,
-    excludedHosts: settingsPatch.excludedHosts ?? settings.excludedHosts,
-    categoryOverrides: settingsPatch.categoryOverrides ?? settings.categoryOverrides
-  };
-  await setInStorage(STORAGE_KEYS.settings, next);
-
-  if (settings.apiBaseUrl !== next.apiBaseUrl) {
-    await resetDeviceRegistration();
-  }
-
-  return next;
+  return getAppSettings();
 }
 
 export async function getDeviceState() {
@@ -104,7 +77,14 @@ export async function getRuntimeState() {
   const runtime = await getFromStorage(STORAGE_KEYS.runtimeState, null);
   return {
     ...DEFAULT_RUNTIME_STATE,
-    ...(runtime || {})
+    ...(runtime || {}),
+    focusNudgeNotifications: {
+      ...DEFAULT_RUNTIME_STATE.focusNudgeNotifications,
+      ...(runtime?.focusNudgeNotifications || {}),
+      hosts: {
+        ...(runtime?.focusNudgeNotifications?.hosts || {})
+      }
+    }
   };
 }
 
