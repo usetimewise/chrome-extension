@@ -15,9 +15,9 @@ body::before {
 }
 
 .dashboard-shell {
-  width: min(1194px, 100%);
+  /*width: min(1194px, 100%);*/
   min-height: 100vh;
-  margin: 0 auto;
+  margin: 0;
   background: #f7f8fa;
 }
 
