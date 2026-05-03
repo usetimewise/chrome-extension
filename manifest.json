@@ -30,6 +30,17 @@
       "run_at": "document_idle"
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "vendor/fontawesome/webfonts/fa-solid-900.woff2"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ],
   "action": {
     "default_title": "Focus Snapshot",
     "default_popup": "popup.html"

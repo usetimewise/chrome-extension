@@ -32,7 +32,16 @@ function buildToast(message) {
 
   const shadow = host.attachShadow({ mode: "open" });
   const style = document.createElement("style");
+  const fontAwesomeSolidUrl = chrome.runtime.getURL("vendor/fontawesome/webfonts/fa-solid-900.woff2");
   style.textContent = `
+    @font-face {
+      font-family: "Font Awesome 7 Free";
+      font-style: normal;
+      font-weight: 900;
+      font-display: block;
+      src: url("${fontAwesomeSolidUrl}") format("woff2");
+    }
+
     :host {
       all: initial;
       display: block;
@@ -45,6 +54,25 @@ function buildToast(message) {
       pointer-events: auto;
       color-scheme: light;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .fa-solid {
+      -webkit-font-smoothing: antialiased;
+      display: inline-block;
+      font-family: "Font Awesome 7 Free";
+      font-style: normal;
+      font-variant: normal;
+      font-weight: 900;
+      line-height: 1;
+      text-rendering: auto;
+    }
+
+    .fa-triangle-exclamation::before {
+      content: "\\f071";
+    }
+
+    .fa-xmark::before {
+      content: "\\f00d";
     }
 
     .toast {
@@ -136,8 +164,8 @@ function buildToast(message) {
       background: transparent;
       color: #64748b;
       cursor: pointer;
-      font-size: 20px;
-      line-height: 20px;
+      font-size: 14px;
+      line-height: 1;
       padding: 0;
     }
 
@@ -188,9 +216,8 @@ function buildToast(message) {
   titleRow.className = "title-row";
 
   const warning = document.createElement("span");
-  warning.className = "warning";
+  warning.className = "warning fa-solid fa-triangle-exclamation";
   warning.setAttribute("aria-hidden", "true");
-  warning.textContent = "!";
 
   const titleCopy = document.createElement("div");
   titleCopy.className = "title-copy";
@@ -206,10 +233,9 @@ function buildToast(message) {
   meta.textContent = duration ? `${duration} on ${currentHost} today` : currentHost;
 
   const close = document.createElement("button");
-  close.className = "close";
+  close.className = "close fa-solid fa-xmark";
   close.type = "button";
   close.setAttribute("aria-label", "Dismiss focus nudge");
-  close.textContent = "x";
   close.addEventListener("click", removeExistingToast);
 
   const body = document.createElement("p");

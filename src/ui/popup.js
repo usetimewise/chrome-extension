@@ -63,16 +63,26 @@ function renderPopup() {
   const root = document.getElementById("popupRoot");
   const alignment = Math.max(0, Math.min(100, Math.round((model.focusAlignment || 0) * 100)));
   const progressWidth = Math.max(0, Math.min(100, alignment));
+  const focusSession = model.focusSession || null;
+  const isFocusActive = model.state === "focus_active" && focusSession?.status === "active";
+  const focusButtonLabel = isFocusActive ? "Stop" : "Start";
+  const focusButtonIcon = isFocusActive ? "fa-stop" : "fa-play";
 
   root.innerHTML = `
     <main class="popup-shell" aria-label="Focus summary">
       <header class="popup-status">
-        <div class="status-copy">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span>Focused</span>
-        </div>
+        <button
+          class="focus-mode-button ${isFocusActive ? "is-active" : "is-idle"}"
+          data-action="toggle-focus-mode"
+          ${isFocusActive ? `data-session-id="${escapeHTML(focusSession.id)}"` : ""}
+          type="button"
+          aria-label="${isFocusActive ? "Stop focus mode" : "Start focus mode"}"
+        >
+          <span class="focus-mode-icon fa-solid ${focusButtonIcon}" aria-hidden="true"></span>
+          <span>${focusButtonLabel}</span>
+        </button>
         <button class="dashboard-button" data-action="open-dashboard" type="button" aria-label="Open dashboard">
-          <span class="dashboard-icon" aria-hidden="true"></span>
+          <span class="dashboard-icon fa-solid fa-chart-column" aria-hidden="true"></span>
         </button>
       </header>
 
@@ -94,7 +104,7 @@ function renderPopup() {
       </section>
 
       <footer class="popup-insight">
-        <span class="trend-icon" aria-hidden="true"></span>
+        <span class="trend-icon fa-solid fa-arrow-trend-up" aria-hidden="true"></span>
         <p>${escapeHTML(renderFooterInsight(model))}</p>
       </footer>
     </main>
@@ -119,9 +129,28 @@ function openDashboard() {
   chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
 }
 
+async function toggleFocusMode(button) {
+  const sessionId = button.dataset.sessionId;
+  const isStopping = Boolean(sessionId);
+
+  button.disabled = true;
+  await sendMessage(isStopping
+    ? { type: MESSAGE_TYPES.endFocusSession, sessionId }
+    : { type: MESSAGE_TYPES.startFocusSession });
+  await loadBootstrap(MESSAGE_TYPES.refreshViews);
+}
+
 document.addEventListener("click", (event) => {
   if (event.target.closest('[data-action="open-dashboard"]')) {
     openDashboard();
+    return;
+  }
+
+  const focusButton = event.target.closest('[data-action="toggle-focus-mode"]');
+  if (focusButton) {
+    void toggleFocusMode(focusButton).catch(() => {
+      focusButton.disabled = false;
+    });
   }
 });
 

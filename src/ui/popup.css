@@ -34,19 +34,47 @@ body::before {
   font-weight: 600;
 }
 
-.status-copy {
+.focus-mode-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  min-width: 0;
+  min-width: 76px;
+  max-width: 132px;
+  height: 30px;
+  flex: 0 1 auto;
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 12px;
+  white-space: nowrap;
 }
 
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border: 1px solid #047857;
-  border-radius: 999px;
-  background: #10b981;
+.focus-mode-button.is-idle {
+  background: #059669;
+}
+
+.focus-mode-button.is-active {
+  background: #dc2626;
+}
+
+.focus-mode-button:hover {
+  filter: brightness(0.96);
+}
+
+.focus-mode-button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.focus-mode-icon {
+  width: 10px;
+  flex: 0 0 auto;
+  font-size: 10px;
 }
 
 .dashboard-button {
@@ -69,32 +97,9 @@ body::before {
 }
 
 .dashboard-icon {
-  position: relative;
   width: 16px;
-  height: 16px;
   flex: 0 0 auto;
-  border: 1.6px solid currentColor;
-  border-radius: 4px;
-}
-
-.dashboard-icon::before,
-.dashboard-icon::after {
-  content: "";
-  position: absolute;
-  bottom: 3px;
-  width: 2px;
-  border-radius: 999px 999px 0 0;
-  background: currentColor;
-}
-
-.dashboard-icon::before {
-  left: 4px;
-  height: 5px;
-}
-
-.dashboard-icon::after {
-  left: 9px;
-  height: 8px;
+  font-size: 15px;
 }
 
 .today-summary {
@@ -235,33 +240,8 @@ body::before {
 }
 
 .trend-icon {
-  position: relative;
   width: 17px;
-  height: 17px;
   flex: 0 0 auto;
-}
-
-.trend-icon::before {
-  content: "";
-  position: absolute;
-  left: 2px;
-  top: 9px;
-  width: 13px;
-  height: 1.6px;
-  border-radius: 999px;
-  background: #94a3b8;
-  transform: rotate(-30deg);
-  transform-origin: left center;
-}
-
-.trend-icon::after {
-  content: "";
-  position: absolute;
-  right: 1px;
-  top: 4px;
-  width: 5px;
-  height: 5px;
-  border-top: 1.6px solid #94a3b8;
-  border-right: 1.6px solid #94a3b8;
-  transform: rotate(18deg);
+  color: #94a3b8;
+  font-size: 16px;
 }

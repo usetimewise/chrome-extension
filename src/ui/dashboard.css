@@ -42,7 +42,7 @@ body::before {
   border-radius: 8px;
   background: transparent;
   color: #475569;
-  font-size: 28px;
+  font-size: 18px;
   line-height: 1;
   padding: 0;
 }
@@ -299,7 +299,6 @@ body::before {
 }
 
 .recommendation-icon {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -308,42 +307,13 @@ body::before {
   border-radius: 999px;
   background: #eff6ff;
   color: #2563eb;
+  font-size: 25px;
 }
 
-.recommendation-icon::before {
-  color: currentColor;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.recommendation-icon.is-bolt::before {
-  content: "Z";
-  transform: skew(-14deg);
-}
-
-.recommendation-icon.is-warning::before {
-  content: "!";
-}
-
-.recommendation-icon.is-clock::before {
-  content: "";
-  width: 19px;
-  height: 19px;
-  border: 2px solid currentColor;
-  border-radius: 999px;
-}
-
-.recommendation-icon.is-clock::after {
-  content: "";
-  position: absolute;
-  left: 26px;
-  top: 16px;
-  width: 2px;
-  height: 12px;
-  border-radius: 999px;
-  background: currentColor;
-  transform-origin: bottom center;
+.recommendation-icon.is-bolt,
+.recommendation-icon.is-triangle-exclamation,
+.recommendation-icon.is-clock {
+  color: #2563eb;
 }
 
 .recommendation-card h3 {

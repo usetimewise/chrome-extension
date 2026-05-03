@@ -153,7 +153,7 @@ function recommendationIcon(type = "") {
     return "bolt";
   }
   if (type.includes("classification") || type.includes("trend")) {
-    return "warning";
+    return "triangle-exclamation";
   }
   return "clock";
 }
@@ -171,7 +171,7 @@ function renderRecommendations(view) {
 
     return `
       <article class="recommendation-card">
-        <span class="recommendation-icon is-${escapeHTML(icon)}" aria-hidden="true"></span>
+        <span class="recommendation-icon fa-solid fa-${escapeHTML(icon)} is-${escapeHTML(icon)}" aria-hidden="true"></span>
         <div>
           <h3>${escapeHTML(item.title)}</h3>
           <p>${escapeHTML(item.body)}</p>
@@ -180,7 +180,7 @@ function renderRecommendations(view) {
             data-recommendation-action="${escapeHTML(item.action?.type || "")}"
             data-recommendation-minutes="${escapeHTML(String(item.action?.payload?.minutes || 45))}"
             type="button"
-          >${escapeHTML(actionLabel)} <span aria-hidden="true">&rarr;</span></button>
+          >${escapeHTML(actionLabel)} <span class="fa-solid fa-arrow-right" aria-hidden="true"></span></button>
         </div>
       </article>
     `;
