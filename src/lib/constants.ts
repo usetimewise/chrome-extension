@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   dashboardCache: "twt_dashboard_cache_v2",
   runtimeState: "twt_runtime_state_v2",
   activityEvents: "twt_activity_events_v1",
+  trackingTransitions: "twt_tracking_transitions_v1",
   focusSessions: "twt_focus_sessions_v1",
   siteRules: "twt_site_rules_v1"
 } as const;
@@ -22,7 +23,8 @@ export const MESSAGE_TYPES = {
   endFocusSession: "END_FOCUS_SESSION",
   saveSiteRule: "SAVE_SITE_RULE",
   forceFocusNudge: "FORCE_FOCUS_NUDGE",
-  showFocusNudge: "SHOW_FOCUS_NUDGE"
+  showFocusNudge: "SHOW_FOCUS_NUDGE",
+  getDebugState: "GET_DEBUG_STATE"
 };
 
 export const DEFAULT_DASHBOARD_CACHE: DashboardCache = {
@@ -40,8 +42,11 @@ export const DEFAULT_RUNTIME_STATE: RuntimeState = {
   currentHost: null,
   currentUrl: null,
   currentTabId: null,
+  currentWindowId: null,
   currentHostStartedAt: null,
   sessionStartedAt: null,
+  lastObservedAt: null,
+  lastHeartbeatAt: null,
   isWindowFocused: true,
   idleState: "active",
   isPlayingMedia: false,

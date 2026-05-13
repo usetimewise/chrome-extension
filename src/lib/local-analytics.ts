@@ -3,6 +3,7 @@ import {
   FOCUS_CATEGORIES
 } from "./constants.js";
 import type { ActivityEvent, Category, Settings, SitesView, TodayView } from "./types.js";
+import { isActiveTrackedEvent } from "./tracking-diagnostics.js";
 import { hostMatchesRule } from "./utils.js";
 
 type AnalyticsSettings = Partial<Settings>;
@@ -119,6 +120,52 @@ function eventsForDate(events, timezone, key) {
     const occurredAt = new Date(event.occurred_at || "");
     return !Number.isNaN(occurredAt.getTime()) && localDateKey(occurredAt, timezone) === key;
   });
+}
+
+function diagnosticSummary(events: ActivityEvent[]) {
+  const totals = {
+    observed_browser_time_ms: 0,
+    active_tracked_ms: 0,
+    diagnostic_untracked_ms: 0,
+    idle_ms: 0,
+    locked_ms: 0,
+    unfocused_ms: 0,
+    restricted_ms: 0,
+    unknown_ms: 0,
+    suspicious_gap_ms: 0,
+    suspicious_gap_count: 0,
+    max_interval_ms: 0
+  };
+
+  for (const event of events) {
+    const durationMs = Number(event.duration_ms || 0);
+    const status = event.tracking_status || "active_tracked";
+    totals.observed_browser_time_ms += durationMs;
+    totals.max_interval_ms = Math.max(totals.max_interval_ms, durationMs);
+
+    if (status === "active_tracked") {
+      totals.active_tracked_ms += durationMs;
+      continue;
+    }
+
+    totals.diagnostic_untracked_ms += durationMs;
+    if (status === "idle") {
+      totals.idle_ms += durationMs;
+    } else if (status === "locked") {
+      totals.locked_ms += durationMs;
+    } else if (status === "browser_unfocused") {
+      totals.unfocused_ms += durationMs;
+    } else if (status === "restricted_page") {
+      totals.restricted_ms += durationMs;
+    } else if (status === "unknown_url") {
+      totals.unknown_ms += durationMs;
+    } else if (status === "suspicious_gap" || status === "extension_inactive") {
+      totals.suspicious_gap_ms += durationMs;
+      totals.suspicious_gap_count += 1;
+    }
+  }
+
+  return totals;
 }
 
 function isWithinWorkHours(event, settings, timezone) {
@@ -467,18 +514,23 @@ export function buildTodayView(
   const yesterdayKey = localDateKey(new Date(now.getTime() - 24 * 60 * 60 * 1000), timezone);
   const todayEvents = eventsForDate(events, timezone, todayKey);
   const yesterdayEvents = eventsForDate(events, timezone, yesterdayKey);
-  const todaySummary = summarize(todayEvents, settings, "today", todayKey, now);
-  const yesterdaySummary = summarize(yesterdayEvents, settings, "yesterday", yesterdayKey, now);
+  const todayActiveEvents = todayEvents.filter(isActiveTrackedEvent);
+  const yesterdayActiveEvents = yesterdayEvents.filter(isActiveTrackedEvent);
+  const todaySummary = {
+    ...summarize(todayActiveEvents, settings, "today", todayKey, now),
+    ...diagnosticSummary(todayEvents)
+  };
+  const yesterdaySummary = summarize(yesterdayActiveEvents, settings, "yesterday", yesterdayKey, now);
 
   return {
     status: buildStatus(todaySummary),
     summary: todaySummary,
     comparison: buildComparison(todaySummary, yesterdaySummary),
-    timeline: buildTimeline(todayEvents, settings, todayKey),
+    timeline: buildTimeline(todayActiveEvents, settings, todayKey),
     top_categories: todaySummary.top_categories,
     top_sites: todaySummary.top_sites,
-    main_insight: buildMainInsight(todaySummary, todayEvents, settings),
-    supporting_insights: buildSupportingInsights(todaySummary, todayEvents, settings),
+    main_insight: buildMainInsight(todaySummary, todayActiveEvents, settings),
+    supporting_insights: buildSupportingInsights(todaySummary, todayActiveEvents, settings),
     recommendations: buildRecommendations(todaySummary, yesterdaySummary)
   };
 }
@@ -493,7 +545,7 @@ export function buildSitesView(
   const weekCutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
   const itemsByHost = new Map();
 
-  for (const event of events) {
+  for (const event of events.filter(isActiveTrackedEvent)) {
     const occurredAt = new Date(event.occurred_at || "");
     if (Number.isNaN(occurredAt.getTime()) || occurredAt.getTime() < weekCutoff) {
       continue;

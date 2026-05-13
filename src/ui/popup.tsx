@@ -103,6 +103,10 @@ function PopupApp() {
     chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
   }
 
+  function openDebug() {
+    chrome.tabs.create({ url: chrome.runtime.getURL("debug.html") });
+  }
+
   useEffect(() => {
     let refreshTimer: number | null = null;
 
@@ -137,9 +141,16 @@ function PopupApp() {
           <span className={`focus-mode-icon fa-solid ${focusButtonIcon}`} aria-hidden="true" />
           <span>{focusButtonLabel}</span>
         </button>
-        <button className="dashboard-button" type="button" aria-label="Open dashboard" onClick={openDashboard}>
-          <span className="dashboard-icon fa-solid fa-chart-column" aria-hidden="true" />
-        </button>
+        <div className="popup-icon-actions">
+          <button className="dashboard-button" type="button" aria-label="Open dashboard" onClick={openDashboard}>
+            <span className="dashboard-icon fa-solid fa-chart-column" aria-hidden="true" />
+          </button>
+          {import.meta.env.VITE_TIMEWISE_DEV_DEBUG === "true" ? (
+            <button className="dashboard-button" type="button" aria-label="Open debug" onClick={openDebug}>
+              <span className="dashboard-icon fa-solid fa-bug" aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <section className="today-summary" aria-label="Tracked today">

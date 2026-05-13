@@ -60,3 +60,59 @@ test("buildTodayView derives local counters and yesterday comparison", () => {
   assert.equal(view.top_sites[0].host, "github.com");
   assert.equal(view.top_categories[0].category, "work");
 });
+
+test("buildTodayView excludes diagnostic intervals from focus metrics and top sites", () => {
+  const view = buildTodayView([
+    {
+      event_id: "tracked-work",
+      occurred_at: "2026-04-20T10:00:00.000Z",
+      duration_ms: 20 * 60 * 1000,
+      host: "github.com",
+      category: "work",
+      tracking_status: "active_tracked"
+    },
+    {
+      event_id: "idle",
+      occurred_at: "2026-04-20T10:30:00.000Z",
+      duration_ms: 15 * 60 * 1000,
+      host: "github.com",
+      tracking_status: "idle"
+    },
+    {
+      event_id: "unfocused",
+      occurred_at: "2026-04-20T11:00:00.000Z",
+      duration_ms: 5 * 60 * 1000,
+      host: "youtube.com",
+      category: "entertainment",
+      tracking_status: "browser_unfocused"
+    },
+    {
+      event_id: "restricted",
+      occurred_at: "2026-04-20T11:30:00.000Z",
+      duration_ms: 3 * 60 * 1000,
+      host: "browser_internal",
+      tracking_status: "restricted_page"
+    },
+    {
+      event_id: "gap",
+      occurred_at: "2026-04-20T12:00:00.000Z",
+      duration_ms: 7 * 60 * 1000,
+      host: "github.com",
+      tracking_status: "suspicious_gap"
+    }
+  ], settings, new Date("2026-04-20T13:00:00.000Z"));
+
+  assert.equal(view.summary.total_duration_ms, 20 * 60 * 1000);
+  assert.equal(view.summary.focus_duration_ms, 20 * 60 * 1000);
+  assert.equal(view.summary.distraction_duration_ms, 0);
+  assert.equal(view.summary.observed_browser_time_ms, 50 * 60 * 1000);
+  assert.equal(view.summary.active_tracked_ms, 20 * 60 * 1000);
+  assert.equal(view.summary.diagnostic_untracked_ms, 30 * 60 * 1000);
+  assert.equal(view.summary.idle_ms, 15 * 60 * 1000);
+  assert.equal(view.summary.unfocused_ms, 5 * 60 * 1000);
+  assert.equal(view.summary.restricted_ms, 3 * 60 * 1000);
+  assert.equal(view.summary.suspicious_gap_ms, 7 * 60 * 1000);
+  assert.equal(view.summary.suspicious_gap_count, 1);
+  assert.deepEqual(view.top_sites.map((site) => site.host), ["github.com"]);
+  assert.deepEqual(view.top_categories.map((item) => item.category), ["work"]);
+});

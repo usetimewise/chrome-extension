@@ -229,7 +229,7 @@ body::before {
   color: #111827;
   font-size: 34px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.12;
 }
 
 .break-trigger {
@@ -346,6 +346,68 @@ body::before {
 
 .recommendation-action:hover {
   color: #1d4ed8;
+}
+
+.section-heading-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.debug-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 8px 10px;
+}
+
+.debug-link:hover {
+  background: #eff6ff;
+}
+
+.diagnostic-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #dfe4ea;
+}
+
+.diagnostic-stat {
+  min-width: 0;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.diagnostic-stat strong,
+.diagnostic-stat span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.diagnostic-stat strong {
+  color: #111827;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.diagnostic-stat span {
+  margin-top: 4px;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
 }
 
 .dashboard-empty {

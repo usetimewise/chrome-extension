@@ -17,25 +17,31 @@ function copyExtensionStatic(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), copyExtensionStatic()],
-  build: {
-    outDir: "dist",
-    emptyOutDir: true,
-    sourcemap: true,
-    rollupOptions: {
-      input: {
-        popup: resolve(__dirname, "popup.html"),
-        dashboard: resolve(__dirname, "dashboard.html"),
-        background: resolve(__dirname, "src/background/index.ts"),
-        "media-monitor": resolve(__dirname, "src/content/media-monitor.ts"),
-        "focus-nudge": resolve(__dirname, "src/content/focus-nudge.ts")
-      },
-      output: {
-        entryFileNames: "assets/[name].js",
-        chunkFileNames: "assets/[name].js",
-        assetFileNames: "assets/[name][extname]"
+export default defineConfig(() => {
+  const includeDebug = process.env.VITE_TIMEWISE_DEV_DEBUG === "true";
+  const input = {
+    popup: resolve(__dirname, "popup.html"),
+    dashboard: resolve(__dirname, "dashboard.html"),
+    background: resolve(__dirname, "src/background/index.ts"),
+    "media-monitor": resolve(__dirname, "src/content/media-monitor.ts"),
+    "focus-nudge": resolve(__dirname, "src/content/focus-nudge.ts"),
+    ...(includeDebug ? { debug: resolve(__dirname, "debug.html") } : {})
+  };
+
+  return {
+    plugins: [react(), copyExtensionStatic()],
+    build: {
+      outDir: "dist",
+      emptyOutDir: true,
+      sourcemap: true,
+      rollupOptions: {
+        input,
+        output: {
+          entryFileNames: "assets/[name].js",
+          chunkFileNames: "assets/[name].js",
+          assetFileNames: "assets/[name][extname]"
+        }
       }
     }
-  }
+  };
 });

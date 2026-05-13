@@ -12,10 +12,12 @@ import type {
   FocusSession,
   RuntimeState,
   Settings,
-  SiteRuleState
+  SiteRuleState,
+  TrackingTransition
 } from "./types.js";
 import { generateId, hostMatchesRule } from "./utils.js";
 import { getFromStorage, setInStorage } from "./storage.js";
+import { eventsEligibleForSync, retainTrackingTransitions } from "./tracking-diagnostics.js";
 
 const ACTIVITY_EVENT_RETENTION_DAYS = 30;
 
@@ -70,6 +72,10 @@ export async function getQueue(): Promise<ActivityEvent[]> {
 }
 
 export async function appendToQueue(event: ActivityEvent): Promise<ActivityEvent[]> {
+  if (!eventsEligibleForSync([event]).length) {
+    return getQueue();
+  }
+
   const queue = await getQueue();
   queue.push(event);
   await setInStorage(STORAGE_KEYS.queue, queue);
@@ -77,7 +83,7 @@ export async function appendToQueue(event: ActivityEvent): Promise<ActivityEvent
 }
 
 export async function replaceQueue(queue: ActivityEvent[]): Promise<ActivityEvent[]> {
-  return setInStorage(STORAGE_KEYS.queue, queue);
+  return setInStorage(STORAGE_KEYS.queue, eventsEligibleForSync(queue));
 }
 
 export async function getActivityEvents(): Promise<ActivityEvent[]> {
@@ -93,6 +99,18 @@ export async function appendActivityEvent(event: ActivityEvent): Promise<Activit
   });
   retained.push(event);
   await setInStorage(STORAGE_KEYS.activityEvents, retained);
+  return retained;
+}
+
+export async function getTrackingTransitions(): Promise<TrackingTransition[]> {
+  return getFromStorage<TrackingTransition[]>(STORAGE_KEYS.trackingTransitions, []);
+}
+
+export async function appendTrackingTransition(transition: TrackingTransition): Promise<TrackingTransition[]> {
+  const transitions = await getTrackingTransitions();
+  const retained = retainTrackingTransitions(transitions);
+  retained.push(transition);
+  await setInStorage(STORAGE_KEYS.trackingTransitions, retained);
   return retained;
 }
 

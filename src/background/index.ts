@@ -11,6 +11,7 @@ import {
 import {
   appendActivityEvent,
   appendToQueue,
+  appendTrackingTransition,
   getActivityEvents,
   getDashboardCache,
   getDeviceState,
@@ -18,6 +19,7 @@ import {
   getQueue,
   getRuntimeState,
   getSettings,
+  getTrackingTransitions,
   replaceQueue,
   resetDeviceRegistration,
   saveDashboardCache,
@@ -48,6 +50,10 @@ import {
   normalizeHost,
   normalizePathHash
 } from "../lib/utils.js";
+import {
+  isActiveTrackedEvent,
+  splitTrackedIntervalForGap
+} from "../lib/tracking-diagnostics.js";
 import type {
   ActivityEvent,
   BootstrapResponse,
@@ -57,7 +63,9 @@ import type {
   FocusSession,
   PopupModel,
   RuntimeState,
-  Settings
+  Settings,
+  TrackingStatus,
+  TrackingTransitionType
 } from "../lib/types.js";
 
 let runtimeState: RuntimeState = {
@@ -90,12 +98,124 @@ async function queryMediaState(tabId) {
   }
 }
 
+function safeTabUrl(tab) {
+  return typeof tab?.url === "string" ? tab.url : null;
+}
+
+function classifyUrl(url): { status: TrackingStatus; host: string | null; safeUrl: string | null } {
+  if (isTrackableUrl(url)) {
+    return {
+      status: "active_tracked",
+      host: normalizeHost(url),
+      safeUrl: url
+    };
+  }
+
+  if (typeof url !== "string" || !url) {
+    return { status: "unknown_url", host: "unknown_url", safeUrl: null };
+  }
+
+  if (url.startsWith("chrome-extension://")) {
+    return { status: "restricted_page", host: "extension_page", safeUrl: null };
+  }
+
+  if (url.startsWith("chrome://") || url.startsWith("edge://") || url.startsWith("about:")) {
+    return { status: "restricted_page", host: "browser_internal", safeUrl: null };
+  }
+
+  if (url.startsWith("file://")) {
+    return { status: "restricted_page", host: "file_page", safeUrl: null };
+  }
+
+  return { status: "unknown_url", host: "unknown_url", safeUrl: null };
+}
+
+function transitionUrlClass(): "trackable" | TrackingStatus {
+  if (runtimeState.currentHost && isTrackableUrl(runtimeState.currentUrl)) {
+    return "trackable";
+  }
+  if (["browser_internal", "extension_page", "file_page"].includes(runtimeState.currentHost || "")) {
+    return "restricted_page";
+  }
+  if (runtimeState.currentHost === "unknown_url") {
+    return "unknown_url";
+  }
+  return classifyUrl(runtimeState.currentUrl).status;
+}
+
+async function logTransition(type: TrackingTransitionType, reason: string = type, overrides = {}) {
+  await appendTrackingTransition({
+    id: generateId(),
+    type,
+    occurred_at: new Date().toISOString(),
+    tab_id: runtimeState.currentTabId,
+    window_id: runtimeState.currentWindowId ?? null,
+    url_class: transitionUrlClass(),
+    host: runtimeState.currentHost,
+    window_focused: runtimeState.isWindowFocused,
+    idle_state: runtimeState.idleState,
+    is_playing_media: runtimeState.isPlayingMedia,
+    reason,
+    ...overrides
+  });
+}
+
+function trackingStatusForCurrentState(settings: Settings): TrackingStatus {
+  if (settings.trackingPaused) {
+    return "tracking_paused";
+  }
+
+  if (!runtimeState.isWindowFocused) {
+    return "browser_unfocused";
+  }
+
+  if (runtimeState.idleState === "locked") {
+    return "locked";
+  }
+
+  if (runtimeState.idleState === "idle" && !(settings.trackMediaWhenIdle && runtimeState.isPlayingMedia)) {
+    return "idle";
+  }
+
+  if (!runtimeState.currentHost || !isTrackableUrl(runtimeState.currentUrl)) {
+    if (["browser_internal", "extension_page", "file_page"].includes(runtimeState.currentHost || "")) {
+      return "restricted_page";
+    }
+    if (runtimeState.currentHost === "unknown_url") {
+      return "unknown_url";
+    }
+    return classifyUrl(runtimeState.currentUrl).status;
+  }
+
+  if (settings.excludedHosts.some((rule) => hostMatchesRule(runtimeState.currentHost, rule))) {
+    return "excluded";
+  }
+
+  return "active_tracked";
+}
+
+function eventHostForStatus(status: TrackingStatus): string | null {
+  if (runtimeState.currentHost) {
+    return runtimeState.currentHost;
+  }
+
+  if (status === "restricted_page" || status === "unknown_url") {
+    return classifyUrl(runtimeState.currentUrl).host;
+  }
+
+  return null;
+}
+
 async function boot() {
   runtimeState = await getRuntimeState();
+  const now = Date.now();
+  runtimeState.lastObservedAt = now;
+  runtimeState.sessionStartedAt = runtimeState.sessionStartedAt || now;
   await applyTrackingSettings();
   void ensureDeviceRegistration();
   await refreshActiveTab();
   ensureAlarms();
+  await logTransition("startup");
   await refreshViews();
 }
 
@@ -191,39 +311,58 @@ function isTrackingEligible(host, settings) {
 async function flushCurrentSession(reason = "transition", settingsOverride = null) {
   const settings = settingsOverride || await getSettings();
   const startedAt = runtimeState.sessionStartedAt;
+  const now = Date.now();
+  runtimeState.lastObservedAt = now;
 
   if (!startedAt) {
-    runtimeState.sessionStartedAt = Date.now();
+    runtimeState.sessionStartedAt = now;
     await saveRuntimeState(runtimeState);
     return;
   }
 
-  const now = Date.now();
   const durationMs = now - startedAt;
+  const status = trackingStatusForCurrentState(settings);
+  const category = runtimeState.currentHost
+    ? resolveCategory(runtimeState.currentHost, settings)
+    : undefined;
+  const effectiveStatus = status === "active_tracked" && category === "excluded"
+    ? "excluded"
+    : status;
+  const host = eventHostForStatus(effectiveStatus);
+  const safeUrl = isTrackableUrl(runtimeState.currentUrl) && effectiveStatus === "active_tracked"
+    ? runtimeState.currentUrl
+    : null;
+  const pathHash = safeUrl ? normalizePathHash(safeUrl) : "";
 
-  if (durationMs > 0 && isTrackingEligible(runtimeState.currentHost, settings)) {
-    const category = resolveCategory(runtimeState.currentHost, settings);
-    if (category === "excluded") {
-      runtimeState.sessionStartedAt = now;
-      await saveRuntimeState(runtimeState);
-      return;
-    }
-
+  for (const interval of splitTrackedIntervalForGap(
+    startedAt,
+    now,
+    effectiveStatus,
+    runtimeState.lastHeartbeatAt
+  )) {
     const event: ActivityEvent = {
       event_id: generateId(),
-      occurred_at: new Date(startedAt).toISOString(),
-      duration_ms: durationMs,
-      url: runtimeState.currentUrl,
-      host: runtimeState.currentHost,
-      path_hash: normalizePathHash(runtimeState.currentUrl),
+      occurred_at: new Date(interval.startedAt).toISOString(),
+      ended_at: new Date(interval.endedAt).toISOString(),
+      duration_ms: interval.durationMs,
+      url: interval.status === "active_tracked" ? safeUrl : null,
+      host,
+      path_hash: interval.status === "active_tracked" ? pathHash : "",
       window_focused: runtimeState.isWindowFocused,
       idle_state: runtimeState.idleState,
+      is_playing_media: runtimeState.isPlayingMedia,
+      gap_ms: interval.gapMs,
+      window_id: runtimeState.currentWindowId ?? null,
+      tab_id: runtimeState.currentTabId,
+      tracking_status: interval.status,
       client_version: chrome.runtime.getManifest().version,
-      category,
+      category: interval.status === "active_tracked" ? category : undefined,
       reason
     };
     await appendActivityEvent(event);
-    await appendToQueue(event);
+    if (isActiveTrackedEvent(event)) {
+      await appendToQueue(event);
+    }
   }
 
   runtimeState.sessionStartedAt = now;
@@ -232,11 +371,14 @@ async function flushCurrentSession(reason = "transition", settingsOverride = nul
 
 async function setActiveFromTab(tab) {
   await flushCurrentSession("active-tab-change");
+  const tabUrl = safeTabUrl(tab);
+  const urlClass = classifyUrl(tabUrl);
 
-  if (!tab || !isTrackableUrl(tab.url)) {
-    runtimeState.currentHost = null;
-    runtimeState.currentUrl = null;
+  if (!tab || !isTrackableUrl(tabUrl)) {
+    runtimeState.currentHost = urlClass.host;
+    runtimeState.currentUrl = urlClass.safeUrl;
     runtimeState.currentTabId = tab?.id ?? null;
+    runtimeState.currentWindowId = tab?.windowId ?? null;
     runtimeState.currentHostStartedAt = null;
     runtimeState.isPlayingMedia = false;
     runtimeState.mediaStateUpdatedAt = new Date().toISOString();
@@ -245,15 +387,16 @@ async function setActiveFromTab(tab) {
     return;
   }
 
-  const nextHost = normalizeHost(tab.url);
+  const nextHost = normalizeHost(tabUrl);
   const now = Date.now();
   if (runtimeState.currentHost !== nextHost || !runtimeState.currentHostStartedAt) {
     runtimeState.currentHostStartedAt = now;
   }
 
   runtimeState.currentHost = nextHost;
-  runtimeState.currentUrl = tab.url;
+  runtimeState.currentUrl = tabUrl;
   runtimeState.currentTabId = tab.id ?? null;
+  runtimeState.currentWindowId = tab.windowId ?? null;
   runtimeState.isPlayingMedia = await queryMediaState(runtimeState.currentTabId);
   runtimeState.mediaStateUpdatedAt = new Date().toISOString();
   runtimeState.sessionStartedAt = now;
@@ -266,7 +409,11 @@ async function refreshActiveTab() {
 }
 
 async function syncQueue() {
-  const queue = await getQueue();
+  const storedQueue = await getQueue();
+  const queue = storedQueue.filter(isActiveTrackedEvent);
+  if (queue.length !== storedQueue.length) {
+    await replaceQueue(queue);
+  }
 
   if (queue.length === 0) {
     return { synced: 0, queueSize: queue.length };
@@ -530,6 +677,9 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === "heartbeat") {
     await flushCurrentSession("heartbeat");
+    runtimeState.lastHeartbeatAt = Date.now();
+    await logTransition("heartbeat");
+    await saveRuntimeState(runtimeState);
     await evaluateFocusNudgeNotification();
     return;
   }
@@ -543,6 +693,10 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   const tab = await chrome.tabs.get(tabId);
   await setActiveFromTab(tab);
+  await logTransition("tab-activated", "tab-activated", {
+    tab_id: tabId,
+    window_id: tab.windowId ?? null
+  });
   await refreshViews();
 });
 
@@ -553,6 +707,10 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   if (changeInfo.url || changeInfo.status === "complete") {
     await setActiveFromTab(tab);
+    await logTransition("tab-updated", changeInfo.url ? "url-change" : "tab-complete", {
+      tab_id: tabId,
+      window_id: tab.windowId ?? null
+    });
     await refreshViews();
   }
 });
@@ -560,8 +718,12 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
   await flushCurrentSession("window-focus");
   runtimeState.isWindowFocused = windowId !== chrome.windows.WINDOW_ID_NONE;
+  runtimeState.currentWindowId = runtimeState.isWindowFocused ? windowId : null;
   runtimeState.sessionStartedAt = Date.now();
   await saveRuntimeState(runtimeState);
+  await logTransition("window-focus", runtimeState.isWindowFocused ? "focused" : "unfocused", {
+    window_id: runtimeState.currentWindowId
+  });
 
   if (runtimeState.isWindowFocused) {
     await refreshActiveTab();
@@ -573,6 +735,7 @@ chrome.idle.onStateChanged.addListener(async (newState) => {
   runtimeState.idleState = newState;
   runtimeState.sessionStartedAt = Date.now();
   await saveRuntimeState(runtimeState);
+  await logTransition("idle-change", newState);
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -595,8 +758,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           popupModel: buildPopupModel(dashboardCache, settings)
         };
       }
+      case MESSAGE_TYPES.getDebugState: {
+        const [settings, device, dashboardCache, queue, events, transitions] = await Promise.all([
+          getSettings(),
+          getDeviceState(),
+          getDashboardCache(),
+          getQueue(),
+          getActivityEvents(),
+          getTrackingTransitions()
+        ]);
+        return {
+          settings,
+          device,
+          queueSize: queue.length,
+          runtimeState,
+          dashboardCache,
+          activityEvents: events,
+          transitions,
+          popupModel: buildPopupModel(dashboardCache, settings)
+        };
+      }
       case MESSAGE_TYPES.refreshViews: {
         await flushCurrentSession("manual-refresh");
+        await logTransition("manual-refresh");
         const dashboardCache = await refreshViews();
         void syncQueue().then(() => refreshViews());
         const settings = await getSettings();
@@ -607,6 +791,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       case MESSAGE_TYPES.syncNow: {
         await flushCurrentSession("manual-sync");
+        await logTransition("manual-sync");
         const sync = await syncQueue();
         const dashboardCache = await refreshViews();
         const settings = await getSettings();
@@ -672,6 +857,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         runtimeState.isPlayingMedia = nextState;
         runtimeState.mediaStateUpdatedAt = new Date().toISOString();
         await saveRuntimeState(runtimeState);
+        await logTransition("media-state-change", nextState ? "playing" : "stopped");
         return { ok: true };
       }
       default:
@@ -687,7 +873,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.runtime.onSuspend.addListener(() => {
-  void flushCurrentSession("suspend");
+  void flushCurrentSession("suspend").then(() => logTransition("suspend"));
 });
 
 void boot();

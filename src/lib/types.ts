@@ -13,6 +13,29 @@ export type Category =
 export type FocusSessionStatus = "active" | "paused" | "completed";
 export type IdleState = "active" | "idle" | "locked";
 export type NudgeSensitivity = "direct" | "balanced" | "gentle";
+export type TrackingStatus =
+  | "active_tracked"
+  | "idle"
+  | "locked"
+  | "browser_unfocused"
+  | "restricted_page"
+  | "unknown_url"
+  | "excluded"
+  | "tracking_paused"
+  | "suspicious_gap"
+  | "extension_inactive";
+
+export type TrackingTransitionType =
+  | "startup"
+  | "heartbeat"
+  | "manual-refresh"
+  | "manual-sync"
+  | "tab-activated"
+  | "tab-updated"
+  | "window-focus"
+  | "idle-change"
+  | "media-state-change"
+  | "suspend";
 
 export interface Settings {
   apiBaseUrl: string;
@@ -43,14 +66,34 @@ export interface DeviceState {
 export interface ActivityEvent {
   event_id: string;
   occurred_at: string;
+  ended_at?: string;
   duration_ms: number;
   url?: string | null;
   host: string | null;
   path_hash?: string;
   window_focused?: boolean;
   idle_state?: IdleState;
+  is_playing_media?: boolean;
+  gap_ms?: number;
+  window_id?: number | null;
+  tab_id?: number | null;
+  tracking_status?: TrackingStatus;
   client_version?: string;
   category?: Category;
+  reason?: string;
+}
+
+export interface TrackingTransition {
+  id: string;
+  type: TrackingTransitionType;
+  occurred_at: string;
+  tab_id?: number | null;
+  window_id?: number | null;
+  url_class?: TrackingStatus | "trackable";
+  host?: string | null;
+  window_focused?: boolean;
+  idle_state?: IdleState;
+  is_playing_media?: boolean;
   reason?: string;
 }
 
@@ -85,6 +128,17 @@ export interface SummaryView {
   distraction_duration_ms: number;
   focus_score?: number;
   focus_alignment: number;
+  observed_browser_time_ms?: number;
+  active_tracked_ms?: number;
+  diagnostic_untracked_ms?: number;
+  idle_ms?: number;
+  locked_ms?: number;
+  unfocused_ms?: number;
+  restricted_ms?: number;
+  unknown_ms?: number;
+  suspicious_gap_ms?: number;
+  suspicious_gap_count?: number;
+  max_interval_ms?: number;
 }
 
 export interface TopSite {
@@ -188,8 +242,11 @@ export interface RuntimeState {
   currentHost: string | null;
   currentUrl: string | null;
   currentTabId: number | null;
+  currentWindowId?: number | null;
   currentHostStartedAt: number | null;
   sessionStartedAt: number | null;
+  lastObservedAt?: number | null;
+  lastHeartbeatAt?: number | null;
   isWindowFocused: boolean;
   idleState: IdleState;
   isPlayingMedia: boolean;
@@ -238,6 +295,8 @@ export interface BootstrapResponse {
   device?: DeviceState;
   queueSize?: number;
   runtimeState?: RuntimeState;
+  transitions?: TrackingTransition[];
+  activityEvents?: ActivityEvent[];
   dashboardCache?: DashboardCache;
   popupModel?: PopupModel;
 }
