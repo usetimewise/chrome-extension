@@ -13,7 +13,7 @@
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "src/background/index.js",
+    "service_worker": "assets/background.js",
     "type": "module"
   },
   "content_scripts": [
@@ -23,8 +23,8 @@
         "https://*/*"
       ],
       "js": [
-        "src/content/media-monitor.js",
-        "src/content/focus-nudge.js"
+        "assets/media-monitor.js",
+        "assets/focus-nudge.js"
       ],
       "all_frames": false,
       "run_at": "document_idle"

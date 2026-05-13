@@ -6,25 +6,9 @@
   <title>Focus Dashboard</title>
   <link rel="stylesheet" href="vendor/fontawesome/css/fontawesome.min.css" />
   <link rel="stylesheet" href="vendor/fontawesome/css/solid.min.css" />
-  <link rel="stylesheet" href="src/ui/common.css" />
-  <link rel="stylesheet" href="src/ui/dashboard.css" />
 </head>
 <body>
-  <main class="dashboard-shell">
-    <header class="dashboard-header">
-      <button class="back-button" data-dashboard-back="true" type="button" aria-label="Go back">
-        <span class="fa-solid fa-arrow-left" aria-hidden="true"></span>
-      </button>
-      <div>
-        <h1>Today's Focus</h1>
-        <p id="dashboardDate" class="dashboard-date"></p>
-        <p id="dashboardStatus" class="micro-copy">Loading focus data...</p>
-      </div>
-    </header>
-
-    <section id="dashboardContent" class="dashboard-content"></section>
-  </main>
-
-  <script type="module" src="src/ui/dashboard.js"></script>
+  <div id="dashboardRoot"></div>
+  <script type="module" src="/src/ui/dashboard.tsx"></script>
 </body>
 </html>

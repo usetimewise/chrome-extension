@@ -1,10 +1,11 @@
 import { generateId } from "./utils.js";
+import type { FocusSession, FocusSessionRequest, FocusSessionsView } from "./types.js";
 
-function nowISO(now = new Date()) {
+function nowISO(now = new Date()): string {
   return now.toISOString();
 }
 
-export function sessionDuration(session, now = new Date()) {
+export function sessionDuration(session: FocusSession | null | undefined, now = new Date()): number {
   let duration = Number(session?.active_duration_ms || 0);
   if (session?.status === "active" && session.last_resumed_at) {
     const resumedAt = Date.parse(session.last_resumed_at);
@@ -15,18 +16,22 @@ export function sessionDuration(session, now = new Date()) {
   return duration;
 }
 
-function sortSessions(sessions) {
+function sortSessions(sessions: FocusSession[]): FocusSession[] {
   return [...sessions].sort((a, b) => Date.parse(b.started_at || "") - Date.parse(a.started_at || ""));
 }
 
-export function startFocusSession(sessions = [], request = {}, now = new Date()) {
+export function startFocusSession(
+  sessions: FocusSession[] = [],
+  request: FocusSessionRequest = {},
+  now = new Date()
+): { sessions: FocusSession[]; session: FocusSession } {
   const active = sessions.find((session) => session.status === "active");
   if (active) {
     return { sessions, session: active };
   }
 
   const timestamp = nowISO(now);
-  const session = {
+  const session: FocusSession = {
     id: generateId(),
     intent: request.intent || "Focus block",
     status: "active",
@@ -43,8 +48,13 @@ export function startFocusSession(sessions = [], request = {}, now = new Date())
   };
 }
 
-export function transitionFocusSession(sessions = [], sessionId, action, now = new Date()) {
-  let changedSession = null;
+export function transitionFocusSession(
+  sessions: FocusSession[] = [],
+  sessionId: string,
+  action: "pause" | "resume" | "end",
+  now = new Date()
+): { sessions: FocusSession[]; session: FocusSession } {
+  let changedSession: FocusSession | null = null;
   const timestamp = nowISO(now);
   const next = sessions.map((session) => {
     if (session.id !== sessionId) {
@@ -80,7 +90,7 @@ export function transitionFocusSession(sessions = [], sessionId, action, now = n
   };
 }
 
-export function buildFocusSessionsView(sessions = [], now = new Date()) {
+export function buildFocusSessionsView(sessions: FocusSession[] = [], now = new Date()): FocusSessionsView {
   const sorted = sortSessions(sessions).map((session) => ({
     ...session,
     active_duration_ms: sessionDuration(session, now)

@@ -5,11 +5,11 @@ const MESSAGE_TYPES = {
 
 const HEARTBEAT_MS = 15_000;
 const trackedMedia = new WeakSet();
-let observer = null;
-let heartbeatId = null;
-let lastKnownState = null;
+let observer: MutationObserver | null = null;
+let heartbeatId: number | null = null;
+let lastKnownState: boolean | null = null;
 
-function isMediaPlaying(element) {
+function isMediaPlaying(element: Element): boolean {
   if (!(element instanceof HTMLMediaElement)) {
     return false;
   }
@@ -20,15 +20,15 @@ function isMediaPlaying(element) {
     element.playbackRate !== 0;
 }
 
-function collectMediaElements() {
+function collectMediaElements(): HTMLMediaElement[] {
   return Array.from(document.querySelectorAll("video, audio"));
 }
 
-function computeMediaState() {
+function computeMediaState(): boolean {
   return collectMediaElements().some(isMediaPlaying);
 }
 
-function scheduleHeartbeat() {
+function scheduleHeartbeat(): void {
   if (heartbeatId !== null) {
     clearInterval(heartbeatId);
     heartbeatId = null;
@@ -46,7 +46,7 @@ function scheduleHeartbeat() {
   }, HEARTBEAT_MS);
 }
 
-function notifyState(force = false) {
+function notifyState(force = false): void {
   const nextState = computeMediaState();
   if (!force && nextState === lastKnownState) {
     return;
@@ -64,7 +64,7 @@ function handleMediaSignal() {
   notifyState(false);
 }
 
-function attachListeners(element) {
+function attachListeners(element: Element): void {
   if (!(element instanceof HTMLMediaElement) || trackedMedia.has(element)) {
     return;
   }
@@ -85,7 +85,7 @@ function attachListeners(element) {
   }
 }
 
-function scanMediaTree(root = document) {
+function scanMediaTree(root: ParentNode | Element | Document | DocumentFragment | Node = document): void {
   if (!root) {
     return;
   }

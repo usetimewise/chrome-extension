@@ -48,8 +48,19 @@ import {
   normalizeHost,
   normalizePathHash
 } from "../lib/utils.js";
+import type {
+  ActivityEvent,
+  BootstrapResponse,
+  Category,
+  DashboardCache,
+  DeviceState,
+  FocusSession,
+  PopupModel,
+  RuntimeState,
+  Settings
+} from "../lib/types.js";
 
-let runtimeState = {
+let runtimeState: RuntimeState = {
   ...DEFAULT_RUNTIME_STATE,
   focusNudgeNotifications: {
     ...DEFAULT_RUNTIME_STATE.focusNudgeNotifications,
@@ -132,7 +143,7 @@ async function ensureDeviceRegistration(force = false) {
   }
 }
 
-async function withRegisteredDevice(action) {
+async function withRegisteredDevice<T>(action: (settings: Settings, deviceState: DeviceState) => Promise<T>): Promise<T> {
   let settings = await getSettings();
   let deviceState = await ensureDeviceRegistration();
 
@@ -198,7 +209,7 @@ async function flushCurrentSession(reason = "transition", settingsOverride = nul
       return;
     }
 
-    const event = {
+    const event: ActivityEvent = {
       event_id: generateId(),
       occurred_at: new Date(startedAt).toISOString(),
       duration_ms: durationMs,
@@ -285,7 +296,7 @@ async function syncQueue() {
   }
 }
 
-async function refreshViews() {
+async function refreshViews(): Promise<DashboardCache> {
   try {
     const [settings, events, focusSessions, currentCache] = await Promise.all([
       getSettings(),
@@ -295,7 +306,7 @@ async function refreshViews() {
     ]);
     const todayView = buildTodayView(events, settings);
     const focusSessionsView = buildFocusSessionsView(focusSessions);
-    const currentHostCategory = runtimeState.currentHost
+    const currentHostCategory: Category | null = runtimeState.currentHost
       ? resolveCategory(runtimeState.currentHost, settings)
       : null;
 
@@ -321,9 +332,9 @@ function driftThresholdMinutes(sensitivity = APP_SETTINGS.nudgeSensitivity) {
     NUDGE_SENSITIVITY_THRESHOLDS_MINUTES[APP_SETTINGS.nudgeSensitivity];
 }
 
-function getFocusNotificationState(activeSession) {
+function getFocusNotificationState(activeSession: FocusSession | null | undefined): RuntimeState["focusNudgeNotifications"] {
   const sessionId = activeSession?.id || null;
-  const current = runtimeState.focusNudgeNotifications || {};
+  const current = runtimeState.focusNudgeNotifications;
 
   if (current.sessionId === sessionId && current.hosts && typeof current.hosts === "object") {
     return current;
@@ -354,7 +365,10 @@ function activeSessionStartedAt(activeSession) {
   return Number.isNaN(activeSince) ? null : activeSince;
 }
 
-async function showFocusNudge(message, details = {}) {
+async function showFocusNudge(
+  message: string,
+  details: { host?: string; category?: string; duration?: string } = {}
+) {
   if (!runtimeState.currentTabId) {
     const error = new Error("No active tab available for focus nudge");
     await saveDashboardCache({ lastError: error.message });
@@ -441,7 +455,7 @@ async function evaluateFocusNudgeNotification(cache = null, settings = null) {
   await saveRuntimeState(runtimeState);
 }
 
-function buildPopupModel(cache, settings) {
+function buildPopupModel(cache: DashboardCache, settings: Settings): BootstrapResponse["popupModel"] {
   const today = cache.todayView;
   const activeSession = cache.focusSessionsView?.active_session || null;
   const currentDwellStartedAt = runtimeState.currentHostStartedAt || runtimeState.sessionStartedAt;
@@ -454,7 +468,7 @@ function buildPopupModel(cache, settings) {
   const isDistractingCurrent = DISTRACTION_CATEGORIES.has(currentCategory);
   const isDrifting = isDistractingCurrent && currentDwellMs >= thresholdMs;
 
-  let state = "empty";
+  let state: PopupModel["state"] = "empty";
   if (today?.summary?.total_duration_ms > 0) {
     state = "default";
   }
@@ -619,7 +633,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           [MESSAGE_TYPES.pauseFocusSession]: "pause",
           [MESSAGE_TYPES.resumeFocusSession]: "resume",
           [MESSAGE_TYPES.endFocusSession]: "end"
-        };
+        } as const;
         const sessions = await getFocusSessions();
         const result = transitionFocusSession(sessions, message.sessionId, actionMap[message.type]);
         await saveFocusSessions(result.sessions);

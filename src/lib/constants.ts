@@ -1,3 +1,5 @@
+import type { Category, DashboardCache, RuntimeState } from "./types.js";
+
 export const STORAGE_KEYS = {
   device: "twt_device_v2",
   queue: "twt_queue_v2",
@@ -6,7 +8,7 @@ export const STORAGE_KEYS = {
   activityEvents: "twt_activity_events_v1",
   focusSessions: "twt_focus_sessions_v1",
   siteRules: "twt_site_rules_v1"
-};
+} as const;
 
 export const MESSAGE_TYPES = {
   getBootstrap: "GET_BOOTSTRAP",
@@ -23,7 +25,7 @@ export const MESSAGE_TYPES = {
   showFocusNudge: "SHOW_FOCUS_NUDGE"
 };
 
-export const DEFAULT_DASHBOARD_CACHE = {
+export const DEFAULT_DASHBOARD_CACHE: DashboardCache = {
   todayView: null,
   trendsView: null,
   sitesView: null,
@@ -34,7 +36,7 @@ export const DEFAULT_DASHBOARD_CACHE = {
   lastError: null
 };
 
-export const DEFAULT_RUNTIME_STATE = {
+export const DEFAULT_RUNTIME_STATE: RuntimeState = {
   currentHost: null,
   currentUrl: null,
   currentTabId: null,
@@ -50,7 +52,7 @@ export const DEFAULT_RUNTIME_STATE = {
   }
 };
 
-export const CATEGORY_LABELS = {
+export const CATEGORY_LABELS: Record<Category, string> = {
   work: "Work",
   communication: "Communication",
   learning: "Learning",
@@ -63,5 +65,5 @@ export const CATEGORY_LABELS = {
   excluded: "Excluded"
 };
 
-export const FOCUS_CATEGORIES = new Set(["work", "learning", "tools"]);
-export const DISTRACTION_CATEGORIES = new Set(["social", "entertainment", "shopping", "news"]);
+export const FOCUS_CATEGORIES = new Set<Category>(["work", "learning", "tools"]);
+export const DISTRACTION_CATEGORIES = new Set<Category>(["social", "entertainment", "shopping", "news"]);

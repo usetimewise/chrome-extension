@@ -2,9 +2,12 @@ import {
   DISTRACTION_CATEGORIES,
   FOCUS_CATEGORIES
 } from "./constants.js";
+import type { ActivityEvent, Category, Settings, SitesView, TodayView } from "./types.js";
 import { hostMatchesRule } from "./utils.js";
 
-const DEFAULT_CATEGORY_CATALOG = {
+type AnalyticsSettings = Partial<Settings>;
+
+const DEFAULT_CATEGORY_CATALOG: Record<string, Category> = {
   "github.com": "work",
   "gitlab.com": "work",
   "jira.com": "work",
@@ -70,7 +73,7 @@ function normalizeHost(host) {
   return String(host || "").trim().toLowerCase().replace(/^www\./, "");
 }
 
-export function resolveCategory(host, settings = {}) {
+export function resolveCategory(host: string | null | undefined, settings: AnalyticsSettings = {}): Category {
   const normalizedHost = normalizeHost(host);
   if (!normalizedHost) {
     return "other";
@@ -454,7 +457,11 @@ function buildTimeline(events, settings, dateKey) {
   return points;
 }
 
-export function buildTodayView(events = [], settings = {}, now = new Date()) {
+export function buildTodayView(
+  events: ActivityEvent[] = [],
+  settings: AnalyticsSettings = {},
+  now = new Date()
+): TodayView {
   const timezone = settings.timezone || "UTC";
   const todayKey = localDateKey(now, timezone);
   const yesterdayKey = localDateKey(new Date(now.getTime() - 24 * 60 * 60 * 1000), timezone);
@@ -476,7 +483,11 @@ export function buildTodayView(events = [], settings = {}, now = new Date()) {
   };
 }
 
-export function buildSitesView(events = [], settings = {}, now = new Date()) {
+export function buildSitesView(
+  events: ActivityEvent[] = [],
+  settings: AnalyticsSettings = {},
+  now = new Date()
+): SitesView {
   const timezone = settings.timezone || "UTC";
   const todayKey = localDateKey(now, timezone);
   const weekCutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;

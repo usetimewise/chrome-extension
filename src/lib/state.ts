@@ -4,12 +4,22 @@ import {
   STORAGE_KEYS
 } from "./constants.js";
 import { getAppSettings } from "./app-settings.js";
+import type {
+  ActivityEvent,
+  Category,
+  DashboardCache,
+  DeviceState,
+  FocusSession,
+  RuntimeState,
+  Settings,
+  SiteRuleState
+} from "./types.js";
 import { generateId, hostMatchesRule } from "./utils.js";
 import { getFromStorage, setInStorage } from "./storage.js";
 
 const ACTIVITY_EVENT_RETENTION_DAYS = 30;
 
-export async function getSettings() {
+export async function getSettings(): Promise<Settings> {
   const settings = getAppSettings();
   const siteRules = await getSiteRules();
   return {
@@ -25,7 +35,7 @@ export async function getSettings() {
   };
 }
 
-export async function getDeviceState() {
+export async function getDeviceState(): Promise<DeviceState> {
   const device = await getFromStorage(STORAGE_KEYS.device, null);
   if (device) {
     return device;
@@ -40,11 +50,11 @@ export async function getDeviceState() {
   return next;
 }
 
-export async function saveDeviceState(deviceState) {
+export async function saveDeviceState(deviceState: DeviceState): Promise<DeviceState> {
   return setInStorage(STORAGE_KEYS.device, deviceState);
 }
 
-export async function resetDeviceRegistration() {
+export async function resetDeviceRegistration(): Promise<DeviceState> {
   const deviceState = await getDeviceState();
   const next = {
     ...deviceState,
@@ -55,26 +65,26 @@ export async function resetDeviceRegistration() {
   return next;
 }
 
-export async function getQueue() {
-  return getFromStorage(STORAGE_KEYS.queue, []);
+export async function getQueue(): Promise<ActivityEvent[]> {
+  return getFromStorage<ActivityEvent[]>(STORAGE_KEYS.queue, []);
 }
 
-export async function appendToQueue(event) {
+export async function appendToQueue(event: ActivityEvent): Promise<ActivityEvent[]> {
   const queue = await getQueue();
   queue.push(event);
   await setInStorage(STORAGE_KEYS.queue, queue);
   return queue;
 }
 
-export async function replaceQueue(queue) {
+export async function replaceQueue(queue: ActivityEvent[]): Promise<ActivityEvent[]> {
   return setInStorage(STORAGE_KEYS.queue, queue);
 }
 
-export async function getActivityEvents() {
-  return getFromStorage(STORAGE_KEYS.activityEvents, []);
+export async function getActivityEvents(): Promise<ActivityEvent[]> {
+  return getFromStorage<ActivityEvent[]>(STORAGE_KEYS.activityEvents, []);
 }
 
-export async function appendActivityEvent(event) {
+export async function appendActivityEvent(event: ActivityEvent): Promise<ActivityEvent[]> {
   const events = await getActivityEvents();
   const cutoff = Date.now() - ACTIVITY_EVENT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
   const retained = events.filter((item) => {
@@ -86,23 +96,23 @@ export async function appendActivityEvent(event) {
   return retained;
 }
 
-export async function getFocusSessions() {
-  return getFromStorage(STORAGE_KEYS.focusSessions, []);
+export async function getFocusSessions(): Promise<FocusSession[]> {
+  return getFromStorage<FocusSession[]>(STORAGE_KEYS.focusSessions, []);
 }
 
-export async function saveFocusSessions(sessions) {
+export async function saveFocusSessions(sessions: FocusSession[]): Promise<FocusSession[]> {
   return setInStorage(STORAGE_KEYS.focusSessions, sessions);
 }
 
-export async function getSiteRules() {
-  const rules = await getFromStorage(STORAGE_KEYS.siteRules, null);
+export async function getSiteRules(): Promise<SiteRuleState> {
+  const rules = await getFromStorage<SiteRuleState | null>(STORAGE_KEYS.siteRules, null);
   return {
     excludedHosts: [...(rules?.excludedHosts || [])],
     categoryOverrides: { ...(rules?.categoryOverrides || {}) }
   };
 }
 
-export async function saveSiteRule(host, category, excluded = false) {
+export async function saveSiteRule(host: string, category?: Category, excluded = false): Promise<SiteRuleState> {
   const normalizedHost = String(host || "").trim().toLowerCase();
   if (!normalizedHost) {
     throw new Error("host is required");
@@ -127,15 +137,15 @@ export async function saveSiteRule(host, category, excluded = false) {
   return next;
 }
 
-export async function getDashboardCache() {
-  const cached = await getFromStorage(STORAGE_KEYS.dashboardCache, null);
+export async function getDashboardCache(): Promise<DashboardCache> {
+  const cached = await getFromStorage<Partial<DashboardCache> | null>(STORAGE_KEYS.dashboardCache, null);
   return {
     ...DEFAULT_DASHBOARD_CACHE,
     ...(cached || {})
   };
 }
 
-export async function saveDashboardCache(cachePatch) {
+export async function saveDashboardCache(cachePatch: Partial<DashboardCache>): Promise<DashboardCache> {
   const current = await getDashboardCache();
   const next = {
     ...current,
@@ -144,8 +154,8 @@ export async function saveDashboardCache(cachePatch) {
   return setInStorage(STORAGE_KEYS.dashboardCache, next);
 }
 
-export async function getRuntimeState() {
-  const runtime = await getFromStorage(STORAGE_KEYS.runtimeState, null);
+export async function getRuntimeState(): Promise<RuntimeState> {
+  const runtime = await getFromStorage<Partial<RuntimeState> | null>(STORAGE_KEYS.runtimeState, null);
   return {
     ...DEFAULT_RUNTIME_STATE,
     ...(runtime || {}),
@@ -159,7 +169,7 @@ export async function getRuntimeState() {
   };
 }
 
-export async function saveRuntimeState(runtimePatch) {
+export async function saveRuntimeState(runtimePatch: Partial<RuntimeState>): Promise<RuntimeState> {
   const current = await getRuntimeState();
   const next = {
     ...current,
