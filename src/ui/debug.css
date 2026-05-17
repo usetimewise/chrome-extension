@@ -41,7 +41,15 @@ body::before {
   line-height: 1.4;
 }
 
-.debug-refresh {
+.debug-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.debug-button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -53,6 +61,11 @@ body::before {
   font-size: 14px;
   font-weight: 700;
   padding: 8px 12px;
+}
+
+.debug-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .debug-grid {
@@ -161,5 +174,9 @@ body::before {
   .debug-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .debug-actions {
+    justify-content: flex-start;
   }
 }

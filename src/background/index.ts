@@ -19,6 +19,7 @@ import {
   getQueue,
   getRuntimeState,
   getSettings,
+  getSiteRules,
   getTrackingTransitions,
   replaceQueue,
   resetDeviceRegistration,
@@ -75,6 +76,7 @@ let runtimeState: RuntimeState = {
     hosts: {}
   }
 };
+let flushQueue: Promise<void> = Promise.resolve();
 
 async function applyTrackingSettings(settings = null) {
   const resolvedSettings = settings || await getSettings();
@@ -309,6 +311,12 @@ function isTrackingEligible(host, settings) {
 }
 
 async function flushCurrentSession(reason = "transition", settingsOverride = null) {
+  const nextFlush = flushQueue.then(() => flushCurrentSessionNow(reason, settingsOverride));
+  flushQueue = nextFlush.catch(() => undefined);
+  return nextFlush;
+}
+
+async function flushCurrentSessionNow(reason = "transition", settingsOverride = null) {
   const settings = settingsOverride || await getSettings();
   const startedAt = runtimeState.sessionStartedAt;
   const now = Date.now();
@@ -759,22 +767,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
       }
       case MESSAGE_TYPES.getDebugState: {
-        const [settings, device, dashboardCache, queue, events, transitions] = await Promise.all([
+        const [settings, device, dashboardCache, queue, events, transitions, focusSessions, siteRules] = await Promise.all([
           getSettings(),
           getDeviceState(),
           getDashboardCache(),
           getQueue(),
           getActivityEvents(),
-          getTrackingTransitions()
+          getTrackingTransitions(),
+          getFocusSessions(),
+          getSiteRules()
         ]);
         return {
           settings,
           device,
+          queue,
           queueSize: queue.length,
           runtimeState,
           dashboardCache,
           activityEvents: events,
           transitions,
+          focusSessions,
+          siteRules,
           popupModel: buildPopupModel(dashboardCache, settings)
         };
       }

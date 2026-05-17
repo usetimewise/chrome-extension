@@ -40,6 +40,42 @@ function JsonBlock({ value }: { value: unknown }) {
   return <pre className="json-block">{JSON.stringify(value, null, 2)}</pre>;
 }
 
+function exportFileName(exportedAt: string): string {
+  const safeTimestamp = exportedAt.replace(/[:.]/g, "-");
+  return `time-wise-debug-${safeTimestamp}.json`;
+}
+
+function buildDebugExport(debugState: BootstrapResponse) {
+  const manifest = chrome.runtime.getManifest();
+
+  return {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    metadata: {
+      extensionVersion: manifest.version,
+      manifestVersion: manifest.manifest_version,
+      userAgent: window.navigator.userAgent,
+      language: window.navigator.language,
+      languages: Array.from(window.navigator.languages || []),
+      locale: Intl.DateTimeFormat().resolvedOptions().locale,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    },
+    snapshot: debugState
+  };
+}
+
+function downloadJsonFile(fileName: string, value: unknown) {
+  const blob = new Blob([`${JSON.stringify(value, null, 2)}\n`], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 function IntervalTable({ events }: { events: ActivityEvent[] }) {
   const latest = [...events]
     .sort((a, b) => Date.parse(b.occurred_at || "") - Date.parse(a.occurred_at || ""))
@@ -97,6 +133,7 @@ function TransitionTable({ transitions }: { transitions: TrackingTransition[] })
 function DebugApp() {
   const [debugState, setDebugState] = useState<BootstrapResponse | null>(null);
   const [error, setError] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
 
   async function loadDebugState() {
     try {
@@ -105,6 +142,21 @@ function DebugApp() {
       setError("");
     } catch (loadError) {
       setError(loadError?.message || "Unable to load debug state");
+    }
+  }
+
+  async function exportDebugState() {
+    setIsExporting(true);
+    try {
+      const next = await sendMessage<BootstrapResponse>({ type: MESSAGE_TYPES.getDebugState });
+      setDebugState(next);
+      setError("");
+      const debugExport = buildDebugExport(next);
+      downloadJsonFile(exportFileName(debugExport.exportedAt), debugExport);
+    } catch (exportError) {
+      setError(exportError?.message || "Unable to export debug state");
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -130,10 +182,16 @@ function DebugApp() {
           <h1>Tracking Debug</h1>
           <p>{error || `Queue ${debugState?.queueSize ?? 0} events, ${events.length} intervals, ${transitions.length} transitions`}</p>
         </div>
-        <button className="debug-refresh" type="button" onClick={() => void loadDebugState()}>
-          <span className="fa-solid fa-rotate" aria-hidden="true" />
-          Refresh
-        </button>
+        <div className="debug-actions">
+          <button className="debug-button" type="button" onClick={() => void exportDebugState()} disabled={isExporting}>
+            <span className="fa-solid fa-download" aria-hidden="true" />
+            {isExporting ? "Exporting" : "Export JSON"}
+          </button>
+          <button className="debug-button" type="button" onClick={() => void loadDebugState()}>
+            <span className="fa-solid fa-rotate" aria-hidden="true" />
+            Refresh
+          </button>
+        </div>
       </header>
 
       <section className="debug-grid" aria-label="Diagnostic totals">
@@ -162,6 +220,7 @@ function DebugApp() {
         <h2 id="syncHeading">Sync State</h2>
         <JsonBlock value={{
           queueSize: debugState?.queueSize || 0,
+          queue: debugState?.queue || [],
           lastSyncAt: debugState?.dashboardCache?.lastSyncAt || null,
           lastError: debugState?.dashboardCache?.lastError || null
         }} />

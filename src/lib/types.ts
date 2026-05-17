@@ -123,6 +123,11 @@ export interface FocusSessionRequest {
 }
 
 export interface SummaryView {
+  range?: string;
+  range_start?: string;
+  range_end?: string;
+  range_timezone?: string;
+  range_local_date?: string;
   total_duration_ms: number;
   focus_duration_ms: number;
   distraction_duration_ms: number;
@@ -139,6 +144,7 @@ export interface SummaryView {
   suspicious_gap_ms?: number;
   suspicious_gap_count?: number;
   max_interval_ms?: number;
+  event_count?: number;
 }
 
 export interface TopSite {
@@ -293,10 +299,13 @@ export interface PopupModel {
 export interface BootstrapResponse {
   settings?: Settings;
   device?: DeviceState;
+  queue?: ActivityEvent[];
   queueSize?: number;
   runtimeState?: RuntimeState;
   transitions?: TrackingTransition[];
   activityEvents?: ActivityEvent[];
+  focusSessions?: FocusSession[];
+  siteRules?: SiteRuleState;
   dashboardCache?: DashboardCache;
   popupModel?: PopupModel;
 }

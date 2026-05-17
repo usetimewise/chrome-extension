@@ -56,6 +56,28 @@ function localDateParts(date, timezone) {
   return Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
 }
 
+function utcInstantForLocalTime(dateKey: string, hour: number, timezone: string): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const targetUtc = Date.UTC(year, month - 1, day, hour, 0, 0, 0);
+  let guess = targetUtc;
+
+  for (let index = 0; index < 3; index += 1) {
+    const parts = localDateParts(new Date(guess), timezone);
+    const localAsUtc = Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour || 0),
+      Number(parts.minute || 0),
+      0,
+      0
+    );
+    guess += targetUtc - localAsUtc;
+  }
+
+  return new Date(guess).toISOString();
+}
+
 function localDateKey(date, timezone) {
   const parts = localDateParts(date, timezone);
   return `${parts.year}-${parts.month}-${parts.day}`;
@@ -120,6 +142,84 @@ function eventsForDate(events, timezone, key) {
     const occurredAt = new Date(event.occurred_at || "");
     return !Number.isNaN(occurredAt.getTime()) && localDateKey(occurredAt, timezone) === key;
   });
+}
+
+function normalizedEndedAt(event: ActivityEvent, startedAt: number): number {
+  const explicitEnd = Date.parse(event.ended_at || "");
+  if (!Number.isNaN(explicitEnd) && explicitEnd >= startedAt) {
+    return explicitEnd;
+  }
+  return startedAt + Math.max(0, Number(event.duration_ms || 0));
+}
+
+function mergeKey(event: ActivityEvent, settings: AnalyticsSettings): string {
+  const status = event.tracking_status || "active_tracked";
+  const category = event.category || resolveCategory(event.host, settings);
+  return [
+    status,
+    event.host || "",
+    category || ""
+  ].join("\u0000");
+}
+
+function mergeEquivalentIntervals(events: ActivityEvent[], settings: AnalyticsSettings = {}): ActivityEvent[] {
+  const byKey = new Map<string, Array<ActivityEvent & { _startedAt: number; _endedAt: number }>>();
+
+  for (const event of events) {
+    const startedAt = Date.parse(event.occurred_at || "");
+    if (Number.isNaN(startedAt)) {
+      continue;
+    }
+
+    const endedAt = normalizedEndedAt(event, startedAt);
+    const key = mergeKey(event, settings);
+    const normalized = {
+      ...event,
+      category: event.category || resolveCategory(event.host, settings),
+      _startedAt: startedAt,
+      _endedAt: endedAt
+    };
+    byKey.set(key, [...(byKey.get(key) || []), normalized]);
+  }
+
+  const merged: ActivityEvent[] = [];
+  for (const group of byKey.values()) {
+    const sorted = group.sort((a, b) => a._startedAt - b._startedAt || a._endedAt - b._endedAt);
+    let current = sorted[0];
+
+    for (const next of sorted.slice(1)) {
+      if (next._startedAt <= current._endedAt) {
+        current = {
+          ...current,
+          _endedAt: Math.max(current._endedAt, next._endedAt)
+        };
+        continue;
+      }
+
+      merged.push(toMergedEvent(current));
+      current = next;
+    }
+
+    if (current) {
+      merged.push(toMergedEvent(current));
+    }
+  }
+
+  return merged.sort((a, b) => Date.parse(a.occurred_at || "") - Date.parse(b.occurred_at || ""));
+}
+
+function toMergedEvent(event: ActivityEvent & { _startedAt: number; _endedAt: number }): ActivityEvent {
+  const {
+    _startedAt,
+    _endedAt,
+    ...rest
+  } = event;
+  return {
+    ...rest,
+    occurred_at: new Date(_startedAt).toISOString(),
+    ended_at: new Date(_endedAt).toISOString(),
+    duration_ms: Math.max(0, _endedAt - _startedAt)
+  };
 }
 
 function diagnosticSummary(events: ActivityEvent[]) {
@@ -263,8 +363,10 @@ function summarize(events, settings, rangeName, rangeKey, now = new Date()) {
 
   return {
     range: rangeName,
-    range_start: `${rangeKey}T00:00:00.000Z`,
+    range_start: utcInstantForLocalTime(rangeKey, 0, timezone),
     range_end: now.toISOString(),
+    range_timezone: timezone,
+    range_local_date: rangeKey,
     total_duration_ms: totalDurationMs,
     focus_duration_ms: focusDurationMs,
     distraction_duration_ms: distractionDurationMs,
@@ -479,7 +581,7 @@ function buildTimeline(events, settings, dateKey) {
   const timezone = settings.timezone || "UTC";
   const points = Array.from({ length: 24 }, (_, hour) => ({
     label: `${String(hour).padStart(2, "0")}:00`,
-    bucket_start: `${dateKey}T${String(hour).padStart(2, "0")}:00:00.000Z`,
+    bucket_start: utcInstantForLocalTime(dateKey, hour, timezone),
     total_duration_ms: 0,
     focus_duration_ms: 0,
     distraction_duration_ms: 0
@@ -512,8 +614,8 @@ export function buildTodayView(
   const timezone = settings.timezone || "UTC";
   const todayKey = localDateKey(now, timezone);
   const yesterdayKey = localDateKey(new Date(now.getTime() - 24 * 60 * 60 * 1000), timezone);
-  const todayEvents = eventsForDate(events, timezone, todayKey);
-  const yesterdayEvents = eventsForDate(events, timezone, yesterdayKey);
+  const todayEvents = mergeEquivalentIntervals(eventsForDate(events, timezone, todayKey), settings);
+  const yesterdayEvents = mergeEquivalentIntervals(eventsForDate(events, timezone, yesterdayKey), settings);
   const todayActiveEvents = todayEvents.filter(isActiveTrackedEvent);
   const yesterdayActiveEvents = yesterdayEvents.filter(isActiveTrackedEvent);
   const todaySummary = {
@@ -545,7 +647,7 @@ export function buildSitesView(
   const weekCutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
   const itemsByHost = new Map();
 
-  for (const event of events.filter(isActiveTrackedEvent)) {
+  for (const event of mergeEquivalentIntervals(events.filter(isActiveTrackedEvent), settings)) {
     const occurredAt = new Date(event.occurred_at || "");
     if (Number.isNaN(occurredAt.getTime()) || occurredAt.getTime() < weekCutoff) {
       continue;

@@ -116,3 +116,65 @@ test("buildTodayView excludes diagnostic intervals from focus metrics and top si
   assert.deepEqual(view.top_sites.map((site) => site.host), ["github.com"]);
   assert.deepEqual(view.top_categories.map((item) => item.category), ["work"]);
 });
+
+test("buildTodayView merges overlapping duplicate intervals", () => {
+  const view = buildTodayView([
+    {
+      event_id: "heartbeat",
+      occurred_at: "2026-04-20T10:00:00.000Z",
+      ended_at: "2026-04-20T10:01:00.000Z",
+      duration_ms: 60_000,
+      host: "github.com",
+      category: "work",
+      tracking_status: "active_tracked",
+      reason: "heartbeat"
+    },
+    {
+      event_id: "tab-change",
+      occurred_at: "2026-04-20T10:00:00.000Z",
+      ended_at: "2026-04-20T10:01:01.000Z",
+      duration_ms: 61_000,
+      host: "github.com",
+      category: "work",
+      tracking_status: "active_tracked",
+      reason: "active-tab-change"
+    },
+    {
+      event_id: "idle-duplicate-a",
+      occurred_at: "2026-04-20T10:05:00.000Z",
+      ended_at: "2026-04-20T10:06:00.000Z",
+      duration_ms: 60_000,
+      host: "github.com",
+      tracking_status: "idle"
+    },
+    {
+      event_id: "idle-duplicate-b",
+      occurred_at: "2026-04-20T10:05:30.000Z",
+      ended_at: "2026-04-20T10:06:30.000Z",
+      duration_ms: 60_000,
+      host: "github.com",
+      tracking_status: "idle"
+    }
+  ], settings, new Date("2026-04-20T12:00:00.000Z"));
+
+  assert.equal(view.summary.total_duration_ms, 61_000);
+  assert.equal(view.summary.focus_duration_ms, 61_000);
+  assert.equal(view.summary.active_tracked_ms, 61_000);
+  assert.equal(view.summary.idle_ms, 90_000);
+  assert.equal(view.summary.observed_browser_time_ms, 151_000);
+  assert.equal(view.summary.event_count, 1);
+  assert.equal(view.top_sites[0].duration_ms, 61_000);
+});
+
+test("buildTodayView uses real UTC instants for local range boundaries", () => {
+  const view = buildTodayView([], {
+    ...settings,
+    timezone: "Asia/Almaty"
+  }, new Date("2026-05-14T13:15:33.000Z"));
+
+  assert.equal(view.summary.range_local_date, "2026-05-14");
+  assert.equal(view.summary.range_timezone, "Asia/Almaty");
+  assert.equal(view.summary.range_start, "2026-05-13T19:00:00.000Z");
+  assert.equal(view.timeline?.[0]?.bucket_start, "2026-05-13T19:00:00.000Z");
+  assert.equal(view.timeline?.[9]?.bucket_start, "2026-05-14T04:00:00.000Z");
+});
