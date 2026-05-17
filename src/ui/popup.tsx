@@ -8,6 +8,7 @@ import type { BootstrapResponse, PopupModel, TopCategory, TopSite } from "../lib
 import { formatDuration, formatPercent, humanizeCategory } from "../lib/utils.js";
 
 let bootstrapInFlight = false;
+let refreshInFlight = false;
 
 async function sendMessage<TResponse = BootstrapResponse>(message: Record<string, unknown>): Promise<TResponse> {
   return chrome.runtime.sendMessage(message);
@@ -76,16 +77,25 @@ function PopupApp() {
   ), [model]);
 
   async function loadBootstrap(messageType = MESSAGE_TYPES.getBootstrap) {
-    if (bootstrapInFlight) {
+    const isRefresh = messageType === MESSAGE_TYPES.refreshViews;
+    if ((isRefresh && refreshInFlight) || (!isRefresh && bootstrapInFlight)) {
       return;
     }
 
-    bootstrapInFlight = true;
+    if (isRefresh) {
+      refreshInFlight = true;
+    } else {
+      bootstrapInFlight = true;
+    }
     try {
       const next = await sendMessage<BootstrapResponse>({ type: messageType });
       setBootstrap(next);
     } finally {
-      bootstrapInFlight = false;
+      if (isRefresh) {
+        refreshInFlight = false;
+      } else {
+        bootstrapInFlight = false;
+      }
     }
   }
 
@@ -110,9 +120,8 @@ function PopupApp() {
   useEffect(() => {
     let refreshTimer: number | null = null;
 
-    void loadBootstrap(MESSAGE_TYPES.refreshViews).catch(() => {
-      void loadBootstrap(MESSAGE_TYPES.getBootstrap);
-    });
+    void loadBootstrap(MESSAGE_TYPES.getBootstrap)
+      .finally(() => loadBootstrap(MESSAGE_TYPES.refreshViews));
 
     refreshTimer = window.setInterval(() => {
       void loadBootstrap(MESSAGE_TYPES.getBootstrap);
@@ -126,7 +135,33 @@ function PopupApp() {
   }, []);
 
   if (!model) {
-    return null;
+    return (
+      <main className="popup-shell is-loading" aria-label="Focus summary">
+        <header className="popup-status">
+          <button className="focus-mode-button is-idle" type="button" aria-label="Start focus mode" disabled>
+            <span className="focus-mode-icon fa-solid fa-play" aria-hidden="true" />
+            <span>Start</span>
+          </button>
+          <div className="popup-icon-actions">
+            <button className="dashboard-button" type="button" aria-label="Open dashboard" onClick={openDashboard}>
+              <span className="dashboard-icon fa-solid fa-chart-column" aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+        <section className="today-summary" aria-label="Tracked today">
+          <div className="tracked-line">
+            <strong>--</strong>
+            <span>tracked today</span>
+          </div>
+          <div className="alignment-line">
+            <div className="progress-track" aria-label="Loading focus alignment">
+              <span style={{ width: "0%" }} />
+            </div>
+            <strong>0%</strong>
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (

@@ -2,11 +2,29 @@ import {
   DISTRACTION_CATEGORIES,
   FOCUS_CATEGORIES
 } from "./constants.js";
+import {
+  DAY_MS,
+  localDateKey,
+  localHour,
+  localMinuteOfDay,
+  utcInstantForLocalTime
+} from "./local-date.js";
 import type { ActivityEvent, Category, Settings, SitesView, TodayView } from "./types.js";
 import { isActiveTrackedEvent } from "./tracking-diagnostics.js";
 import { hostMatchesRule } from "./utils.js";
 
 type AnalyticsSettings = Partial<Settings>;
+
+export interface DayAnalytics {
+  schemaVersion: 1;
+  dateKey: string;
+  summary: TodayView["summary"];
+  top_sites: TodayView["top_sites"];
+  top_categories: TodayView["top_categories"];
+  timeline: TodayView["timeline"];
+  main_insight: TodayView["main_insight"];
+  supporting_insights: TodayView["supporting_insights"];
+}
 
 const DEFAULT_CATEGORY_CATALOG: Record<string, Category> = {
   "github.com": "work",
@@ -42,50 +60,6 @@ const DEFAULT_CATEGORY_CATALOG: Record<string, Category> = {
   "news.ycombinator.com": "news",
   "medium.com": "news"
 };
-
-function localDateParts(date, timezone) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone || "UTC",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23"
-  }).formatToParts(date);
-  return Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
-}
-
-function utcInstantForLocalTime(dateKey: string, hour: number, timezone: string): string {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const targetUtc = Date.UTC(year, month - 1, day, hour, 0, 0, 0);
-  let guess = targetUtc;
-
-  for (let index = 0; index < 3; index += 1) {
-    const parts = localDateParts(new Date(guess), timezone);
-    const localAsUtc = Date.UTC(
-      Number(parts.year),
-      Number(parts.month) - 1,
-      Number(parts.day),
-      Number(parts.hour || 0),
-      Number(parts.minute || 0),
-      0,
-      0
-    );
-    guess += targetUtc - localAsUtc;
-  }
-
-  return new Date(guess).toISOString();
-}
-
-function localDateKey(date, timezone) {
-  const parts = localDateParts(date, timezone);
-  return `${parts.year}-${parts.month}-${parts.day}`;
-}
-
-function localHour(date, timezone) {
-  return Number(localDateParts(date, timezone).hour || 0);
-}
 
 function weekdayForDateKey(dateKey) {
   const [year, month, day] = dateKey.split("-").map(Number);
@@ -281,8 +255,7 @@ function isWithinWorkHours(event, settings, timezone) {
     return false;
   }
 
-  const parts = localDateParts(occurredAt, timezone);
-  const minuteOfDay = Number(parts.hour || 0) * 60 + Number(parts.minute || 0);
+  const minuteOfDay = localMinuteOfDay(occurredAt, timezone);
   const [startHour, startMinute] = String(settings.workHoursStart || "09:00").split(":").map(Number);
   const [endHour, endMinute] = String(settings.workHoursEnd || "18:00").split(":").map(Number);
   const start = (startHour || 0) * 60 + (startMinute || 0);
@@ -613,28 +586,83 @@ export function buildTodayView(
 ): TodayView {
   const timezone = settings.timezone || "UTC";
   const todayKey = localDateKey(now, timezone);
-  const yesterdayKey = localDateKey(new Date(now.getTime() - 24 * 60 * 60 * 1000), timezone);
-  const todayEvents = mergeEquivalentIntervals(eventsForDate(events, timezone, todayKey), settings);
-  const yesterdayEvents = mergeEquivalentIntervals(eventsForDate(events, timezone, yesterdayKey), settings);
-  const todayActiveEvents = todayEvents.filter(isActiveTrackedEvent);
-  const yesterdayActiveEvents = yesterdayEvents.filter(isActiveTrackedEvent);
-  const todaySummary = {
-    ...summarize(todayActiveEvents, settings, "today", todayKey, now),
-    ...diagnosticSummary(todayEvents)
+  const yesterdayKey = localDateKey(new Date(now.getTime() - DAY_MS), timezone);
+  return buildTodayViewFromDayAnalytics(
+    buildDayAnalytics(eventsForDate(events, timezone, todayKey), settings, todayKey, now),
+    buildDayAnalytics(eventsForDate(events, timezone, yesterdayKey), settings, yesterdayKey, now),
+    settings,
+    now
+  );
+}
+
+export function buildDayAnalytics(
+  events: ActivityEvent[] = [],
+  settings: AnalyticsSettings = {},
+  dateKey: string,
+  now = new Date()
+): DayAnalytics {
+  const dayEvents = mergeEquivalentIntervals(events, settings);
+  const activeEvents = dayEvents.filter(isActiveTrackedEvent);
+  const rangeName = dateKey === localDateKey(now, settings.timezone || "UTC") ? "today" : "day";
+  const summary = {
+    ...summarize(activeEvents, settings, rangeName, dateKey, now),
+    ...diagnosticSummary(dayEvents)
   };
-  const yesterdaySummary = summarize(yesterdayActiveEvents, settings, "yesterday", yesterdayKey, now);
+
+  return {
+    schemaVersion: 1,
+    dateKey,
+    summary,
+    timeline: buildTimeline(activeEvents, settings, dateKey),
+    top_categories: summary.top_categories,
+    top_sites: summary.top_sites,
+    main_insight: buildMainInsight(summary, activeEvents, settings),
+    supporting_insights: buildSupportingInsights(summary, activeEvents, settings)
+  };
+}
+
+export function buildTodayViewFromDayAnalytics(
+  todayAnalytics: DayAnalytics,
+  yesterdayAnalytics: DayAnalytics,
+  settings: AnalyticsSettings = {},
+  now = new Date()
+): TodayView {
+  const todaySummary = {
+    ...todayAnalytics.summary,
+    range: "today",
+    range_end: now.toISOString()
+  };
+  const yesterdaySummary = {
+    ...yesterdayAnalytics.summary,
+    range: "yesterday",
+    range_end: now.toISOString()
+  };
 
   return {
     status: buildStatus(todaySummary),
     summary: todaySummary,
     comparison: buildComparison(todaySummary, yesterdaySummary),
-    timeline: buildTimeline(todayActiveEvents, settings, todayKey),
-    top_categories: todaySummary.top_categories,
-    top_sites: todaySummary.top_sites,
-    main_insight: buildMainInsight(todaySummary, todayActiveEvents, settings),
-    supporting_insights: buildSupportingInsights(todaySummary, todayActiveEvents, settings),
+    timeline: todayAnalytics.timeline,
+    top_categories: todayAnalytics.top_categories,
+    top_sites: todayAnalytics.top_sites,
+    main_insight: todayAnalytics.main_insight,
+    supporting_insights: todayAnalytics.supporting_insights,
     recommendations: buildRecommendations(todaySummary, yesterdaySummary)
   };
+}
+
+export function buildAnalyticsSettingsFingerprint(settings: AnalyticsSettings = {}): string {
+  const categoryOverrides = Object.fromEntries(
+    Object.entries(settings.categoryOverrides || {}).sort(([left], [right]) => left.localeCompare(right))
+  );
+  return JSON.stringify({
+    timezone: settings.timezone || "UTC",
+    workHoursStart: settings.workHoursStart || "09:00",
+    workHoursEnd: settings.workHoursEnd || "18:00",
+    workdays: [...(settings.workdays || [])].sort(),
+    excludedHosts: [...(settings.excludedHosts || [])].sort(),
+    categoryOverrides
+  });
 }
 
 export function buildSitesView(

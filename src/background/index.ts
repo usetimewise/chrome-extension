@@ -12,14 +12,19 @@ import {
   appendActivityEvent,
   appendToQueue,
   appendTrackingTransition,
+  ensureActivityEventsMigration,
   getActivityEvents,
+  getActivityEventDayMeta,
+  getActivityEventsForDays,
   getDashboardCache,
   getDeviceState,
   getFocusSessions,
   getQueue,
+  getRecentActivityEvents,
   getRuntimeState,
   getSettings,
   getSiteRules,
+  getTodayViewActivityDateKeys,
   getTrackingTransitions,
   replaceQueue,
   resetDeviceRegistration,
@@ -35,10 +40,18 @@ import {
   updateSiteRule
 } from "../lib/api-client.js";
 import {
+  buildAnalyticsSettingsFingerprint,
+  buildDayAnalytics,
   buildSitesView,
-  buildTodayView,
+  buildTodayViewFromDayAnalytics,
+  type DayAnalytics,
   resolveCategory
 } from "../lib/local-analytics.js";
+import {
+  getDailyAnalyticsCache,
+  isDailyAnalyticsCacheValid,
+  saveDailyAnalyticsCache
+} from "../lib/daily-analytics-cache.js";
 import {
   buildFocusSessionsView,
   startFocusSession,
@@ -213,7 +226,8 @@ async function boot() {
   const now = Date.now();
   runtimeState.lastObservedAt = now;
   runtimeState.sessionStartedAt = runtimeState.sessionStartedAt || now;
-  await applyTrackingSettings();
+  const settings = await applyTrackingSettings();
+  await ensureActivityEventsMigration(settings);
   void ensureDeviceRegistration();
   await refreshActiveTab();
   ensureAlarms();
@@ -367,7 +381,7 @@ async function flushCurrentSessionNow(reason = "transition", settingsOverride = 
       category: interval.status === "active_tracked" ? category : undefined,
       reason
     };
-    await appendActivityEvent(event);
+    await appendActivityEvent(event, settings);
     if (isActiveTrackedEvent(event)) {
       await appendToQueue(event);
     }
@@ -451,28 +465,88 @@ async function syncQueue() {
   }
 }
 
-async function refreshViews(): Promise<DashboardCache> {
+async function getCachedDayAnalytics(
+  dateKey: string,
+  settings: Settings,
+  settingsFingerprint: string,
+  eventFingerprint: string,
+  now: Date
+): Promise<DayAnalytics> {
+  const timezone = settings.timezone || "UTC";
+  const cached = await getDailyAnalyticsCache(dateKey);
+  if (isDailyAnalyticsCacheValid(cached, {
+    dateKey,
+    timezone,
+    settingsFingerprint,
+    eventFingerprint
+  })) {
+    return cached.analytics;
+  }
+
+  const events = await getActivityEventsForDays([dateKey], settings);
+  const analytics = buildDayAnalytics(events, settings, dateKey, now);
+  await saveDailyAnalyticsCache({
+    schemaVersion: 1,
+    dateKey,
+    timezone,
+    settingsFingerprint,
+    eventFingerprint,
+    analytics,
+    updatedAt: new Date().toISOString()
+  });
+  return analytics;
+}
+
+async function buildCachedTodayView(settings: Settings, now = new Date()) {
+  const [todayKey, yesterdayKey] = await getTodayViewActivityDateKeys(settings, now);
+  const settingsFingerprint = buildAnalyticsSettingsFingerprint(settings);
+  const dayMeta = await getActivityEventDayMeta([todayKey, yesterdayKey], settings);
+  const [todayAnalytics, yesterdayAnalytics] = await Promise.all([
+    getCachedDayAnalytics(
+      todayKey,
+      settings,
+      settingsFingerprint,
+      dayMeta[todayKey]?.fingerprint || "0:empty",
+      now
+    ),
+    getCachedDayAnalytics(
+      yesterdayKey,
+      settings,
+      settingsFingerprint,
+      dayMeta[yesterdayKey]?.fingerprint || "0:empty",
+      now
+    )
+  ]);
+  return buildTodayViewFromDayAnalytics(todayAnalytics, yesterdayAnalytics, settings, now);
+}
+
+async function refreshViews(options: { includeSitesView?: boolean } = {}): Promise<DashboardCache> {
   try {
-    const [settings, events, focusSessions, currentCache] = await Promise.all([
-      getSettings(),
-      getActivityEvents(),
+    const settings = await getSettings();
+    const now = new Date();
+    const [todayView, siteEvents, focusSessions, currentCache] = await Promise.all([
+      buildCachedTodayView(settings, now),
+      options.includeSitesView ? getRecentActivityEvents(7, settings) : Promise.resolve(null),
       getFocusSessions(),
       getDashboardCache()
     ]);
-    const todayView = buildTodayView(events, settings);
     const focusSessionsView = buildFocusSessionsView(focusSessions);
     const currentHostCategory: Category | null = runtimeState.currentHost
       ? resolveCategory(runtimeState.currentHost, settings)
       : null;
 
-    const cache = await saveDashboardCache({
+    const cachePatch: Partial<DashboardCache> = {
       todayView,
-      sitesView: buildSitesView(events, settings),
       trendsView: currentCache.trendsView,
       insightsView: currentCache.insightsView,
       focusSessionsView,
       currentHostCategory
-    });
+    };
+    if (siteEvents) {
+      cachePatch.sitesView = buildSitesView(siteEvents, settings);
+    }
+
+    const cache = await saveDashboardCache(cachePatch);
     await evaluateFocusNudgeNotification(cache, settings);
     return cache;
   } catch (error) {
@@ -694,7 +768,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
   if (alarm.name === "sync") {
     await syncQueue();
-    await refreshViews();
+    await refreshViews({ includeSitesView: true });
   }
 });
 
@@ -767,12 +841,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
       }
       case MESSAGE_TYPES.getDebugState: {
-        const [settings, device, dashboardCache, queue, events, transitions, focusSessions, siteRules] = await Promise.all([
-          getSettings(),
+        const settings = await getSettings();
+        const [device, dashboardCache, queue, events, transitions, focusSessions, siteRules] = await Promise.all([
           getDeviceState(),
           getDashboardCache(),
           getQueue(),
-          getActivityEvents(),
+          getActivityEvents(settings),
           getTrackingTransitions(),
           getFocusSessions(),
           getSiteRules()
@@ -793,9 +867,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       case MESSAGE_TYPES.refreshViews: {
         await flushCurrentSession("manual-refresh");
-        await logTransition("manual-refresh");
+        void logTransition("manual-refresh").catch((error) => saveDashboardCache({ lastError: error.message }));
         const dashboardCache = await refreshViews();
-        void syncQueue().then(() => refreshViews());
+        void syncQueue().then(() => refreshViews({ includeSitesView: true }));
         const settings = await getSettings();
         return {
           dashboardCache,
@@ -806,7 +880,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await flushCurrentSession("manual-sync");
         await logTransition("manual-sync");
         const sync = await syncQueue();
-        const dashboardCache = await refreshViews();
+        const dashboardCache = await refreshViews({ includeSitesView: true });
         const settings = await getSettings();
         return {
           sync,

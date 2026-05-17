@@ -6,6 +6,9 @@ export const STORAGE_KEYS = {
   dashboardCache: "twt_dashboard_cache_v2",
   runtimeState: "twt_runtime_state_v2",
   activityEvents: "twt_activity_events_v1",
+  activityEventsIndex: "twt_activity_events_index_v2",
+  activityEventsDayPrefix: "twt_activity_events_day_v2:",
+  activityDailyAnalyticsPrefix: "twt_activity_daily_analytics_v1:",
   trackingTransitions: "twt_tracking_transitions_v1",
   focusSessions: "twt_focus_sessions_v1",
   siteRules: "twt_site_rules_v1"

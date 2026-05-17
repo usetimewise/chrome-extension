@@ -209,6 +209,16 @@ export interface TodayView {
   }>;
 }
 
+export interface DailyAnalyticsCache<TAnalytics = unknown> {
+  schemaVersion: 1;
+  dateKey: string;
+  timezone: string;
+  settingsFingerprint: string;
+  eventFingerprint: string;
+  analytics: TAnalytics;
+  updatedAt: string;
+}
+
 export interface SitesView {
   items?: TopSite[];
   top_sites?: TopSite[];

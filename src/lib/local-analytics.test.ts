@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildDayAnalytics,
   buildTodayView,
+  buildTodayViewFromDayAnalytics,
   resolveCategory
 } from "./local-analytics.js";
+import type { ActivityEvent } from "./types.js";
 
 const settings = {
   timezone: "UTC",
@@ -59,6 +62,43 @@ test("buildTodayView derives local counters and yesterday comparison", () => {
   assert.equal(view.comparison.focus_delta_ms, 20 * 60 * 1000);
   assert.equal(view.top_sites[0].host, "github.com");
   assert.equal(view.top_categories[0].category, "work");
+});
+
+test("buildDayAnalytics composes the same today view as the compatibility wrapper", () => {
+  const events: ActivityEvent[] = [
+    {
+      event_id: "today-work",
+      occurred_at: "2026-04-20T10:00:00.000Z",
+      duration_ms: 30 * 60 * 1000,
+      host: "github.com",
+      category: "work"
+    },
+    {
+      event_id: "today-distraction",
+      occurred_at: "2026-04-20T11:00:00.000Z",
+      duration_ms: 15 * 60 * 1000,
+      host: "youtube.com",
+      category: "entertainment"
+    },
+    {
+      event_id: "yesterday-work",
+      occurred_at: "2026-04-19T10:00:00.000Z",
+      duration_ms: 10 * 60 * 1000,
+      host: "github.com",
+      category: "work"
+    }
+  ];
+  const now = new Date("2026-04-20T12:00:00.000Z");
+
+  assert.deepEqual(
+    buildTodayViewFromDayAnalytics(
+      buildDayAnalytics(events.slice(0, 2), settings, "2026-04-20", now),
+      buildDayAnalytics(events.slice(2), settings, "2026-04-19", now),
+      settings,
+      now
+    ),
+    buildTodayView(events, settings, now)
+  );
 });
 
 test("buildTodayView excludes diagnostic intervals from focus metrics and top sites", () => {

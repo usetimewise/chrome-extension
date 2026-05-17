@@ -3,6 +3,17 @@ import {
   DEFAULT_RUNTIME_STATE,
   STORAGE_KEYS
 } from "./constants.js";
+import {
+  appendActivityEvent as appendBucketedActivityEvent,
+  getActivityEventDayMeta as getBucketedActivityEventDayMeta,
+  getActivityEventsForDays as getBucketedActivityEventsForDays,
+  getActivityEvents as getBucketedActivityEvents,
+  getRecentActivityEvents as getRecentBucketedActivityEvents,
+  getTodayViewActivityEvents as getBucketedTodayViewActivityEvents,
+  migrateActivityEventsIfNeeded,
+  todayViewActivityDateKeys,
+  type ActivityEventsDayMeta
+} from "./activity-events-storage.js";
 import { getAppSettings } from "./app-settings.js";
 import type {
   ActivityEvent,
@@ -18,8 +29,6 @@ import type {
 import { generateId, hostMatchesRule } from "./utils.js";
 import { getFromStorage, setInStorage } from "./storage.js";
 import { eventsEligibleForSync, retainTrackingTransitions } from "./tracking-diagnostics.js";
-
-const ACTIVITY_EVENT_RETENTION_DAYS = 30;
 
 export async function getSettings(): Promise<Settings> {
   const settings = getAppSettings();
@@ -86,20 +95,39 @@ export async function replaceQueue(queue: ActivityEvent[]): Promise<ActivityEven
   return setInStorage(STORAGE_KEYS.queue, eventsEligibleForSync(queue));
 }
 
-export async function getActivityEvents(): Promise<ActivityEvent[]> {
-  return getFromStorage<ActivityEvent[]>(STORAGE_KEYS.activityEvents, []);
+export async function getActivityEvents(settings?: Settings): Promise<ActivityEvent[]> {
+  return getBucketedActivityEvents(settings || await getSettings());
 }
 
-export async function appendActivityEvent(event: ActivityEvent): Promise<ActivityEvent[]> {
-  const events = await getActivityEvents();
-  const cutoff = Date.now() - ACTIVITY_EVENT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
-  const retained = events.filter((item) => {
-    const occurredAt = Date.parse(item.occurred_at || "");
-    return !Number.isNaN(occurredAt) && occurredAt >= cutoff;
-  });
-  retained.push(event);
-  await setInStorage(STORAGE_KEYS.activityEvents, retained);
-  return retained;
+export async function getTodayViewActivityEvents(settings?: Settings): Promise<ActivityEvent[]> {
+  return getBucketedTodayViewActivityEvents(settings || await getSettings());
+}
+
+export async function getActivityEventsForDays(dateKeys: string[], settings?: Settings): Promise<ActivityEvent[]> {
+  return getBucketedActivityEventsForDays(dateKeys, settings || await getSettings());
+}
+
+export async function getTodayViewActivityDateKeys(settings?: Settings, now = new Date()): Promise<string[]> {
+  return todayViewActivityDateKeys(settings || await getSettings(), now);
+}
+
+export async function getActivityEventDayMeta(
+  dateKeys: string[],
+  settings?: Settings
+): Promise<Record<string, ActivityEventsDayMeta | null>> {
+  return getBucketedActivityEventDayMeta(dateKeys, settings || await getSettings());
+}
+
+export async function getRecentActivityEvents(days = 7, settings?: Settings): Promise<ActivityEvent[]> {
+  return getRecentBucketedActivityEvents(settings || await getSettings(), days);
+}
+
+export async function ensureActivityEventsMigration(settings?: Settings): Promise<void> {
+  await migrateActivityEventsIfNeeded(settings || await getSettings());
+}
+
+export async function appendActivityEvent(event: ActivityEvent, settings?: Settings): Promise<ActivityEvent[]> {
+  return appendBucketedActivityEvent(event, settings || await getSettings());
 }
 
 export async function getTrackingTransitions(): Promise<TrackingTransition[]> {
