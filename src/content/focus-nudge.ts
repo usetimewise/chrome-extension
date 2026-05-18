@@ -1,9 +1,16 @@
-const FOCUS_NUDGE_MESSAGE_TYPES = {
-  showFocusNudge: "SHOW_FOCUS_NUDGE"
+import { MESSAGE_TYPES } from "../lib/constants.js";
+import { isContentRequestType } from "../lib/messaging/contracts.js";
+
+type FocusNudgeMessage = {
+  title: string;
+  message: string;
+  host: string;
+  category: string;
+  duration: string;
 };
 
 const TOAST_ID = "time-wise-focus-nudge";
-let dismissTimer = null;
+let dismissTimer: number | null = null;
 
 function removeExistingToast() {
   const existing = document.getElementById(TOAST_ID);
@@ -17,7 +24,7 @@ function removeExistingToast() {
   }
 }
 
-function compactDuration(value) {
+function compactDuration(value: string): string {
   return String(value || "")
     .replace(/\bhours?\b/g, "h")
     .replace(/\bminutes?\b/g, "m")
@@ -26,7 +33,7 @@ function compactDuration(value) {
     .trim();
 }
 
-function buildToast(message) {
+function buildToast(message: FocusNudgeMessage): HTMLDivElement {
   const host = document.createElement("div");
   host.id = TOAST_ID;
 
@@ -261,7 +268,7 @@ function buildToast(message) {
   return host;
 }
 
-function showFocusNudge(message) {
+function showFocusNudge(message: FocusNudgeMessage): void {
   removeExistingToast();
   const toast = buildToast(message);
   document.documentElement.append(toast);
@@ -269,7 +276,7 @@ function showFocusNudge(message) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== FOCUS_NUDGE_MESSAGE_TYPES.showFocusNudge) {
+  if (!isContentRequestType(message, MESSAGE_TYPES.showFocusNudge)) {
     return false;
   }
 

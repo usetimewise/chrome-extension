@@ -7,7 +7,7 @@ import {
   removeFromStorage,
   setInStorage,
   setManyInStorage
-} from "./storage.js";
+} from "./storage/client.js";
 
 const ACTIVITY_EVENT_RETENTION_DAYS = 30;
 
@@ -355,7 +355,7 @@ async function migrateActivityEventsNow(settings: Partial<Settings> = {}, now = 
 
 export function migrateActivityEventsIfNeeded(settings: Partial<Settings> = {}, now = Date.now()): Promise<void> {
   if (activityEventsMigrationReady) {
-    return ensureActivityEventsIndexForSettings(settings, now).then(() => undefined);
+    return ensureActivityEventsIndexForSettings(settings, now).then((): void => undefined);
   }
 
   if (!activityEventsMigration) {
@@ -364,7 +364,7 @@ export function migrateActivityEventsIfNeeded(settings: Partial<Settings> = {}, 
         activityEventsMigrationReady = true;
         return ensureActivityEventsIndexForSettings(settings, now);
       })
-      .then(() => undefined)
+      .then((): void => undefined)
       .finally(() => {
         activityEventsMigration = null;
       });

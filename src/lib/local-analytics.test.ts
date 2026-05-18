@@ -7,9 +7,9 @@ import {
   buildTodayViewFromDayAnalytics,
   resolveCategory
 } from "./local-analytics.js";
-import type { ActivityEvent } from "./types.js";
+import type { ActivityEvent, Settings } from "./types.js";
 
-const settings = {
+const settings: Partial<Settings> = {
   timezone: "UTC",
   workHoursStart: "09:00",
   workHoursEnd: "18:00",

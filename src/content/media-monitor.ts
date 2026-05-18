@@ -1,7 +1,5 @@
-const MESSAGE_TYPES = {
-  getMediaState: "GET_MEDIA_STATE",
-  mediaStateUpdate: "MEDIA_STATE_UPDATE"
-};
+import { MESSAGE_TYPES } from "../lib/constants.js";
+import { isContentRequestType } from "../lib/messaging/contracts.js";
 
 const HEARTBEAT_MS = 15_000;
 const trackedMedia = new WeakSet();
@@ -128,7 +126,7 @@ function ensureObserver() {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== MESSAGE_TYPES.getMediaState) {
+  if (!isContentRequestType(message, MESSAGE_TYPES.getMediaState)) {
     return false;
   }
 

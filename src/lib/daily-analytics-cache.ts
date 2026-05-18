@@ -1,7 +1,7 @@
 import { STORAGE_KEYS } from "./constants.js";
 import type { DayAnalytics } from "./local-analytics.js";
 import type { DailyAnalyticsCache } from "./types.js";
-import { getFromStorage, setInStorage } from "./storage.js";
+import { getFromStorage, setInStorage } from "./storage/client.js";
 
 export type DayAnalyticsCacheRecord = DailyAnalyticsCache<DayAnalytics>;
 

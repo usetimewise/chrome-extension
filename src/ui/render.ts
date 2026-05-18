@@ -1,20 +1,12 @@
-import { formatDuration, formatPercent, humanizeCategory } from "../lib/utils.js";
+import type { Recommendation, TodayView, TopCategory, TopSite } from "../lib/types.js";
+import { escapeHTML, formatDuration, formatPercent, humanizeCategory } from "../lib/utils.js";
 
-function escapeHTML(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function setEmptyState(container, message) {
+function setEmptyState(container: HTMLElement, message: string): void {
   container.classList.add("muted");
   container.innerHTML = `<div class="empty-state">${escapeHTML(message)}</div>`;
 }
 
-export function renderSites(container, items = []) {
+export function renderSites(container: HTMLElement, items: TopSite[] = []): void {
   if (!items.length) {
     setEmptyState(container, "No time has been synced yet.");
     return;
@@ -36,7 +28,7 @@ export function renderSites(container, items = []) {
     .join("");
 }
 
-export function renderRecommendations(container, items = []) {
+export function renderRecommendations(container: HTMLElement, items: Recommendation[] = []): void {
   if (!items.length) {
     setEmptyState(container, "Suggestions will appear once a clear pattern is available.");
     return;
@@ -56,7 +48,7 @@ export function renderRecommendations(container, items = []) {
     .join("");
 }
 
-export function renderCategories(container, items = []) {
+export function renderCategories(container: HTMLElement, items: TopCategory[] = []): void {
   if (!items.length) {
     setEmptyState(container, "Categories will appear after the first synced range.");
     return;
@@ -78,7 +70,10 @@ export function renderCategories(container, items = []) {
     .join("");
 }
 
-export function renderTimeseries(container, points = []) {
+export function renderTimeseries(
+  container: HTMLElement,
+  points: NonNullable<TodayView["timeline"]> = []
+): void {
   if (!points.length) {
     setEmptyState(container, "A time pattern will appear when activity is available for this range.");
     return;

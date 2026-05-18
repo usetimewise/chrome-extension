@@ -28,7 +28,7 @@ export const MESSAGE_TYPES = {
   forceFocusNudge: "FORCE_FOCUS_NUDGE",
   showFocusNudge: "SHOW_FOCUS_NUDGE",
   getDebugState: "GET_DEBUG_STATE"
-};
+} as const;
 
 export const DEFAULT_DASHBOARD_CACHE: DashboardCache = {
   todayView: null,

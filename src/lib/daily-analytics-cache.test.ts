@@ -6,6 +6,7 @@ import {
   isDailyAnalyticsCacheValid,
   saveDailyAnalyticsCache
 } from "./daily-analytics-cache.js";
+import type { DayAnalyticsCacheRecord } from "./daily-analytics-cache.js";
 
 let storage: Record<string, unknown> = {};
 
@@ -13,22 +14,26 @@ function clone<T>(value: T): T {
   return value === undefined ? value : JSON.parse(JSON.stringify(value));
 }
 
+function readStorageValue<T>(key: string): T | undefined {
+  return storage[key] as T | undefined;
+}
+
 function installChromeStorageMock() {
   globalThis.chrome = {
     storage: {
       local: {
-        async get(keys) {
+        async get(keys: string | string[]) {
           if (typeof keys === "string") {
-            return { [keys]: clone(storage[keys]) };
+            return { [keys]: clone(readStorageValue(keys)) };
           }
           return clone(storage);
         },
-        async set(values) {
+        async set(values: Record<string, unknown>) {
           for (const [key, value] of Object.entries(values)) {
             storage[key] = clone(value);
           }
         },
-        async remove(keys) {
+        async remove(keys: string | string[]) {
           for (const key of Array.isArray(keys) ? keys : [keys]) {
             delete storage[key];
           }
@@ -38,7 +43,7 @@ function installChromeStorageMock() {
   } as typeof chrome;
 }
 
-const analytics = {
+const analytics: DayAnalyticsCacheRecord["analytics"] = {
   schemaVersion: 1 as const,
   dateKey: "2026-04-20",
   summary: {

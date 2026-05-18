@@ -9,11 +9,15 @@ import {
   localMinuteOfDay,
   utcInstantForLocalTime
 } from "./local-date.js";
-import type { ActivityEvent, Category, Settings, SitesView, TodayView } from "./types.js";
+import type { ActivityEvent, Category, Recommendation, Settings, SitesView, TodayView } from "./types.js";
 import { isActiveTrackedEvent } from "./tracking-diagnostics.js";
 import { hostMatchesRule } from "./utils.js";
 
 type AnalyticsSettings = Partial<Settings>;
+type SummarizedAnalytics = TodayView["summary"] & {
+  top_sites: TodayView["top_sites"];
+  top_categories: TodayView["top_categories"];
+};
 
 export interface DayAnalytics {
   schemaVersion: 1;
@@ -61,12 +65,12 @@ const DEFAULT_CATEGORY_CATALOG: Record<string, Category> = {
   "medium.com": "news"
 };
 
-function weekdayForDateKey(dateKey) {
+function weekdayForDateKey(dateKey: string): number {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
-function normalizeHost(host) {
+function normalizeHost(host: string | null | undefined): string {
   return String(host || "").trim().toLowerCase().replace(/^www\./, "");
 }
 
@@ -111,7 +115,7 @@ export function resolveCategory(host: string | null | undefined, settings: Analy
   return "other";
 }
 
-function eventsForDate(events, timezone, key) {
+function eventsForDate(events: ActivityEvent[], timezone: string, key: string): ActivityEvent[] {
   return events.filter((event) => {
     const occurredAt = new Date(event.occurred_at || "");
     return !Number.isNaN(occurredAt.getTime()) && localDateKey(occurredAt, timezone) === key;
@@ -196,7 +200,19 @@ function toMergedEvent(event: ActivityEvent & { _startedAt: number; _endedAt: nu
   };
 }
 
-function diagnosticSummary(events: ActivityEvent[]) {
+function diagnosticSummary(events: ActivityEvent[]): {
+  observed_browser_time_ms: number;
+  active_tracked_ms: number;
+  diagnostic_untracked_ms: number;
+  idle_ms: number;
+  locked_ms: number;
+  unfocused_ms: number;
+  restricted_ms: number;
+  unknown_ms: number;
+  suspicious_gap_ms: number;
+  suspicious_gap_count: number;
+  max_interval_ms: number;
+} {
   const totals = {
     observed_browser_time_ms: 0,
     active_tracked_ms: 0,
@@ -242,7 +258,7 @@ function diagnosticSummary(events: ActivityEvent[]) {
   return totals;
 }
 
-function isWithinWorkHours(event, settings, timezone) {
+function isWithinWorkHours(event: ActivityEvent, settings: AnalyticsSettings, timezone: string): boolean {
   const occurredAt = new Date(event.occurred_at || "");
   if (Number.isNaN(occurredAt.getTime())) {
     return false;
@@ -263,7 +279,11 @@ function isWithinWorkHours(event, settings, timezone) {
   return minuteOfDay >= start && minuteOfDay < end;
 }
 
-function alignmentWeight(event, settings, timezone) {
+function alignmentWeight(
+  event: ActivityEvent & { category: Category },
+  settings: AnalyticsSettings,
+  timezone: string
+): number {
   const inWork = isWithinWorkHours(event, settings, timezone);
   if (FOCUS_CATEGORIES.has(event.category) && inWork) {
     return 1;
@@ -280,18 +300,28 @@ function alignmentWeight(event, settings, timezone) {
   return 0.5;
 }
 
-function sortByDurationThenName(a, b, nameKey) {
+function sortByDurationThenName<T extends { duration_ms?: number }>(
+  a: T,
+  b: T,
+  nameKey: keyof T
+): number {
   if ((a.duration_ms || 0) === (b.duration_ms || 0)) {
     return String(a[nameKey] || "").localeCompare(String(b[nameKey] || ""));
   }
   return (b.duration_ms || 0) - (a.duration_ms || 0);
 }
 
-function summarize(events, settings, rangeName, rangeKey, now = new Date()) {
+function summarize(
+  events: ActivityEvent[],
+  settings: AnalyticsSettings,
+  rangeName: string,
+  rangeKey: string,
+  now = new Date()
+): SummarizedAnalytics {
   const timezone = settings.timezone || "UTC";
-  const siteDurations = new Map();
-  const siteCategories = new Map();
-  const categoryDurations = new Map();
+  const siteDurations = new Map<string | null, number>();
+  const siteCategories = new Map<string | null, Category>();
+  const categoryDurations = new Map<Category, number>();
   let totalDurationMs = 0;
   let focusDurationMs = 0;
   let distractionDurationMs = 0;
@@ -351,7 +381,7 @@ function summarize(events, settings, rangeName, rangeKey, now = new Date()) {
   };
 }
 
-function buildStatus(summary) {
+function buildStatus(summary: SummarizedAnalytics): NonNullable<TodayView["status"]> {
   if (!summary.total_duration_ms) {
     return {
       label: "Starting out",
@@ -380,7 +410,10 @@ function buildStatus(summary) {
   };
 }
 
-function buildComparison(current, previous) {
+function buildComparison(
+  current: SummarizedAnalytics,
+  previous: SummarizedAnalytics
+): NonNullable<TodayView["comparison"]> {
   return {
     label: "vs yesterday",
     focus_delta_ms: current.focus_duration_ms - previous.focus_duration_ms,
@@ -390,13 +423,13 @@ function buildComparison(current, previous) {
   };
 }
 
-function topDistractingSite(summary) {
+function topDistractingSite(summary: SummarizedAnalytics): string {
   return (summary.top_sites || []).find((site) => DISTRACTION_CATEGORIES.has(site.category))?.host || "";
 }
 
-function strongestFocusBlock(events, settings) {
+function strongestFocusBlock(events: ActivityEvent[], settings: AnalyticsSettings): string {
   const timezone = settings.timezone || "UTC";
-  const byHour = new Map();
+  const byHour = new Map<number, number>();
   for (const event of events) {
     const category = event.category || resolveCategory(event.host, settings);
     if (!FOCUS_CATEGORIES.has(category)) {
@@ -417,9 +450,9 @@ function strongestFocusBlock(events, settings) {
   return `Your strongest focused time today is around ${label}.`;
 }
 
-function topDistractionHour(events, settings) {
+function topDistractionHour(events: ActivityEvent[], settings: AnalyticsSettings): string {
   const timezone = settings.timezone || "UTC";
-  const byHour = new Map();
+  const byHour = new Map<number, number>();
   for (const event of events) {
     const category = event.category || resolveCategory(event.host, settings);
     if (!DISTRACTION_CATEGORIES.has(category)) {
@@ -439,7 +472,11 @@ function topDistractionHour(events, settings) {
   return `${String(best[0]).padStart(2, "0")}:00`;
 }
 
-function buildMainInsight(summary, events, settings) {
+function buildMainInsight(
+  summary: SummarizedAnalytics,
+  events: ActivityEvent[],
+  settings: AnalyticsSettings
+): NonNullable<DayAnalytics["main_insight"]> {
   if (!summary.total_duration_ms) {
     return {
       id: "empty-day",
@@ -468,8 +505,12 @@ function buildMainInsight(summary, events, settings) {
   };
 }
 
-function buildSupportingInsights(summary, events, settings) {
-  const items = [];
+function buildSupportingInsights(
+  summary: SummarizedAnalytics,
+  events: ActivityEvent[],
+  settings: AnalyticsSettings
+): DayAnalytics["supporting_insights"] {
+  const items: DayAnalytics["supporting_insights"] = [];
   const hour = topDistractionHour(events, settings);
   if (hour) {
     items.push({
@@ -500,8 +541,11 @@ function buildSupportingInsights(summary, events, settings) {
   }];
 }
 
-function buildRecommendations(current, previous) {
-  const recommendations = [];
+function buildRecommendations(
+  current: SummarizedAnalytics,
+  previous: SummarizedAnalytics
+): Recommendation[] {
+  const recommendations: Recommendation[] = [];
   if (current.total_duration_ms >= 30 * 60 * 1000 && current.focus_alignment < 0.45) {
     recommendations.push({
       id: "start-focus",
@@ -550,7 +594,11 @@ function buildRecommendations(current, previous) {
   return recommendations;
 }
 
-function buildTimeline(events, settings, dateKey) {
+function buildTimeline(
+  events: ActivityEvent[],
+  settings: AnalyticsSettings,
+  dateKey: string
+): NonNullable<TodayView["timeline"]> {
   const timezone = settings.timezone || "UTC";
   const points = Array.from({ length: 24 }, (_, hour) => ({
     label: `${String(hour).padStart(2, "0")}:00`,
@@ -566,6 +614,9 @@ function buildTimeline(events, settings, dateKey) {
       continue;
     }
     const point = points[localHour(occurredAt, timezone)];
+    if (!point) {
+      continue;
+    }
     const durationMs = Number(event.duration_ms || 0);
     const category = event.category || resolveCategory(event.host, settings);
     point.total_duration_ms += durationMs;
@@ -604,8 +655,9 @@ export function buildDayAnalytics(
   const dayEvents = mergeEquivalentIntervals(events, settings);
   const activeEvents = dayEvents.filter(isActiveTrackedEvent);
   const rangeName = dateKey === localDateKey(now, settings.timezone || "UTC") ? "today" : "day";
+  const summarized = summarize(activeEvents, settings, rangeName, dateKey, now);
   const summary = {
-    ...summarize(activeEvents, settings, rangeName, dateKey, now),
+    ...summarized,
     ...diagnosticSummary(dayEvents)
   };
 
@@ -614,8 +666,8 @@ export function buildDayAnalytics(
     dateKey,
     summary,
     timeline: buildTimeline(activeEvents, settings, dateKey),
-    top_categories: summary.top_categories,
-    top_sites: summary.top_sites,
+    top_categories: summarized.top_categories,
+    top_sites: summarized.top_sites,
     main_insight: buildMainInsight(summary, activeEvents, settings),
     supporting_insights: buildSupportingInsights(summary, activeEvents, settings)
   };
@@ -627,27 +679,37 @@ export function buildTodayViewFromDayAnalytics(
   settings: AnalyticsSettings = {},
   now = new Date()
 ): TodayView {
-  const todaySummary = {
+  const todaySummary: TodayView["summary"] = {
     ...todayAnalytics.summary,
     range: "today",
     range_end: now.toISOString()
   };
-  const yesterdaySummary = {
+  const yesterdaySummary: TodayView["summary"] = {
     ...yesterdayAnalytics.summary,
     range: "yesterday",
     range_end: now.toISOString()
   };
+  const todaySummaryWithLists: SummarizedAnalytics = {
+    ...todaySummary,
+    top_sites: todayAnalytics.top_sites,
+    top_categories: todayAnalytics.top_categories
+  };
+  const yesterdaySummaryWithLists: SummarizedAnalytics = {
+    ...yesterdaySummary,
+    top_sites: yesterdayAnalytics.top_sites,
+    top_categories: yesterdayAnalytics.top_categories
+  };
 
   return {
-    status: buildStatus(todaySummary),
+    status: buildStatus(todaySummaryWithLists),
     summary: todaySummary,
-    comparison: buildComparison(todaySummary, yesterdaySummary),
+    comparison: buildComparison(todaySummaryWithLists, yesterdaySummaryWithLists),
     timeline: todayAnalytics.timeline,
     top_categories: todayAnalytics.top_categories,
     top_sites: todayAnalytics.top_sites,
     main_insight: todayAnalytics.main_insight,
     supporting_insights: todayAnalytics.supporting_insights,
-    recommendations: buildRecommendations(todaySummary, yesterdaySummary)
+    recommendations: buildRecommendations(todaySummaryWithLists, yesterdaySummaryWithLists)
   };
 }
 
@@ -673,7 +735,16 @@ export function buildSitesView(
   const timezone = settings.timezone || "UTC";
   const todayKey = localDateKey(now, timezone);
   const weekCutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-  const itemsByHost = new Map();
+  const itemsByHost = new Map<string | null, {
+    host: string | null;
+    category: Category;
+    time_today_ms: number;
+    time_week_ms: number;
+    last_active_at: string;
+    focus_impact: "neutral" | "supportive" | "disruptive";
+    manual: boolean;
+    excluded: boolean;
+  }>();
 
   for (const event of mergeEquivalentIntervals(events.filter(isActiveTrackedEvent), settings)) {
     const occurredAt = new Date(event.occurred_at || "");

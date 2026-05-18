@@ -21,25 +21,29 @@ function clone<T>(value: T): T {
   return value === undefined ? value : JSON.parse(JSON.stringify(value));
 }
 
+function readStorageValue<T>(key: string): T | undefined {
+  return storage[key] as T | undefined;
+}
+
 function installChromeStorageMock() {
   globalThis.chrome = {
     storage: {
       local: {
-        async get(keys) {
+        async get(keys: string | string[]) {
           if (Array.isArray(keys)) {
-            return Object.fromEntries(keys.map((key) => [key, clone(storage[key])]));
+            return Object.fromEntries(keys.map((key) => [key, clone(readStorageValue(key))]));
           }
           if (typeof keys === "string") {
-            return { [keys]: clone(storage[keys]) };
+            return { [keys]: clone(readStorageValue(keys)) };
           }
           return clone(storage);
         },
-        async set(values) {
+        async set(values: Record<string, unknown>) {
           for (const [key, value] of Object.entries(values)) {
             storage[key] = clone(value);
           }
         },
-        async remove(keys) {
+        async remove(keys: string | string[]) {
           for (const key of Array.isArray(keys) ? keys : [keys]) {
             delete storage[key];
           }
