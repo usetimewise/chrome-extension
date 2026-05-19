@@ -1,0 +1,4 @@
+interface:
+  display_name: "Figma UI Adapter"
+  short_description: "Adapt Figma UI exports safely"
+  default_prompt: "Use this skill to audit a Figma-exported React UI bundle, extract the reusable presentation layer, and adapt it into the existing app architecture with minimal-risk integration."

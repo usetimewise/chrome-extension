@@ -31,6 +31,7 @@ export const MESSAGE_TYPES = {
 } as const;
 
 export const DEFAULT_DASHBOARD_CACHE: DashboardCache = {
+  overview: null,
   todayView: null,
   trendsView: null,
   sitesView: null,

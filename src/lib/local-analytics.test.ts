@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildDashboardOverview,
+  buildDashboardOverviewRanges,
   buildDayAnalytics,
   buildTodayView,
   buildTodayViewFromDayAnalytics,
@@ -217,4 +219,71 @@ test("buildTodayView uses real UTC instants for local range boundaries", () => {
   assert.equal(view.summary.range_start, "2026-05-13T19:00:00.000Z");
   assert.equal(view.timeline?.[0]?.bucket_start, "2026-05-13T19:00:00.000Z");
   assert.equal(view.timeline?.[9]?.bucket_start, "2026-05-14T04:00:00.000Z");
+});
+
+test("buildDashboardOverview aggregates summary cards and ranked sites for a selected range", () => {
+  const overview = buildDashboardOverview([
+    {
+      event_id: "work-1",
+      occurred_at: "2026-04-18T10:00:00.000Z",
+      duration_ms: 40 * 60 * 1000,
+      host: "github.com",
+      category: "work",
+      tracking_status: "active_tracked"
+    },
+    {
+      event_id: "social-1",
+      occurred_at: "2026-04-19T11:00:00.000Z",
+      duration_ms: 20 * 60 * 1000,
+      host: "twitter.com",
+      category: "social",
+      tracking_status: "active_tracked"
+    },
+    {
+      event_id: "learning-1",
+      occurred_at: "2026-04-20T12:00:00.000Z",
+      duration_ms: 10 * 60 * 1000,
+      host: "stackoverflow.com",
+      category: "learning",
+      tracking_status: "active_tracked"
+    }
+  ], settings, "7d", new Date("2026-04-20T13:00:00.000Z"));
+
+  assert.equal(overview.summary.total_duration_ms, 70 * 60 * 1000);
+  assert.equal(overview.summary.productive_duration_ms, 50 * 60 * 1000);
+  assert.equal(overview.summary.social_duration_ms, 20 * 60 * 1000);
+  assert.equal(overview.summary.sites_visited_count, 3);
+  assert.equal(overview.summary.productivity_score.value, 71);
+  assert.equal(overview.category_breakdown[0]?.category, "work");
+  assert.equal(overview.top_sites[0]?.host, "github.com");
+});
+
+test("buildDashboardOverviewRanges zero-fills missing days and ignores excluded hosts", () => {
+  const ranges = buildDashboardOverviewRanges([
+    {
+      event_id: "excluded-social",
+      occurred_at: "2026-04-19T08:00:00.000Z",
+      duration_ms: 30 * 60 * 1000,
+      host: "youtube.com",
+      tracking_status: "active_tracked"
+    },
+    {
+      event_id: "today-tools",
+      occurred_at: "2026-04-20T09:00:00.000Z",
+      duration_ms: 25 * 60 * 1000,
+      host: "docs.google.com",
+      tracking_status: "active_tracked"
+    }
+  ], {
+    ...settings,
+    excludedHosts: ["youtube.com"]
+  }, new Date("2026-04-20T12:00:00.000Z"));
+
+  assert.equal(ranges.today.summary.total_duration_ms, 25 * 60 * 1000);
+  assert.equal(ranges["7d"].summary.total_duration_ms, 25 * 60 * 1000);
+  assert.equal(ranges["7d"].summary.sites_visited_count, 1);
+  assert.equal(ranges["7d"].trend.length, 7);
+  assert.equal(ranges["7d"].trend[0]?.total_duration_ms, 0);
+  assert.equal(ranges["7d"].trend[6]?.total_duration_ms, 25 * 60 * 1000);
+  assert.deepEqual(ranges["7d"].top_sites.map((site) => site.host), ["docs.google.com"]);
 });

@@ -45,6 +45,42 @@ export interface TopCategory {
   share?: number;
 }
 
+export type DashboardOverviewRange = "today" | "7d" | "30d" | "90d";
+
+export interface DashboardOverviewTrendPoint {
+  key: string;
+  label: string;
+  total_duration_ms: number;
+  productive_duration_ms: number;
+  social_duration_ms: number;
+}
+
+export interface DashboardOverviewScore {
+  value: number;
+  label: string;
+  grade: string;
+  message: string;
+}
+
+export interface DashboardOverviewSummary {
+  title: string;
+  subtitle: string;
+  total_duration_ms: number;
+  productive_duration_ms: number;
+  social_duration_ms: number;
+  sites_visited_count: number;
+  productivity_score: DashboardOverviewScore;
+}
+
+export interface DashboardOverview {
+  range: DashboardOverviewRange;
+  days: number;
+  summary: DashboardOverviewSummary;
+  category_breakdown: TopCategory[];
+  trend: DashboardOverviewTrendPoint[];
+  top_sites: TopSite[];
+}
+
 export interface RecommendationActionPayload {
   minutes?: number;
   host?: string;
@@ -143,6 +179,7 @@ export interface FocusSessionsView {
 }
 
 export interface DashboardCache {
+  overview: Partial<Record<DashboardOverviewRange, DashboardOverview>> | null;
   todayView: TodayView | null;
   trendsView: unknown;
   sitesView: SitesView | null;

@@ -15,6 +15,7 @@ import { getSettings, getSiteRules, saveSiteRule as saveLocalSiteRule } from "..
 import { getTrackingTransitions } from "../../lib/storage/tracking-transitions.js";
 import {
   buildAnalyticsSettingsFingerprint,
+  buildDashboardOverviewRanges,
   buildDayAnalytics,
   buildSitesView,
   buildTodayViewFromDayAnalytics,
@@ -102,9 +103,9 @@ export async function refreshViews(
   try {
     const settings = await getSettings();
     const now = new Date();
-    const [todayView, siteEvents, focusSessions, currentCache] = await Promise.all([
+    const [todayView, recentEvents, focusSessions, currentCache] = await Promise.all([
       buildCachedTodayView(settings, now),
-      options.includeSitesView ? getRecentActivityEvents(7, settings) : Promise.resolve(null),
+      getRecentActivityEvents(90, settings),
       getFocusSessions(),
       getDashboardCache()
     ]);
@@ -114,14 +115,15 @@ export async function refreshViews(
       : null;
 
     const cachePatch: Partial<DashboardCache> = {
+      overview: buildDashboardOverviewRanges(recentEvents, settings, now),
       todayView,
       trendsView: currentCache.trendsView,
       insightsView: currentCache.insightsView,
       focusSessionsView,
       currentHostCategory
     };
-    if (siteEvents) {
-      cachePatch.sitesView = buildSitesView(siteEvents, settings);
+    if (options.includeSitesView) {
+      cachePatch.sitesView = buildSitesView(recentEvents, settings, now);
     }
 
     const cache = await saveDashboardCache(cachePatch);

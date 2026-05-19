@@ -9,7 +9,17 @@ import {
   localMinuteOfDay,
   utcInstantForLocalTime
 } from "./local-date.js";
-import type { ActivityEvent, Category, Recommendation, Settings, SitesView, TodayView } from "./types.js";
+import type {
+  ActivityEvent,
+  Category,
+  DashboardOverview,
+  DashboardOverviewRange,
+  DashboardOverviewScore,
+  Recommendation,
+  Settings,
+  SitesView,
+  TodayView
+} from "./types.js";
 import { isActiveTrackedEvent } from "./tracking-diagnostics.js";
 import { hostMatchesRule } from "./utils.js";
 
@@ -17,6 +27,13 @@ type AnalyticsSettings = Partial<Settings>;
 type SummarizedAnalytics = TodayView["summary"] & {
   top_sites: TodayView["top_sites"];
   top_categories: TodayView["top_categories"];
+};
+
+const OVERVIEW_RANGE_DAYS: Record<DashboardOverviewRange, number> = {
+  today: 1,
+  "7d": 7,
+  "30d": 30,
+  "90d": 90
 };
 
 export interface DayAnalytics {
@@ -311,6 +328,189 @@ function sortByDurationThenName<T extends { duration_ms?: number }>(
   return (b.duration_ms || 0) - (a.duration_ms || 0);
 }
 
+function scoreLabel(value: number): Omit<DashboardOverviewScore, "value"> {
+  if (value >= 85) {
+    return {
+      label: "Excellent",
+      grade: "Grade A",
+      message: "Most tracked time stayed in productive categories."
+    };
+  }
+  if (value >= 70) {
+    return {
+      label: "Good",
+      grade: "Grade B",
+      message: "Productive browsing is clearly ahead of distractions."
+    };
+  }
+  if (value >= 50) {
+    return {
+      label: "Fair",
+      grade: "Grade C",
+      message: "Based on productive vs unproductive browsing ratio."
+    };
+  }
+  if (value >= 30) {
+    return {
+      label: "Drifting",
+      grade: "Grade D",
+      message: "Distracting categories are taking too much of the range."
+    };
+  }
+  return {
+    label: "Low",
+    grade: "Grade F",
+    message: "Most tracked time is currently outside productive categories."
+  };
+}
+
+function rangeTitle(range: DashboardOverviewRange): string {
+  switch (range) {
+    case "today":
+      return "Today";
+    case "7d":
+      return "Last 7 days";
+    case "30d":
+      return "Last 30 days";
+    case "90d":
+      return "Last 90 days";
+  }
+}
+
+function rangeSubtitle(range: DashboardOverviewRange): string {
+  switch (range) {
+    case "today":
+      return "Today";
+    case "7d":
+      return "Last 7 days";
+    case "30d":
+      return "Last 30 days";
+    case "90d":
+      return "Last 90 days";
+  }
+}
+
+function localDateKeysForRange(
+  range: DashboardOverviewRange,
+  timezone: string,
+  now: Date
+): string[] {
+  const days = OVERVIEW_RANGE_DAYS[range];
+  return Array.from({ length: days }, (_, index) => (
+    localDateKey(new Date(now.getTime() - index * DAY_MS), timezone)
+  )).reverse();
+}
+
+function rangeEvents(
+  events: ActivityEvent[],
+  settings: AnalyticsSettings,
+  range: DashboardOverviewRange,
+  now: Date
+): ActivityEvent[] {
+  const timezone = settings.timezone || "UTC";
+  const keys = new Set(localDateKeysForRange(range, timezone, now));
+  return events.filter((event) => {
+    const occurredAt = new Date(event.occurred_at || "");
+    return !Number.isNaN(occurredAt.getTime()) && keys.has(localDateKey(occurredAt, timezone));
+  });
+}
+
+function buildTrend(
+  events: ActivityEvent[],
+  settings: AnalyticsSettings,
+  range: DashboardOverviewRange,
+  now: Date
+): DashboardOverview["trend"] {
+  const timezone = settings.timezone || "UTC";
+  const points = localDateKeysForRange(range, timezone, now).map((dateKey) => ({
+    key: dateKey,
+    label: range === "today" ? "Today" : dateKey.slice(5),
+    total_duration_ms: 0,
+    productive_duration_ms: 0,
+    social_duration_ms: 0
+  }));
+  const pointsByDate = new Map(points.map((point) => [point.key, point]));
+
+  for (const event of mergeEquivalentIntervals(events.filter(isActiveTrackedEvent), settings)) {
+    const occurredAt = new Date(event.occurred_at || "");
+    if (Number.isNaN(occurredAt.getTime())) {
+      continue;
+    }
+    const dateKey = localDateKey(occurredAt, timezone);
+    const point = pointsByDate.get(dateKey);
+    if (!point) {
+      continue;
+    }
+
+    const category = event.category || resolveCategory(event.host, settings);
+    if (category === "excluded") {
+      continue;
+    }
+    const durationMs = Number(event.duration_ms || 0);
+    point.total_duration_ms += durationMs;
+    if (FOCUS_CATEGORIES.has(category)) {
+      point.productive_duration_ms += durationMs;
+    }
+    if (category === "social") {
+      point.social_duration_ms += durationMs;
+    }
+  }
+
+  return points;
+}
+
+export function buildDashboardOverview(
+  events: ActivityEvent[] = [],
+  settings: AnalyticsSettings = {},
+  range: DashboardOverviewRange,
+  now = new Date()
+): DashboardOverview {
+  const normalizedEvents = rangeEvents(events, settings, range, now);
+  const mergedActiveEvents = mergeEquivalentIntervals(normalizedEvents.filter(isActiveTrackedEvent), settings);
+  const summarized = summarize(mergedActiveEvents, settings, range, localDateKey(now, settings.timezone || "UTC"), now);
+  const socialDurationMs = summarized.top_categories.find((item) => item.category === "social")?.duration_ms || 0;
+  const productivityValue = Math.round((summarized.focus_score || 0) * 100);
+  const sitesVisitedCount = new Set(
+    mergedActiveEvents
+      .filter((event) => (event.category || resolveCategory(event.host, settings)) !== "excluded")
+      .map((event) => event.host)
+      .filter((host): host is string => Boolean(host))
+  ).size;
+
+  return {
+    range,
+    days: OVERVIEW_RANGE_DAYS[range],
+    summary: {
+      title: rangeTitle(range),
+      subtitle: rangeSubtitle(range),
+      total_duration_ms: summarized.total_duration_ms,
+      productive_duration_ms: summarized.focus_duration_ms,
+      social_duration_ms: socialDurationMs,
+      sites_visited_count: sitesVisitedCount,
+      productivity_score: {
+        value: productivityValue,
+        ...scoreLabel(productivityValue)
+      }
+    },
+    category_breakdown: summarized.top_categories,
+    trend: buildTrend(normalizedEvents, settings, range, now),
+    top_sites: summarized.top_sites.slice(0, 10)
+  };
+}
+
+export function buildDashboardOverviewRanges(
+  events: ActivityEvent[] = [],
+  settings: AnalyticsSettings = {},
+  now = new Date()
+): Record<DashboardOverviewRange, DashboardOverview> {
+  return {
+    today: buildDashboardOverview(events, settings, "today", now),
+    "7d": buildDashboardOverview(events, settings, "7d", now),
+    "30d": buildDashboardOverview(events, settings, "30d", now),
+    "90d": buildDashboardOverview(events, settings, "90d", now)
+  };
+}
+
 function summarize(
   events: ActivityEvent[],
   settings: AnalyticsSettings,
@@ -354,7 +554,7 @@ function summarize(
       duration_ms: durationMs
     }))
     .sort((a, b) => sortByDurationThenName(a, b, "host"))
-    .slice(0, 8);
+    .slice(0, 10);
 
   const topCategories = Array.from(categoryDurations.entries())
     .map(([category, durationMs]) => ({
