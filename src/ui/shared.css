@@ -1,0 +1,102 @@
+.top-sites-list {
+  display: grid;
+  gap: 4px;
+}
+
+.top-sites-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  transition: background-color 140ms ease;
+}
+
+.top-sites-row:hover {
+  background: #e9ebef;
+}
+
+.top-sites-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: #ececf0;
+  color: #717182;
+  font-size: 12px;
+}
+
+.top-sites-copy {
+  min-width: 0;
+}
+
+.top-sites-copy strong {
+  display: block;
+  overflow: hidden;
+  color: #030213;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-sites-category-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 0 8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.top-sites-category-pill.is-neutral {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.top-sites-category-pill.is-danger {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.top-sites-category-pill.is-focus {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.top-sites-category-pill.is-communication {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.top-sites-duration {
+  width: 57px;
+  color: #030213;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .dashboard-shell .top-sites-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 10px 12px;
+  }
+
+  .dashboard-shell .top-sites-category-pill,
+  .dashboard-shell .top-sites-duration {
+    grid-column: 2;
+  }
+}

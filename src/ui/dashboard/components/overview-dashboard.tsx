@@ -1,7 +1,8 @@
 import type { DashboardOverview } from "../../../lib/types.js";
 import { formatDuration, humanizeCategory } from "../../../lib/utils.js";
+import { TopSitesList } from "../../shared/components/top-sites-list.js";
 import { EmptyState } from "./empty-state.js";
-import { categoryTone, clampPercent } from "../lib/presentation.js";
+import { clampPercent } from "../lib/presentation.js";
 
 const CATEGORY_COLORS: Record<string, string> = {
   communication: "#3b82f6",
@@ -157,19 +158,7 @@ export function OverviewDashboard({
             ) : null}
           </div>
           {overview.top_sites.length ? (
-            <div className="sites-list">
-              {overview.top_sites.map((site, index) => (
-                <div className="site-row" key={`${site.host || "unknown"}:${index}`}>
-                  <span className="site-rank">{index + 1}</span>
-                  <span className="site-host-line">
-                    <span className="site-favicon fa-solid fa-globe" aria-hidden="true" />
-                    <span className="site-host">{site.host || "Unknown site"}</span>
-                  </span>
-                  <span className={`site-category-pill is-${categoryTone(site.category)}`}>{humanizeCategory(site.category)}</span>
-                  <strong className="site-duration">{formatDuration(site.duration_ms)}</strong>
-                </div>
-              ))}
-            </div>
+            <TopSitesList sites={overview.top_sites} />
           ) : (
             <EmptyState>No top sites for this range yet.</EmptyState>
           )}

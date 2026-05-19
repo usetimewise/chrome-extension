@@ -281,8 +281,7 @@ body::before {
   background: #ffffff;
 }
 
-.donut-legend,
-.sites-list {
+.donut-legend {
   display: grid;
   gap: 12px;
 }
@@ -384,88 +383,6 @@ body::before {
   padding: 8px 10px;
 }
 
-.site-row {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 14px;
-  padding: 6px 0;
-}
-
-.site-rank {
-  color: #9ca3af;
-  font-size: 12px;
-}
-
-.site-host-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.site-favicon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  background: #f3f4f6;
-  color: #9ca3af;
-  font-size: 10px;
-  flex: 0 0 auto;
-}
-
-.site-host {
-  overflow: hidden;
-  color: #111827;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.site-category-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 20px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  line-height: 1;
-  padding: 0 8px;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.site-category-pill.is-neutral {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-.site-category-pill.is-danger {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.site-category-pill.is-focus {
-  background: #ecfdf5;
-  color: #059669;
-}
-
-.site-category-pill.is-communication {
-  background: #eff6ff;
-  color: #2563eb;
-}
-
-.site-duration {
-  color: #111827;
-  font-size: 14px;
-  font-weight: 500;
-}
-
 .dashboard-empty {
   border: 1px solid #e5e7eb;
   border-radius: 16px;
@@ -519,15 +436,6 @@ body::before {
     padding: 18px;
   }
 
-  .site-row {
-    grid-template-columns: 24px minmax(0, 1fr);
-    gap: 10px 12px;
-  }
-
-  .site-category-pill,
-  .site-duration {
-    grid-column: 2;
-  }
 }
 
 @media (max-width: 560px) {

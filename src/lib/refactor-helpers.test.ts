@@ -10,18 +10,22 @@ import {
 } from "./messaging/contracts.js";
 import type { ActivityEvent, PopupModel, TodayView, TrackingTransition } from "./types.js";
 import {
+  donutBackground,
   getAlignmentPercent,
+  getComparisonText,
   getFooterInsight,
-  getProgressLabel
+  getProgressLabel,
+  getScoreLabel,
+  topCategoryShare
 } from "../ui/popup/lib/presentation.js";
 import {
-  categoryTone,
   clampPercent,
   distractingCategories,
   distractingSites,
   isStartFocusRecommendation,
   recommendationIcon
 } from "../ui/dashboard/lib/presentation.js";
+import { categoryTone } from "../ui/shared/lib/presentation.js";
 import {
   latestEvents,
   latestTransitions,
@@ -95,6 +99,22 @@ test("popup presentation helpers normalize empty and active states", () => {
   assert.equal(getAlignmentPercent(driftingModel), 43);
   assert.equal(getProgressLabel(driftingModel), "43% focus alignment");
   assert.equal(getFooterInsight(driftingModel), "A gentle reset can bring the day back on track.");
+  assert.equal(getScoreLabel(43), "Fair");
+  assert.equal(getComparisonText(driftingModel), "vs yesterday -10%");
+  assert.equal(
+    topCategoryShare([
+      { category: "work", duration_ms: 4_000, share: 0.5 },
+      { category: "social", duration_ms: 2_000, share: 0.25 }
+    ]),
+    50
+  );
+  assert.match(
+    donutBackground([
+      { category: "work", duration_ms: 4_000, share: 0.5 },
+      { category: "social", duration_ms: 2_000, share: 0.25 }
+    ]),
+    /^conic-gradient\(/
+  );
   assert.equal(getProgressLabel(null), "0% focus alignment");
 });
 

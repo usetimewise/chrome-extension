@@ -1,4 +1,5 @@
 import "./common.css";
+import "./shared.css";
 import "./dashboard.css";
 import { mountDashboardApp } from "./dashboard/index.js";
 

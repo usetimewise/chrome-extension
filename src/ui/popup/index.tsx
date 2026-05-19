@@ -1,86 +1,64 @@
-import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MESSAGE_TYPES } from "../../lib/constants.js";
-import { sendBackgroundMessage } from "../../lib/messaging/client.js";
-import { formatDuration, formatPercent } from "../../lib/utils.js";
-import { CategoryRows } from "./components/category-rows.js";
+import { formatDuration, formatPercent, humanizeCategory } from "../../lib/utils.js";
+import { TopSitesList } from "../shared/components/top-sites-list.js";
 import { usePopupBootstrap } from "./hooks/use-popup-bootstrap.js";
-import { getAlignmentPercent, getFooterInsight, getProgressLabel } from "./lib/presentation.js";
+import {
+  categoryAccent,
+  donutBackground,
+  getAlignmentPercent,
+  getComparisonText,
+  getProgressLabel,
+  getScoreLabel,
+  topCategoryShare
+} from "./lib/presentation.js";
 
-function PopupLoadingShell({ onOpenDashboard }: { onOpenDashboard: () => void }) {
+function PopupLoadingShell({ onOpenDashboard, onOpenDebug }: { onOpenDashboard: () => void; onOpenDebug: () => void }) {
   return (
-    <main className="popup-shell is-loading" aria-label="Focus summary">
-      <header className="popup-topbar">
-        <div className="popup-state-badge">
-          <span className="popup-state-dot is-idle" aria-hidden="true" />
-          <span>Loading</span>
-        </div>
-        <div className="popup-topbar-actions">
+    <main className="popup-shell is-loading" aria-label="Today overview">
+      <header className="popup-header">
+        <h1 className="popup-page-title">Today&apos;s Overview</h1>
+        <div className="popup-header-actions">
+          {import.meta.env.VITE_TIMEWISE_DEV_DEBUG === "true" ? (
+            <button className="popup-icon-button" type="button" aria-label="Open debug" onClick={onOpenDebug}>
+              <span className="fa-solid fa-bug" aria-hidden="true" />
+            </button>
+          ) : null}
           <button className="popup-icon-button" type="button" aria-label="Open dashboard" onClick={onOpenDashboard}>
             <span className="fa-solid fa-chart-column" aria-hidden="true" />
           </button>
         </div>
       </header>
 
-      <section className="popup-summary-card" aria-label="Tracked today">
-        <button className="popup-focus-button is-idle" type="button" aria-label="Start focus mode" disabled>
-          <span className="popup-focus-icon fa-solid fa-play" aria-hidden="true" />
-          <span>Start</span>
-        </button>
-        <div className="popup-summary-copy">
-          <div className="popup-summary-line">
-            <strong>--</strong>
-            <span>tracked today</span>
+      <section className="popup-overview-section popup-skeleton-card" aria-hidden="true">
+        <div className="popup-overview-grid">
+          <div className="popup-score-skeleton" />
+          <div className="popup-summary-skeleton-grid">
+            <span />
+            <span />
+            <span />
+            <span />
           </div>
-          <div className="popup-progress-row">
-            <div className="popup-progress-track" aria-label="Loading focus alignment">
-              <span style={{ width: "0%" }} />
-            </div>
-            <strong>0%</strong>
-          </div>
+        </div>
+      </section>
+      <section className="popup-list-section" aria-hidden="true">
+        <div className="popup-section-title-row">
+          <h2 className="popup-section-title">Top Sites Today</h2>
+        </div>
+        <div className="popup-summary-skeleton-grid">
+          <span />
+          <span />
+          <span />
+          <span />
         </div>
       </section>
     </main>
   );
 }
 
-function stateTone(state: "empty" | "default" | "focus_active" | "drifting"): "active" | "warn" | "idle" {
-  if (state === "focus_active") {
-    return "active";
-  }
-  if (state === "drifting") {
-    return "warn";
-  }
-  return "idle";
-}
-
 function PopupApp() {
-  const { bootstrap, refreshBootstrap } = usePopupBootstrap();
-  const [isNoticeDismissed, setIsNoticeDismissed] = useState(false);
+  const { bootstrap } = usePopupBootstrap();
   const model = bootstrap?.popupModel ?? null;
-  const alignment = getAlignmentPercent(model);
-  const focusSession = model?.focusSession || null;
-  const isFocusActive = model?.state === "focus_active" && focusSession?.status === "active";
-  const focusButtonLabel = isFocusActive ? "Stop" : "Start";
-  const focusButtonIcon = isFocusActive ? "fa-stop" : "fa-play";
-  const tone = stateTone(model?.state ?? "empty");
-  const progressLabel = getProgressLabel(model);
-  const shouldShowDriftNotice = Boolean(model?.state === "drifting" && model.currentSite && !isNoticeDismissed);
-
-  useEffect(() => {
-    setIsNoticeDismissed(false);
-  }, [model?.state, model?.currentSite?.host]);
-
-  async function toggleFocusMode() {
-    const sessionId = focusSession?.id;
-    if (sessionId) {
-      await sendBackgroundMessage({ type: MESSAGE_TYPES.endFocusSession, sessionId });
-    } else {
-      await sendBackgroundMessage({ type: MESSAGE_TYPES.startFocusSession });
-    }
-
-    await refreshBootstrap();
-  }
+  const score = getAlignmentPercent(model);
 
   function openDashboard() {
     chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
@@ -91,103 +69,119 @@ function PopupApp() {
   }
 
   if (!model) {
-    return <PopupLoadingShell onOpenDashboard={openDashboard} />;
+    return <PopupLoadingShell onOpenDashboard={openDashboard} onOpenDebug={openDebug} />;
   }
 
+  const comparisonText = getComparisonText(model);
+  const sitesVisitedCount = model.topSites.length;
+  const topShare = topCategoryShare(model.topCategories);
+
   return (
-    <main className="popup-shell" aria-label="Focus summary">
-      <header className="popup-topbar">
-        <div className="popup-state-badge">
-          <span className={`popup-state-dot is-${tone}`} aria-hidden="true" />
-          <span>{model.statusLabel}</span>
-        </div>
-        <div className="popup-topbar-actions">
-          <button className="popup-icon-button" type="button" aria-label="Open dashboard" onClick={openDashboard}>
-            <span className="fa-solid fa-chart-column" aria-hidden="true" />
-          </button>
+    <main className="popup-shell" aria-label="Today overview">
+      <header className="popup-header">
+        <h1 className="popup-page-title">Today&apos;s Overview</h1>
+        <div className="popup-header-actions">
           {import.meta.env.VITE_TIMEWISE_DEV_DEBUG === "true" ? (
             <button className="popup-icon-button" type="button" aria-label="Open debug" onClick={openDebug}>
               <span className="fa-solid fa-bug" aria-hidden="true" />
             </button>
           ) : null}
+          <button className="popup-icon-button" type="button" aria-label="Open dashboard" onClick={openDashboard}>
+            <span className="fa-solid fa-chart-column" aria-hidden="true" />
+          </button>
         </div>
       </header>
 
-      <section className="popup-summary-card" aria-label="Tracked today">
-        <button
-          className={`popup-focus-button ${isFocusActive ? "is-active" : "is-idle"}`}
-          type="button"
-          aria-label={isFocusActive ? "Stop focus mode" : "Start focus mode"}
-          onClick={() => void toggleFocusMode()}
-        >
-          <span className={`popup-focus-icon fa-solid ${focusButtonIcon}`} aria-hidden="true" />
-          <span>{focusButtonLabel}</span>
-        </button>
-        <div className="popup-summary-copy">
-          <div className="popup-summary-line">
-            <strong>{formatDuration(model.trackedTimeMs)}</strong>
-            <span>tracked today</span>
-          </div>
-          <div className="popup-progress-row">
-            <div className="popup-progress-track" aria-label={progressLabel}>
-              <span style={{ width: `${alignment}%` }} />
+      <section className="popup-overview-section">
+        <div className="popup-overview-grid">
+          <div className="popup-score-column">
+            <div
+              className="popup-score-ring"
+              style={{ ["--score-value" as string]: `${score}` }}
+              role="img"
+              aria-label={getProgressLabel(model)}
+            >
+              <div className="popup-score-core">
+                <strong>{score}</strong>
+                <span>{getScoreLabel(score)}</span>
+              </div>
             </div>
-            <strong>{formatPercent(model.focusAlignment)}</strong>
+            <p className="popup-score-label">{comparisonText}</p>
+          </div>
+
+          <div className="popup-stats-column">
+            <article className="popup-stat-card">
+              <strong>{formatDuration(model.trackedTimeMs)}</strong>
+              <span>Total</span>
+            </article>
+            <article className="popup-stat-card">
+              <strong className="is-sites">{sitesVisitedCount}</strong>
+              <span>Sites</span>
+            </article>
+            <article className="popup-stat-card">
+              <strong className="is-productive">{formatDuration(model.focusedTimeMs)}</strong>
+              <span>Productive</span>
+            </article>
+            <article className="popup-stat-card">
+              <strong className="is-distracting">{formatDuration(model.distractedTimeMs)}</strong>
+              <span>Distracting</span>
+            </article>
           </div>
         </div>
       </section>
 
-      {shouldShowDriftNotice ? (
-        <section className="popup-notice" aria-label="Focus reminder">
-          <div className="popup-notice-icon">
-            <span className="fa-solid fa-circle-exclamation" aria-hidden="true" />
-          </div>
-          <div className="popup-notice-copy">
-            <p className="popup-notice-title">
-              You&apos;ve spent {formatDuration(model.currentSite?.dwellMs)} on {model.currentSite?.host}
-            </p>
-            <p className="popup-notice-body">{model.statusMessage}</p>
-          </div>
-          <button
-            className="popup-notice-dismiss"
-            type="button"
-            aria-label="Dismiss reminder"
-            onClick={() => setIsNoticeDismissed(true)}
-          >
-            <span className="fa-solid fa-xmark" aria-hidden="true" />
-          </button>
-        </section>
-      ) : null}
+      <section className="popup-list-section" aria-labelledby="popup-top-sites-title">
+        <div className="popup-section-title-row">
+          <h2 className="popup-section-title" id="popup-top-sites-title">Top Sites Today</h2>
+        </div>
 
-      <section className="popup-categories-panel" aria-label="Top categories">
-        <div className="popup-panel-heading">
-          <h2>Today&apos;s focus</h2>
-          <p>Grouped from your strongest tracked categories.</p>
-        </div>
-        <div className="category-list">
-          <CategoryRows categories={model.topCategories} sites={model.topSites} />
-        </div>
+        {model.topSites.length ? (
+          <TopSitesList sites={model.topSites} />
+        ) : (
+          <div className="popup-empty-state">
+            <span>No tracked sites yet.</span>
+          </div>
+        )}
       </section>
 
-      <footer className="popup-insight-card">
-        <div className="popup-insight-icon">
-          <span className="fa-solid fa-arrow-trend-up" aria-hidden="true" />
+      <section className="popup-categories-section" aria-labelledby="popup-categories-title">
+        <div className="popup-section-title-row">
+          <h2 className="popup-section-title" id="popup-categories-title">Categories</h2>
         </div>
-        <div className="popup-insight-copy">
-          <strong>{model.insight.title}</strong>
-          <p>{getFooterInsight(model)}</p>
-        </div>
-      </footer>
 
-      {focusSession ? (
-        <section className="popup-session-meta" aria-label="Focus session status">
-          <span className="popup-session-pill">Focus session</span>
-          <span>
-            {formatDuration(focusSession.active_duration_ms)}
-            {typeof focusSession.remaining_ms === "number" ? ` tracked • ${formatDuration(focusSession.remaining_ms)} left` : " tracked"}
-          </span>
-        </section>
-      ) : null}
+        {model.topCategories.length ? (
+          <div className="popup-categories-layout">
+            <div className="popup-donut-wrap">
+              <div
+                className="popup-category-donut"
+                style={{ background: donutBackground(model.topCategories) }}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="popup-category-list">
+              {model.topCategories.map((category) => (
+                <article className="popup-category-row" key={category.category}>
+                  <div className="popup-category-meta">
+                    <span
+                      className="popup-category-dot"
+                      style={{ backgroundColor: categoryAccent(category.category) }}
+                      aria-hidden="true"
+                    />
+                    <span>{humanizeCategory(category.category)}</span>
+                  </div>
+                  <div className="popup-category-values">
+                    <strong>{typeof category.share === "number" ? formatPercent(category.share) : `${topShare}%`}</strong>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="popup-empty-state">
+            <span>No category data yet.</span>
+          </div>
+        )}
+      </section>
     </main>
   );
 }

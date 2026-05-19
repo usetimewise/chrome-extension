@@ -1,14 +1,11 @@
-import {
-  DISTRACTION_CATEGORIES,
-  FOCUS_CATEGORIES
-} from "../../../lib/constants.js";
+import { DISTRACTION_CATEGORIES } from "../../../lib/constants.js";
 import type {
-  Category,
   Recommendation,
   TodayView,
   TopCategory,
   TopSite
 } from "../../../lib/types.js";
+export { categoryTone } from "../../shared/lib/presentation.js";
 
 export function localDate(): string {
   return new Date().toLocaleDateString(undefined, {
@@ -24,19 +21,6 @@ export function clampPercent(value?: number): number {
 
 export function percentLabel(value?: number): string {
   return `${clampPercent(value)}%`;
-}
-
-export function categoryTone(category: Category): "danger" | "focus" | "communication" | "neutral" {
-  if (DISTRACTION_CATEGORIES.has(category)) {
-    return "danger";
-  }
-  if (FOCUS_CATEGORIES.has(category)) {
-    return "focus";
-  }
-  if (category === "communication") {
-    return "communication";
-  }
-  return "neutral";
 }
 
 export function sortedByDuration<T extends { duration_ms?: number }>(items: T[] = []): T[] {
