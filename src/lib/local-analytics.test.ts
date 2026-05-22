@@ -21,16 +21,27 @@ const settings: Partial<Settings> = {
 };
 
 test("resolveCategory honors overrides, subdomains, and exclusions", () => {
-  assert.equal(resolveCategory("github.com", settings), "work");
-  assert.equal(resolveCategory("app.youtube.com", settings), "entertainment");
+  assert.equal(resolveCategory("github.com", settings, "work"), "work");
+  assert.equal(resolveCategory("app.youtube.com", settings, "entertainment"), "entertainment");
   assert.equal(resolveCategory("youtube.com", {
     ...settings,
     categoryOverrides: { "youtube.com": "learning" }
-  }), "learning");
+  }, "entertainment"), "learning");
   assert.equal(resolveCategory("news.ycombinator.com", {
     ...settings,
     excludedHosts: ["ycombinator.com"]
   }), "excluded");
+});
+
+test("resolveCategory falls back to other without backend classification", () => {
+  assert.equal(resolveCategory("github.com", settings), "other");
+  assert.equal(resolveCategory("mail.example.com", settings), "other");
+});
+
+test("resolveCategory no longer uses local catalog or heuristics", () => {
+  assert.equal(resolveCategory("youtube.com", settings), "other");
+  assert.equal(resolveCategory("docs.google.com", settings), "other");
+  assert.equal(resolveCategory("news.example.com", settings), "other");
 });
 
 test("buildTodayView derives local counters and yesterday comparison", () => {
@@ -62,6 +73,7 @@ test("buildTodayView derives local counters and yesterday comparison", () => {
   assert.equal(view.summary.focus_duration_ms, 30 * 60 * 1000);
   assert.equal(view.summary.distraction_duration_ms, 15 * 60 * 1000);
   assert.equal(view.comparison.focus_delta_ms, 20 * 60 * 1000);
+  assert.equal(view.comparison.productivity_score_delta, -33);
   assert.equal(view.top_sites[0].host, "github.com");
   assert.equal(view.top_categories[0].category, "work");
 });

@@ -479,3 +479,63 @@ export async function appendActivityEvent(
   await pruneActivityEventIndex(now);
   return nextBucket;
 }
+
+export async function recategorizeEventsForHost(
+  host: string,
+  previousCategory: ActivityEvent["category"],
+  nextCategory: ActivityEvent["category"],
+  settings: Partial<Settings> = {},
+  now = Date.now()
+): Promise<number> {
+  await migrateActivityEventsIfNeeded(settings, now);
+
+  const normalizedHost = String(host || "").trim().toLowerCase();
+  if (!normalizedHost || !previousCategory || !nextCategory || previousCategory === nextCategory) {
+    return 0;
+  }
+
+  const index = await getActivityEventsIndex();
+  const keys = index.days.map(activityDayBucketKey);
+  const buckets = await getManyFromStorage<ActivityEvent[]>(keys);
+  const writes: Record<string, ActivityEvent[]> = {};
+  const nextDayMeta = { ...index.dayMeta };
+  let updated = 0;
+
+  for (const dateKey of index.days) {
+    const key = activityDayBucketKey(dateKey);
+    const currentBucket = retainedEvents(buckets[key] || [], now);
+    let changed = false;
+    const nextBucket = currentBucket.map((event) => {
+      if (event.host !== normalizedHost || event.category !== previousCategory) {
+        return event;
+      }
+      changed = true;
+      updated += 1;
+      return {
+        ...event,
+        category: nextCategory
+      };
+    });
+
+    if (!changed) {
+      continue;
+    }
+
+    writes[key] = nextBucket;
+    nextDayMeta[dateKey] = dayMetaFor(nextBucket, now);
+  }
+
+  if (!updated) {
+    return 0;
+  }
+
+  await setManyInStorage({
+    ...writes,
+    [STORAGE_KEYS.activityEventsIndex]: normalizeIndex({
+      ...index,
+      dayMeta: nextDayMeta,
+      updatedAt: new Date(now).toISOString()
+    })
+  });
+  return updated;
+}

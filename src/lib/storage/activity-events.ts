@@ -5,6 +5,7 @@ import {
   getActivityEventsForDays as getBucketedActivityEventsForDays,
   getRecentActivityEvents as getRecentBucketedActivityEvents,
   migrateActivityEventsIfNeeded,
+  recategorizeEventsForHost as recategorizeBucketedEventsForHost,
   todayViewActivityDateKeys,
   type ActivityEventsDayMeta
 } from "../activity-events-storage.js";
@@ -62,4 +63,18 @@ export async function ensureActivityEventsMigration(settings?: Settings): Promis
 
 export async function appendActivityEvent(event: ActivityEvent, settings?: Settings): Promise<ActivityEvent[]> {
   return appendBucketedActivityEvent(event, settings || await getSettings());
+}
+
+export async function recategorizeActivityEventsForHost(
+  host: string,
+  previousCategory: ActivityEvent["category"],
+  nextCategory: ActivityEvent["category"],
+  settings?: Settings
+): Promise<number> {
+  return recategorizeBucketedEventsForHost(
+    host,
+    previousCategory,
+    nextCategory,
+    settings || await getSettings()
+  );
 }

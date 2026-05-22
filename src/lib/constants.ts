@@ -11,7 +11,8 @@ export const STORAGE_KEYS = {
   activityDailyAnalyticsPrefix: "twt_activity_daily_analytics_v1:",
   trackingTransitions: "twt_tracking_transitions_v1",
   focusSessions: "twt_focus_sessions_v1",
-  siteRules: "twt_site_rules_v1"
+  siteRules: "twt_site_rules_v1",
+  siteClassifications: "twt_site_classifications_v1"
 } as const;
 
 export const MESSAGE_TYPES = {

@@ -1,15 +1,22 @@
 import { buildHeaders, requestJSON } from "./client.js";
-import type { ResolveCategoriesResponse, SiteRuleResponse, UpdateSiteRuleRequest } from "../types.js";
+import type {
+  ClassifySitesRequest,
+  ClassifySitesResponse,
+  SiteRuleResponse,
+  UpdateSiteRuleRequest
+} from "../types.js";
 
-export async function resolveCategories(
+export async function classifySites(
   baseUrl: string,
   deviceId: string,
-  hosts: string[]
-): Promise<ResolveCategoriesResponse> {
-  const query = encodeURIComponent(hosts.join(","));
-
-  return requestJSON<ResolveCategoriesResponse>(baseUrl, `/v1/sites/categories?hosts=${query}`, {
-    headers: buildHeaders(deviceId)
+  domains: string[]
+): Promise<ClassifySitesResponse> {
+  return requestJSON<ClassifySitesResponse>(baseUrl, "/v1/sites/classify", {
+    method: "POST",
+    headers: buildHeaders(deviceId),
+    body: JSON.stringify({
+      domains
+    } satisfies ClassifySitesRequest)
   });
 }
 

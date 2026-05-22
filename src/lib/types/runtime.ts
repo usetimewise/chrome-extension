@@ -1,4 +1,11 @@
-import type { ActivityEvent, Category, IdleState, SiteRuleState, TrackingTransition } from "./activity.js";
+import type {
+  ActivityEvent,
+  Category,
+  IdleState,
+  SiteClassificationState,
+  SiteRuleState,
+  TrackingTransition
+} from "./activity.js";
 import type { DashboardCache, PopupModel } from "./dashboard.js";
 import type { FocusSession } from "./focus.js";
 
@@ -59,6 +66,7 @@ export interface BootstrapResponse {
   activityEvents?: ActivityEvent[];
   focusSessions?: FocusSession[];
   siteRules?: SiteRuleState;
+  siteClassifications?: SiteClassificationState;
   dashboardCache?: DashboardCache;
   popupModel?: PopupModel;
 }

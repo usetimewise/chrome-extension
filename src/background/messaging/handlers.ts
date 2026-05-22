@@ -11,6 +11,7 @@ import { getDeviceState } from "../../lib/storage/device-state.js";
 import { getFocusSessions, saveFocusSessions } from "../../lib/storage/focus-sessions.js";
 import { isBackgroundRequest } from "../../lib/messaging/contracts.js";
 import { saveRuntimeState } from "../../lib/storage/runtime-state.js";
+import { getResolvedClassificationCategory, getSiteClassifications } from "../../lib/storage/site-classifications.js";
 import { getSettings, getSiteRules, saveSiteRule as saveLocalSiteRule } from "../../lib/storage/site-rules.js";
 import { getTrackingTransitions } from "../../lib/storage/tracking-transitions.js";
 import {
@@ -38,8 +39,10 @@ import { getErrorMessage } from "../../lib/utils.js";
 import type { BootstrapResponse, Category, DashboardCache, Settings } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
 import { buildPopupModel, evaluateFocusNudgeNotification, forceFocusNudge } from "../focus/focus-session-flow.js";
+import { ensureClassificationForHost, processSiteClassificationQueue } from "../tracking/site-classification-worker.js";
 import { flushCurrentSession, logTransition } from "../tracking/transitions.js";
 import { syncQueue, withRegisteredDevice } from "../sync/sync-queue.js";
+import { updateProductivityActionIcon } from "../action/productivity-icon.js";
 
 async function getCachedDayAnalytics(
   dateKey: string,
@@ -103,15 +106,20 @@ export async function refreshViews(
   try {
     const settings = await getSettings();
     const now = new Date();
-    const [todayView, recentEvents, focusSessions, currentCache] = await Promise.all([
+    const [todayView, recentEvents, focusSessions, currentCache, siteClassifications] = await Promise.all([
       buildCachedTodayView(settings, now),
       getRecentActivityEvents(90, settings),
       getFocusSessions(),
-      getDashboardCache()
+      getDashboardCache(),
+      getSiteClassifications()
     ]);
     const focusSessionsView = buildFocusSessionsView(focusSessions);
     const currentHostCategory: Category | null = context.runtimeState.currentHost
-      ? resolveCategory(context.runtimeState.currentHost, settings)
+      ? resolveCategory(
+          context.runtimeState.currentHost,
+          settings,
+          getResolvedClassificationCategory(context.runtimeState.currentHost, siteClassifications)
+        )
       : null;
 
     const cachePatch: Partial<DashboardCache> = {
@@ -128,11 +136,14 @@ export async function refreshViews(
 
     const cache = await saveDashboardCache(cachePatch);
     await evaluateFocusNudgeNotification(context, cache, settings);
+    await updateProductivityActionIcon(cache);
     return cache;
   } catch (error) {
-    return saveDashboardCache({
+    const cache = await saveDashboardCache({
       lastError: getErrorMessage(error, "Unable to refresh dashboard views")
     });
+    await updateProductivityActionIcon(cache);
+    return cache;
   }
 }
 
@@ -166,14 +177,15 @@ export function createBackgroundMessageListener(
         }
         case MESSAGE_TYPES.getDebugState: {
           const settings = await getSettings();
-          const [device, dashboardCache, queue, events, transitions, focusSessions, siteRules] = await Promise.all([
+          const [device, dashboardCache, queue, events, transitions, focusSessions, siteRules, siteClassifications] = await Promise.all([
             getDeviceState(),
             getDashboardCache(),
             getQueue(),
             getActivityEvents(settings),
             getTrackingTransitions(),
             getFocusSessions(),
-            getSiteRules()
+            getSiteRules(),
+            getSiteClassifications()
           ]);
           return {
             settings,
@@ -186,6 +198,7 @@ export function createBackgroundMessageListener(
             transitions,
             focusSessions,
             siteRules,
+            siteClassifications,
             popupModel: buildPopupModel(context, dashboardCache, settings)
           } satisfies BootstrapResponse;
         }
@@ -255,6 +268,10 @@ export function createBackgroundMessageListener(
           }).catch((error) => (
             saveDashboardCache({ lastError: getErrorMessage(error, "Unable to send focus nudge") })
           ));
+          if (message.host) {
+            void ensureClassificationForHost(context, message.host, refreshViews);
+            void processSiteClassificationQueue(context, refreshViews);
+          }
           const dashboardCache = await refreshViews(context);
           return { ok: true, payload, dashboardCache };
         }

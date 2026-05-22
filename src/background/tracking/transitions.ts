@@ -1,4 +1,5 @@
 import { appendActivityEvent, appendToQueue } from "../../lib/storage/activity-events.js";
+import { getResolvedClassificationCategory, getSiteClassifications } from "../../lib/storage/site-classifications.js";
 import { saveRuntimeState } from "../../lib/storage/runtime-state.js";
 import { getSettings } from "../../lib/storage/site-rules.js";
 import { resolveCategory } from "../../lib/local-analytics.js";
@@ -147,6 +148,7 @@ async function flushCurrentSessionNow(
   settingsOverride: Settings | null = null
 ): Promise<void> {
   const settings = settingsOverride || await getSettings();
+  const classifications = await getSiteClassifications();
   const startedAt = context.runtimeState.sessionStartedAt;
   const now = Date.now();
   context.runtimeState.lastObservedAt = now;
@@ -159,7 +161,11 @@ async function flushCurrentSessionNow(
 
   const status = trackingStatusForCurrentState(context, settings);
   const category = context.runtimeState.currentHost
-    ? resolveCategory(context.runtimeState.currentHost, settings)
+    ? resolveCategory(
+        context.runtimeState.currentHost,
+        settings,
+        getResolvedClassificationCategory(context.runtimeState.currentHost, classifications)
+      )
     : undefined;
   const effectiveStatus = status === "active_tracked" && category === "excluded"
     ? "excluded"

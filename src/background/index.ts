@@ -3,8 +3,12 @@ import { getRuntimeState, saveRuntimeState } from "../lib/storage/runtime-state.
 import { MESSAGE_TYPES } from "../lib/constants.js";
 import { createBackgroundMessageListener, refreshViews } from "./messaging/handlers.js";
 import { createBackgroundRuntimeContext, setRuntimeState } from "./runtime/runtime-state.js";
-import { evaluateFocusNudgeNotification } from "./focus/focus-session-flow.js";
 import { refreshActiveTab, setActiveFromTab } from "./tracking/refresh-active-tab.js";
+import {
+  processSiteClassificationQueue,
+  scheduleSiteClassificationAlarm,
+  SITE_CLASSIFICATION_RETRY_ALARM
+} from "./tracking/site-classification-worker.js";
 import { flushCurrentSession, logTransition } from "./tracking/transitions.js";
 import { applyTrackingSettings, ensureDeviceRegistration, syncQueue } from "./sync/sync-queue.js";
 
@@ -20,6 +24,8 @@ async function boot(): Promise<void> {
   void ensureDeviceRegistration();
   await refreshActiveTab(runtimeContext);
   ensureAlarms();
+  await scheduleSiteClassificationAlarm();
+  void processSiteClassificationQueue(runtimeContext, refreshViews);
   await logTransition(runtimeContext, "startup");
   await refreshViews(runtimeContext);
 }
@@ -43,13 +49,18 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     runtimeContext.runtimeState.lastHeartbeatAt = Date.now();
     await logTransition(runtimeContext, "heartbeat");
     await saveRuntimeState(runtimeContext.runtimeState);
-    await evaluateFocusNudgeNotification(runtimeContext);
+    await refreshViews(runtimeContext);
     return;
   }
 
   if (alarm.name === "sync") {
     await syncQueue();
     await refreshViews(runtimeContext, { includeSitesView: true });
+    return;
+  }
+
+  if (alarm.name === SITE_CLASSIFICATION_RETRY_ALARM) {
+    await processSiteClassificationQueue(runtimeContext, refreshViews);
   }
 });
 
@@ -60,6 +71,7 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
     tab_id: tabId,
     window_id: tab.windowId ?? null
   });
+  void processSiteClassificationQueue(runtimeContext, refreshViews);
   await refreshViews(runtimeContext);
 });
 
@@ -74,6 +86,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       tab_id: tabId,
       window_id: tab.windowId ?? null
     });
+    void processSiteClassificationQueue(runtimeContext, refreshViews);
     await refreshViews(runtimeContext);
   }
 });
@@ -91,6 +104,9 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
   if (runtimeContext.runtimeState.isWindowFocused) {
     await refreshActiveTab(runtimeContext);
   }
+
+  void processSiteClassificationQueue(runtimeContext, refreshViews);
+  await refreshViews(runtimeContext);
 });
 
 chrome.idle.onStateChanged.addListener(async (newState) => {
@@ -99,6 +115,7 @@ chrome.idle.onStateChanged.addListener(async (newState) => {
   runtimeContext.runtimeState.sessionStartedAt = Date.now();
   await saveRuntimeState(runtimeContext.runtimeState);
   await logTransition(runtimeContext, "idle-change", newState);
+  await refreshViews(runtimeContext);
 });
 
 chrome.runtime.onMessage.addListener(createBackgroundMessageListener(runtimeContext));

@@ -66,13 +66,19 @@ export interface InsightsViewResponse {
   }>;
 }
 
-export interface ResolveCategoriesResponse {
-  categories?: Record<string, Category>;
-  rules?: Array<{
-    host: string;
-    category?: Category;
-    excluded?: boolean;
-  }>;
+export interface SiteClassificationResult {
+  domain: string;
+  category?: Category;
+  reason?: string;
+  error?: string;
+}
+
+export interface ClassifySitesRequest {
+  domains: string[];
+}
+
+export interface ClassifySitesResponse {
+  results?: SiteClassificationResult[];
 }
 
 export interface UpdateSiteRuleRequest {

@@ -4,7 +4,9 @@ import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
 import { classifyUrl, safeTabUrl } from "./classify-url.js";
+import { ensureClassificationForHost } from "./site-classification-worker.js";
 import { flushCurrentSession } from "./transitions.js";
+import { refreshViews } from "../messaging/handlers.js";
 
 export async function queryMediaState(tabId: number | null): Promise<boolean> {
   if (!tabId) {
@@ -54,6 +56,7 @@ export async function setActiveFromTab(
   context.runtimeState.mediaStateUpdatedAt = new Date().toISOString();
   context.runtimeState.sessionStartedAt = now;
   await saveRuntimeState(context.runtimeState);
+  void ensureClassificationForHost(context, nextHost, refreshViews);
 }
 
 export async function refreshActiveTab(context: BackgroundRuntimeContext): Promise<void> {

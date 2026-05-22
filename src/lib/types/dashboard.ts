@@ -113,6 +113,7 @@ export interface TodayView {
     focus_delta_ms?: number;
     distraction_delta_ms?: number;
     focus_alignment_delta?: number;
+    productivity_score_delta?: number;
     focused_time_yesterday_ms?: number;
   };
   top_sites: TopSite[];
@@ -197,9 +198,14 @@ export interface PopupModel {
   trackedTimeMs: number;
   focusedTimeMs: number;
   distractedTimeMs: number;
-  focusAlignment: number;
-  comparisonLabel: string;
-  comparisonValue: number;
+  productivityScore: {
+    value: number;
+    label: string;
+  };
+  scoreComparison: {
+    label: string;
+    delta: number;
+  };
   topCategories: TopCategory[];
   topSites: TopSite[];
   insight: {

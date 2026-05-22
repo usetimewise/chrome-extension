@@ -2,13 +2,13 @@ import { createRoot } from "react-dom/client";
 import { formatDuration, formatPercent, humanizeCategory } from "../../lib/utils.js";
 import { TopSitesList } from "../shared/components/top-sites-list.js";
 import { usePopupBootstrap } from "./hooks/use-popup-bootstrap.js";
+import { logRecentBrowserHistory } from "./lib/history.js";
 import {
   categoryAccent,
   donutBackground,
-  getAlignmentPercent,
   getComparisonText,
   getProgressLabel,
-  getScoreLabel,
+  getProductivityScoreValue,
   topCategoryShare
 } from "./lib/presentation.js";
 
@@ -19,9 +19,20 @@ function PopupLoadingShell({ onOpenDashboard, onOpenDebug }: { onOpenDashboard: 
         <h1 className="popup-page-title">Today&apos;s Overview</h1>
         <div className="popup-header-actions">
           {import.meta.env.VITE_TIMEWISE_DEV_DEBUG === "true" ? (
-            <button className="popup-icon-button" type="button" aria-label="Open debug" onClick={onOpenDebug}>
-              <span className="fa-solid fa-bug" aria-hidden="true" />
-            </button>
+            <>
+              <button
+                className="popup-icon-button"
+                type="button"
+                aria-label="Log browser history"
+                title="Log browser history"
+                onClick={() => void logRecentBrowserHistory()}
+              >
+                <span className="fa-solid fa-clock-rotate-left" aria-hidden="true" />
+              </button>
+              <button className="popup-icon-button" type="button" aria-label="Open debug" onClick={onOpenDebug}>
+                <span className="fa-solid fa-bug" aria-hidden="true" />
+              </button>
+            </>
           ) : null}
           <button className="popup-icon-button" type="button" aria-label="Open dashboard" onClick={onOpenDashboard}>
             <span className="fa-solid fa-chart-column" aria-hidden="true" />
@@ -58,7 +69,9 @@ function PopupLoadingShell({ onOpenDashboard, onOpenDebug }: { onOpenDashboard: 
 function PopupApp() {
   const { bootstrap } = usePopupBootstrap();
   const model = bootstrap?.popupModel ?? null;
-  const score = getAlignmentPercent(model);
+  const score = getProductivityScoreValue(model);
+  const scoreLabel = model?.productivityScore?.label || "No score yet";
+  const isDevDebugEnabled = import.meta.env.VITE_TIMEWISE_DEV_DEBUG === "true";
 
   function openDashboard() {
     chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
@@ -66,6 +79,14 @@ function PopupApp() {
 
   function openDebug() {
     chrome.tabs.create({ url: chrome.runtime.getURL("debug.html") });
+  }
+
+  async function handleLogBrowserHistory() {
+    try {
+      await logRecentBrowserHistory();
+    } catch (error) {
+      console.error("[TimeWise][dev] Failed to log browser history", error);
+    }
   }
 
   if (!model) {
@@ -81,10 +102,21 @@ function PopupApp() {
       <header className="popup-header">
         <h1 className="popup-page-title">Today&apos;s Overview</h1>
         <div className="popup-header-actions">
-          {import.meta.env.VITE_TIMEWISE_DEV_DEBUG === "true" ? (
-            <button className="popup-icon-button" type="button" aria-label="Open debug" onClick={openDebug}>
-              <span className="fa-solid fa-bug" aria-hidden="true" />
-            </button>
+          {isDevDebugEnabled ? (
+            <>
+              <button
+                className="popup-icon-button"
+                type="button"
+                aria-label="Log browser history"
+                title="Log browser history"
+                onClick={() => void handleLogBrowserHistory()}
+              >
+                <span className="fa-solid fa-clock-rotate-left" aria-hidden="true" />
+              </button>
+              <button className="popup-icon-button" type="button" aria-label="Open debug" onClick={openDebug}>
+                <span className="fa-solid fa-bug" aria-hidden="true" />
+              </button>
+            </>
           ) : null}
           <button className="popup-icon-button" type="button" aria-label="Open dashboard" onClick={openDashboard}>
             <span className="fa-solid fa-chart-column" aria-hidden="true" />
@@ -103,7 +135,7 @@ function PopupApp() {
             >
               <div className="popup-score-core">
                 <strong>{score}</strong>
-                <span>{getScoreLabel(score)}</span>
+                <span>{scoreLabel}</span>
               </div>
             </div>
             <p className="popup-score-label">{comparisonText}</p>

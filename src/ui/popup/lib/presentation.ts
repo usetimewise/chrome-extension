@@ -1,13 +1,12 @@
 import type { Category, PopupModel, TopCategory } from "../../../lib/types.js";
 import { DISTRACTION_CATEGORIES, FOCUS_CATEGORIES } from "../../../lib/constants.js";
-import { formatPercent } from "../../../lib/utils.js";
 
-export function getAlignmentPercent(model: PopupModel | null): number {
-  return Math.max(0, Math.min(100, Math.round((model?.focusAlignment || 0) * 100)));
+export function getProductivityScoreValue(model: PopupModel | null): number {
+  return Math.max(0, Math.min(100, Math.round(model?.productivityScore?.value || 0)));
 }
 
 export function getProgressLabel(model: PopupModel | null): string {
-  return model ? `${formatPercent(model.focusAlignment)} focus alignment` : "0% focus alignment";
+  return model ? `Productivity score ${getProductivityScoreValue(model)}` : "Productivity score 0";
 }
 
 export function getFooterInsight(model: PopupModel): string {
@@ -22,26 +21,13 @@ export function getFooterInsight(model: PopupModel): string {
   return model.insight?.title || "Strong focus today. Keep the momentum.";
 }
 
-export function getScoreLabel(score: number): string {
-  if (score >= 80) {
-    return "Excellent";
-  }
-  if (score >= 60) {
-    return "Good";
-  }
-  if (score >= 40) {
-    return "Fair";
-  }
-  return "Low";
-}
-
 export function getComparisonText(model: PopupModel): string {
-  const delta = Math.round(model.comparisonValue * 100);
+  const delta = Math.round(model.scoreComparison.delta || 0);
   if (delta === 0) {
-    return `${model.comparisonLabel} unchanged`;
+    return `${model.scoreComparison.label} unchanged`;
   }
   const direction = delta > 0 ? "+" : "";
-  return `${model.comparisonLabel} ${direction}${delta}%`;
+  return `${model.scoreComparison.label} ${direction}${delta} pts`;
 }
 
 function categoryColor(category: Category): string {

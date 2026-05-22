@@ -172,6 +172,7 @@ export function buildPopupModel(
   settings: Settings
 ): BootstrapResponse["popupModel"] {
   const today = cache.todayView;
+  const productivityScore = cache.overview?.today?.summary?.productivity_score;
   const activeSession = cache.focusSessionsView?.active_session || null;
   const currentDwellStartedAt = context.runtimeState.currentHostStartedAt || context.runtimeState.sessionStartedAt;
   const currentDwellMs = currentDwellStartedAt ? Date.now() - currentDwellStartedAt : 0;
@@ -211,9 +212,14 @@ export function buildPopupModel(
     trackedTimeMs: (today?.summary?.total_duration_ms || 0) + liveSessionMs,
     focusedTimeMs: today?.summary?.focus_duration_ms || 0,
     distractedTimeMs: today?.summary?.distraction_duration_ms || 0,
-    focusAlignment: today?.summary?.focus_alignment || 0,
-    comparisonLabel: today?.comparison?.label || "vs yesterday",
-    comparisonValue: today?.comparison?.focus_alignment_delta || 0,
+    productivityScore: {
+      value: productivityScore?.value || 0,
+      label: productivityScore?.label || "No score yet"
+    },
+    scoreComparison: {
+      label: today?.comparison?.label || "vs yesterday",
+      delta: today?.comparison?.productivity_score_delta || 0
+    },
     topCategories: (today?.top_categories || []).slice(0, 3),
     topSites: (today?.top_sites || []).slice(0, 8),
     insight: today?.main_insight || {

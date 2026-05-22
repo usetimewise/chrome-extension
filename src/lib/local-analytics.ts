@@ -9,6 +9,7 @@ import {
   localMinuteOfDay,
   utcInstantForLocalTime
 } from "./local-date.js";
+import { effectiveCategoryForHost } from "./storage/site-classifications.js";
 import type {
   ActivityEvent,
   Category,
@@ -21,7 +22,6 @@ import type {
   TodayView
 } from "./types.js";
 import { isActiveTrackedEvent } from "./tracking-diagnostics.js";
-import { hostMatchesRule } from "./utils.js";
 
 type AnalyticsSettings = Partial<Settings>;
 type SummarizedAnalytics = TodayView["summary"] & {
@@ -47,41 +47,6 @@ export interface DayAnalytics {
   supporting_insights: TodayView["supporting_insights"];
 }
 
-const DEFAULT_CATEGORY_CATALOG: Record<string, Category> = {
-  "github.com": "work",
-  "gitlab.com": "work",
-  "jira.com": "work",
-  "linear.app": "work",
-  "figma.com": "work",
-  "notion.so": "work",
-  "docs.google.com": "work",
-  "meet.google.com": "communication",
-  "slack.com": "communication",
-  "mail.google.com": "communication",
-  "gmail.com": "communication",
-  "telegram.org": "communication",
-  "coursera.org": "learning",
-  "udemy.com": "learning",
-  "wikipedia.org": "learning",
-  "stackoverflow.com": "learning",
-  "reddit.com": "social",
-  "x.com": "social",
-  "twitter.com": "social",
-  "facebook.com": "social",
-  "instagram.com": "social",
-  "linkedin.com": "social",
-  "youtube.com": "entertainment",
-  "netflix.com": "entertainment",
-  "twitch.tv": "entertainment",
-  "steamcommunity.com": "entertainment",
-  "amazon.com": "shopping",
-  "ebay.com": "shopping",
-  "aliexpress.com": "shopping",
-  "nytimes.com": "news",
-  "news.ycombinator.com": "news",
-  "medium.com": "news"
-};
-
 function weekdayForDateKey(dateKey: string): number {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
@@ -91,45 +56,16 @@ function normalizeHost(host: string | null | undefined): string {
   return String(host || "").trim().toLowerCase().replace(/^www\./, "");
 }
 
-export function resolveCategory(host: string | null | undefined, settings: AnalyticsSettings = {}): Category {
-  const normalizedHost = normalizeHost(host);
-  if (!normalizedHost) {
-    return "other";
-  }
-
-  if ((settings.excludedHosts || []).some((rule) => hostMatchesRule(normalizedHost, rule))) {
-    return "excluded";
-  }
-
-  for (const [overrideHost, category] of Object.entries(settings.categoryOverrides || {})) {
-    if (hostMatchesRule(normalizedHost, overrideHost)) {
-      return category;
-    }
-  }
-
-  for (const [catalogHost, category] of Object.entries(DEFAULT_CATEGORY_CATALOG)) {
-    if (hostMatchesRule(normalizedHost, catalogHost)) {
-      return category;
-    }
-  }
-
-  if (normalizedHost.includes("docs") || normalizedHost.includes("calendar") || normalizedHost.includes("workspace")) {
-    return "tools";
-  }
-  if (normalizedHost.includes("mail") || normalizedHost.includes("chat") || normalizedHost.includes("meet")) {
-    return "communication";
-  }
-  if (normalizedHost.includes("shop") || normalizedHost.includes("market")) {
-    return "shopping";
-  }
-  if (normalizedHost.includes("news")) {
-    return "news";
-  }
-  if (normalizedHost.includes("learn") || normalizedHost.includes("course") || normalizedHost.includes("academy")) {
-    return "learning";
-  }
-
-  return "other";
+export function resolveCategory(
+  host: string | null | undefined,
+  settings: AnalyticsSettings = {},
+  classifiedCategory?: Category | null
+): Category {
+  return effectiveCategoryForHost(normalizeHost(host), {
+    excludedHosts: settings.excludedHosts,
+    categoryOverrides: settings.categoryOverrides,
+    classifiedCategory
+  });
 }
 
 function eventsForDate(events: ActivityEvent[], timezone: string, key: string): ActivityEvent[] {
@@ -619,6 +555,7 @@ function buildComparison(
     focus_delta_ms: current.focus_duration_ms - previous.focus_duration_ms,
     distraction_delta_ms: current.distraction_duration_ms - previous.distraction_duration_ms,
     focus_alignment_delta: current.focus_alignment - previous.focus_alignment,
+    productivity_score_delta: Math.round((current.focus_score || 0) * 100) - Math.round((previous.focus_score || 0) * 100),
     focused_time_yesterday_ms: previous.focus_duration_ms
   };
 }

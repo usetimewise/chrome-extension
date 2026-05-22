@@ -1,21 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { buildPopupModel } from "../background/focus/focus-session-flow.js";
 import { classifyUrl, safeTabUrl } from "../background/tracking/classify-url.js";
+import { createBackgroundRuntimeContext } from "../background/runtime/runtime-state.js";
 import { MESSAGE_TYPES } from "./constants.js";
 import {
   isBackgroundErrorResponse,
   isBackgroundRequest,
   isContentRequest
 } from "./messaging/contracts.js";
-import type { ActivityEvent, PopupModel, TodayView, TrackingTransition } from "./types.js";
+import type { ActivityEvent, PopupModel, Settings, TodayView, TrackingTransition } from "./types.js";
 import {
   donutBackground,
-  getAlignmentPercent,
   getComparisonText,
   getFooterInsight,
   getProgressLabel,
-  getScoreLabel,
+  getProductivityScoreValue,
   topCategoryShare
 } from "../ui/popup/lib/presentation.js";
 import {
@@ -83,9 +84,14 @@ test("popup presentation helpers normalize empty and active states", () => {
     trackedTimeMs: 3_600_000,
     focusedTimeMs: 1_800_000,
     distractedTimeMs: 1_800_000,
-    focusAlignment: 0.426,
-    comparisonLabel: "vs yesterday",
-    comparisonValue: -0.1,
+    productivityScore: {
+      value: 43,
+      label: "Fair"
+    },
+    scoreComparison: {
+      label: "vs yesterday",
+      delta: -10
+    },
     topCategories: [],
     topSites: [],
     insight: { title: "Reset", body: "Take a break" },
@@ -96,11 +102,10 @@ test("popup presentation helpers normalize empty and active states", () => {
     canReclassify: false
   };
 
-  assert.equal(getAlignmentPercent(driftingModel), 43);
-  assert.equal(getProgressLabel(driftingModel), "43% focus alignment");
+  assert.equal(getProductivityScoreValue(driftingModel), 43);
+  assert.equal(getProgressLabel(driftingModel), "Productivity score 43");
   assert.equal(getFooterInsight(driftingModel), "A gentle reset can bring the day back on track.");
-  assert.equal(getScoreLabel(43), "Fair");
-  assert.equal(getComparisonText(driftingModel), "vs yesterday -10%");
+  assert.equal(getComparisonText(driftingModel), "vs yesterday -10 pts");
   assert.equal(
     topCategoryShare([
       { category: "work", duration_ms: 4_000, share: 0.5 },
@@ -115,7 +120,95 @@ test("popup presentation helpers normalize empty and active states", () => {
     ]),
     /^conic-gradient\(/
   );
-  assert.equal(getProgressLabel(null), "0% focus alignment");
+  assert.equal(getProgressLabel(null), "Productivity score 0");
+});
+
+test("buildPopupModel uses dashboard productivity score and safe fallbacks", () => {
+  const context = createBackgroundRuntimeContext();
+  const settings: Settings = {
+    apiBaseUrl: "https://api.example.com",
+    timezone: "UTC",
+    trackingPaused: false,
+    idleDetectionSeconds: 60,
+    trackMediaWhenIdle: false,
+    workHoursStart: "09:00",
+    workHoursEnd: "18:00",
+    workdays: [1, 2, 3, 4, 5],
+    deepWorkBlocks: [],
+    categoryOverrides: {},
+    excludedHosts: [],
+    nudgesEnabled: true,
+    nudgeSensitivity: "balanced",
+    snoozeMinutes: 15,
+    workHoursOnly: false,
+    aiInsightsEnabled: false,
+    aiTone: "supportive"
+  };
+
+  const populatedModel = buildPopupModel(context, {
+    overview: {
+      today: {
+        range: "today",
+        days: 1,
+        summary: {
+          title: "Today",
+          subtitle: "Summary",
+          total_duration_ms: 3_600_000,
+          productive_duration_ms: 2_700_000,
+          social_duration_ms: 900_000,
+          sites_visited_count: 2,
+          productivity_score: {
+            value: 72,
+            label: "Good",
+            grade: "B",
+            message: "Solid"
+          }
+        },
+        category_breakdown: [],
+        trend: [],
+        top_sites: []
+      }
+    },
+    todayView: {
+      summary: {
+        total_duration_ms: 3_600_000,
+        focus_duration_ms: 2_700_000,
+        distraction_duration_ms: 900_000,
+        focus_alignment: 0.75
+      },
+      comparison: {
+        label: "vs yesterday",
+        productivity_score_delta: 8
+      },
+      top_sites: [],
+      top_categories: []
+    },
+    trendsView: null,
+    sitesView: null,
+    insightsView: null,
+    focusSessionsView: null,
+    currentHostCategory: null,
+    lastSyncAt: null,
+    lastError: null
+  }, settings);
+
+  assert.deepEqual(populatedModel.productivityScore, { value: 72, label: "Good" });
+  assert.deepEqual(populatedModel.scoreComparison, { label: "vs yesterday", delta: 8 });
+
+  const fallbackModel = buildPopupModel(context, {
+    overview: null,
+    todayView: null,
+    trendsView: null,
+    sitesView: null,
+    insightsView: null,
+    focusSessionsView: null,
+    currentHostCategory: null,
+    lastSyncAt: null,
+    lastError: null
+  }, settings);
+
+  assert.deepEqual(fallbackModel.productivityScore, { value: 0, label: "No score yet" });
+  assert.deepEqual(fallbackModel.scoreComparison, { label: "vs yesterday", delta: 0 });
 });
 
 test("dashboard presentation helpers sort distracting items and detect focus actions", () => {
