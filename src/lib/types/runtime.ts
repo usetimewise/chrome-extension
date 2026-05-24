@@ -59,8 +59,8 @@ export interface RuntimeState {
 export interface BootstrapResponse {
   settings?: Settings;
   device?: DeviceState;
-  queue?: ActivityEvent[];
-  queueSize?: number;
+  pendingSyncCount?: number;
+  pendingSyncEvents?: ActivityEvent[];
   runtimeState?: RuntimeState;
   transitions?: TrackingTransition[];
   activityEvents?: ActivityEvent[];

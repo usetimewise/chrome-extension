@@ -40,6 +40,7 @@ export interface ActivityEvent {
   event_id: string;
   occurred_at: string;
   ended_at?: string;
+  is_synced?: boolean;
   duration_ms: number;
   url?: string | null;
   host: string | null;

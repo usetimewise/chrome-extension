@@ -9,8 +9,7 @@ export async function getTrackingTransitions(): Promise<TrackingTransition[]> {
 
 export async function appendTrackingTransition(transition: TrackingTransition): Promise<TrackingTransition[]> {
   const transitions = await getTrackingTransitions();
-  const retained = retainTrackingTransitions(transitions);
-  retained.push(transition);
+  const retained = retainTrackingTransitions([...transitions, transition]);
   await setInStorage(STORAGE_KEYS.trackingTransitions, retained);
   return retained;
 }

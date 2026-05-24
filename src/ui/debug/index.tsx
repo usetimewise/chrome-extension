@@ -21,7 +21,7 @@ function DebugApp() {
       <header className="debug-header">
         <div>
           <h1>Tracking Debug</h1>
-          <p>{error || `Queue ${debugState?.queueSize ?? 0} events, ${events.length} intervals, ${transitions.length} transitions`}</p>
+          <p>{error || `${debugState?.pendingSyncCount ?? 0} pending sync events, ${events.length} intervals, ${transitions.length} transitions`}</p>
         </div>
         <div className="debug-actions">
           <button className="debug-button" type="button" onClick={() => void exportDebugState()} disabled={isExporting}>
@@ -45,8 +45,8 @@ function DebugApp() {
       <section className="debug-panel" aria-labelledby="syncHeading">
         <h2 id="syncHeading">Sync State</h2>
         <JsonBlock value={{
-          queueSize: debugState?.queueSize || 0,
-          queue: debugState?.queue || [],
+          pendingSyncCount: debugState?.pendingSyncCount || 0,
+          pendingSyncEvents: debugState?.pendingSyncEvents || [],
           lastSyncAt: debugState?.dashboardCache?.lastSyncAt || null,
           lastError: debugState?.dashboardCache?.lastError || null
         }} />

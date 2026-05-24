@@ -65,7 +65,7 @@ test.beforeEach(() => {
   installChromeMock();
 });
 
-test("successful backend classification backfills queue and persisted events", async () => {
+test("successful backend classification backfills persisted events", async () => {
   storage[STORAGE_KEYS.device] = {
     installationId: "installation-1",
     deviceId: "device-1",
@@ -83,14 +83,6 @@ test("successful backend classification backfills queue and persisted events", a
       }
     }
   };
-  storage[STORAGE_KEYS.queue] = [{
-    event_id: "queue-1",
-    occurred_at: "2026-05-20T09:00:00.000Z",
-    duration_ms: 60_000,
-    host: "github.com",
-    category: "other",
-    tracking_status: "active_tracked"
-  }];
   storage[STORAGE_KEYS.activityEventsIndex] = {
     schemaVersion: 2,
     days: ["2026-05-20"],
@@ -130,10 +122,6 @@ test("successful backend classification backfills queue and persisted events", a
     (storage[STORAGE_KEYS.siteClassifications] as { byHost: Record<string, { status: string; category: string }> })
       .byHost["github.com"]?.status,
     "resolved"
-  );
-  assert.equal(
-    (storage[STORAGE_KEYS.queue] as Array<{ category: string }>)[0]?.category,
-    "work"
   );
   assert.equal(
     (storage[`${STORAGE_KEYS.activityEventsDayPrefix}2026-05-20`] as Array<{ category: string }>)[0]?.category,

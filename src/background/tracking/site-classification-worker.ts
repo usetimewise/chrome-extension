@@ -1,5 +1,5 @@
 import { classifySites } from "../../lib/api/site-rules.js";
-import { recategorizeActivityEventsForHost, getQueue, replaceQueue } from "../../lib/storage/activity-events.js";
+import { recategorizeActivityEventsForHost } from "../../lib/storage/activity-events.js";
 import {
   clearSiteClassification,
   ensureSiteClassificationPending,
@@ -29,31 +29,8 @@ function shouldSkipClassification(host: string, settings: Settings): boolean {
   return Object.keys(settings.categoryOverrides).some((rule) => hostMatchesRule(host, rule));
 }
 
-async function backfillQueuedEventsForHost(host: string, category: Category): Promise<number> {
-  const queue = await getQueue();
-  let updated = 0;
-  const nextQueue = queue.map((event) => {
-    if (event.host !== host || event.category !== "other") {
-      return event;
-    }
-    updated += 1;
-    return {
-      ...event,
-      category
-    };
-  });
-
-  if (updated) {
-    await replaceQueue(nextQueue);
-  }
-  return updated;
-}
-
 async function backfillResolvedCategory(host: string, category: Category, settings: Settings): Promise<void> {
-  await Promise.all([
-    backfillQueuedEventsForHost(host, category),
-    recategorizeActivityEventsForHost(host, "other", category, settings)
-  ]);
+  await recategorizeActivityEventsForHost(host, "other", category, settings);
 }
 
 export async function scheduleSiteClassificationAlarm(): Promise<void> {

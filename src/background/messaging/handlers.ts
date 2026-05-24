@@ -2,7 +2,8 @@ import {
   getActivityEventDayMeta,
   getActivityEvents,
   getActivityEventsForDays,
-  getQueue,
+  getPendingSyncCount,
+  getPendingSyncEvents,
   getRecentActivityEvents,
   getTodayViewActivityDateKeys
 } from "../../lib/storage/activity-events.js";
@@ -159,17 +160,17 @@ export function createBackgroundMessageListener(
     const handler = async (): Promise<unknown> => {
       switch (message.type) {
         case MESSAGE_TYPES.getBootstrap: {
-          const [settings, device, dashboardCache, queue] = await Promise.all([
+          const [settings, device, dashboardCache, pendingSyncCount] = await Promise.all([
             getSettings(),
             getDeviceState(),
             getDashboardCache(),
-            getQueue()
+            getPendingSyncCount()
           ]);
 
           return {
             settings,
             device,
-            queueSize: queue.length,
+            pendingSyncCount,
             runtimeState: context.runtimeState,
             dashboardCache,
             popupModel: buildPopupModel(context, dashboardCache, settings)
@@ -177,10 +178,11 @@ export function createBackgroundMessageListener(
         }
         case MESSAGE_TYPES.getDebugState: {
           const settings = await getSettings();
-          const [device, dashboardCache, queue, events, transitions, focusSessions, siteRules, siteClassifications] = await Promise.all([
+          const [device, dashboardCache, pendingSyncCount, pendingSyncEvents, events, transitions, focusSessions, siteRules, siteClassifications] = await Promise.all([
             getDeviceState(),
             getDashboardCache(),
-            getQueue(),
+            getPendingSyncCount(settings),
+            getPendingSyncEvents(25, settings),
             getActivityEvents(settings),
             getTrackingTransitions(),
             getFocusSessions(),
@@ -190,8 +192,8 @@ export function createBackgroundMessageListener(
           return {
             settings,
             device,
-            queue,
-            queueSize: queue.length,
+            pendingSyncCount,
+            pendingSyncEvents,
             runtimeState: context.runtimeState,
             dashboardCache,
             activityEvents: events,

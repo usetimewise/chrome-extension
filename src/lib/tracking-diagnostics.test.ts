@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   eventsEligibleForSync,
   MAX_CONTINUOUS_ACTIVE_INTERVAL_MS,
+  MAX_TRACKING_TRANSITIONS,
   retainTrackingTransitions,
   splitTrackedIntervalForGap
 } from "./tracking-diagnostics.js";
@@ -51,6 +52,21 @@ test("retainTrackingTransitions drops entries older than fourteen days", () => {
   ], now);
 
   assert.deepEqual(retained.map((item) => item.id), ["fresh"]);
+});
+
+test("retainTrackingTransitions keeps only the newest capped entries", () => {
+  const now = Date.parse("2026-05-13T12:00:00.000Z");
+  const transitions = Array.from({ length: MAX_TRACKING_TRANSITIONS + 10 }, (_, index) => ({
+    id: `item-${index}`,
+    type: "heartbeat" as const,
+    occurred_at: new Date(now - (MAX_TRACKING_TRANSITIONS + 10 - index) * 1000).toISOString()
+  }));
+
+  const retained = retainTrackingTransitions(transitions, now);
+
+  assert.equal(retained.length, MAX_TRACKING_TRANSITIONS);
+  assert.equal(retained[0]?.id, "item-10");
+  assert.equal(retained.at(-1)?.id, `item-${MAX_TRACKING_TRANSITIONS + 9}`);
 });
 
 test("eventsEligibleForSync excludes diagnostic intervals", () => {

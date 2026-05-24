@@ -2,6 +2,7 @@ import type { ActivityEvent, TrackingTransition } from "./types.js";
 
 export const MAX_CONTINUOUS_ACTIVE_INTERVAL_MS = 30 * 60 * 1000;
 export const TRACKING_TRANSITION_RETENTION_DAYS = 14;
+export const MAX_TRACKING_TRANSITIONS = 5_000;
 
 export function isActiveTrackedEvent(event: Pick<ActivityEvent, "tracking_status">): boolean {
   return !event.tracking_status || event.tracking_status === "active_tracked";
@@ -16,10 +17,11 @@ export function retainTrackingTransitions(
   now = Date.now()
 ): TrackingTransition[] {
   const cutoff = now - TRACKING_TRANSITION_RETENTION_DAYS * 24 * 60 * 60 * 1000;
-  return transitions.filter((transition) => {
+  const retained = transitions.filter((transition) => {
     const occurredAt = Date.parse(transition.occurred_at || "");
     return !Number.isNaN(occurredAt) && occurredAt >= cutoff;
   });
+  return retained.slice(-MAX_TRACKING_TRANSITIONS);
 }
 
 export function splitTrackedIntervalForGap(

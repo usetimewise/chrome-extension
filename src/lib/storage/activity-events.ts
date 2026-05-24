@@ -3,36 +3,17 @@ import {
   getActivityEventDayMeta as getBucketedActivityEventDayMeta,
   getActivityEvents as getBucketedActivityEvents,
   getActivityEventsForDays as getBucketedActivityEventsForDays,
+  getPendingSyncCount as getBucketedPendingSyncCount,
+  getPendingSyncEvents as getBucketedPendingSyncEvents,
   getRecentActivityEvents as getRecentBucketedActivityEvents,
+  markActivityEventsSynced as markBucketedActivityEventsSynced,
   migrateActivityEventsIfNeeded,
   recategorizeEventsForHost as recategorizeBucketedEventsForHost,
   todayViewActivityDateKeys,
   type ActivityEventsDayMeta
 } from "../activity-events-storage.js";
-import { STORAGE_KEYS } from "../constants.js";
-import { eventsEligibleForSync } from "../tracking-diagnostics.js";
 import type { ActivityEvent, Settings } from "../types.js";
-import { getFromStorage, setInStorage } from "./client.js";
 import { getSettings } from "./site-rules.js";
-
-export async function getQueue(): Promise<ActivityEvent[]> {
-  return getFromStorage<ActivityEvent[]>(STORAGE_KEYS.queue, []);
-}
-
-export async function appendToQueue(event: ActivityEvent): Promise<ActivityEvent[]> {
-  if (!eventsEligibleForSync([event]).length) {
-    return getQueue();
-  }
-
-  const queue = await getQueue();
-  queue.push(event);
-  await setInStorage(STORAGE_KEYS.queue, queue);
-  return queue;
-}
-
-export async function replaceQueue(queue: ActivityEvent[]): Promise<ActivityEvent[]> {
-  return setInStorage(STORAGE_KEYS.queue, eventsEligibleForSync(queue));
-}
 
 export async function getActivityEvents(settings?: Settings): Promise<ActivityEvent[]> {
   return getBucketedActivityEvents(settings || await getSettings());
@@ -55,6 +36,18 @@ export async function getActivityEventDayMeta(
 
 export async function getRecentActivityEvents(days = 7, settings?: Settings): Promise<ActivityEvent[]> {
   return getRecentBucketedActivityEvents(settings || await getSettings(), days);
+}
+
+export async function getPendingSyncEvents(limit?: number, settings?: Settings): Promise<ActivityEvent[]> {
+  return getBucketedPendingSyncEvents(settings || await getSettings(), limit);
+}
+
+export async function getPendingSyncCount(settings?: Settings): Promise<number> {
+  return getBucketedPendingSyncCount(settings || await getSettings());
+}
+
+export async function markActivityEventsSynced(eventIds: string[], settings?: Settings): Promise<number> {
+  return markBucketedActivityEventsSynced(eventIds, settings || await getSettings());
 }
 
 export async function ensureActivityEventsMigration(settings?: Settings): Promise<void> {

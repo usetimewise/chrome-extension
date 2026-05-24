@@ -1,10 +1,10 @@
-import { appendActivityEvent, appendToQueue } from "../../lib/storage/activity-events.js";
+import { appendActivityEvent } from "../../lib/storage/activity-events.js";
 import { getResolvedClassificationCategory, getSiteClassifications } from "../../lib/storage/site-classifications.js";
 import { saveRuntimeState } from "../../lib/storage/runtime-state.js";
 import { getSettings } from "../../lib/storage/site-rules.js";
 import { resolveCategory } from "../../lib/local-analytics.js";
 import { generateId, hostMatchesRule, isTrackableUrl, normalizePathHash } from "../../lib/utils.js";
-import { isActiveTrackedEvent, splitTrackedIntervalForGap } from "../../lib/tracking-diagnostics.js";
+import { splitTrackedIntervalForGap } from "../../lib/tracking-diagnostics.js";
 import type {
   ActivityEvent,
   Settings,
@@ -202,9 +202,6 @@ async function flushCurrentSessionNow(
       reason
     };
     await appendActivityEvent(event, settings);
-    if (isActiveTrackedEvent(event)) {
-      await appendToQueue(event);
-    }
   }
 
   context.runtimeState.sessionStartedAt = now;

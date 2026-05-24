@@ -93,7 +93,7 @@ export interface BackgroundRefreshViewsResponse {
 export interface BackgroundSyncNowResponse extends BackgroundRefreshViewsResponse {
   sync: {
     synced: number;
-    queueSize: number;
+    pendingSyncCount: number;
   };
 }
 

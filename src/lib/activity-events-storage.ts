@@ -86,14 +86,27 @@ function retainedEvents(events: ActivityEvent[] = [], now = Date.now()): Activit
   });
 }
 
+function normalizeEvent(event: ActivityEvent): ActivityEvent {
+  return {
+    ...event,
+    is_synced: event.is_synced === true
+  };
+}
+
 function sortEvents(events: ActivityEvent[]): ActivityEvent[] {
-  return [...events].sort((a, b) => Date.parse(a.occurred_at || "") - Date.parse(b.occurred_at || ""));
+  return [...events].sort((a, b) => {
+    const occurredAtDelta = Date.parse(a.occurred_at || "") - Date.parse(b.occurred_at || "");
+    if (occurredAtDelta !== 0) {
+      return occurredAtDelta;
+    }
+    return String(a.event_id || "").localeCompare(String(b.event_id || ""));
+  });
 }
 
 function dedupeEvents(events: ActivityEvent[]): ActivityEvent[] {
   const byId = new Map<string, ActivityEvent>();
   for (const event of events) {
-    byId.set(event.event_id || `${event.occurred_at}:${event.host}:${event.duration_ms}`, event);
+    byId.set(event.event_id || `${event.occurred_at}:${event.host}:${event.duration_ms}`, normalizeEvent(event));
   }
   return sortEvents(Array.from(byId.values()));
 }
@@ -293,11 +306,74 @@ async function pruneActivityEventIndex(now = Date.now()): Promise<ActivityEvents
   });
 }
 
+async function mergeQueuedEventsIntoBuckets(
+  index: ActivityEventsIndex,
+  timezone: string,
+  now = Date.now()
+): Promise<{ migrated: boolean; nextIndex: ActivityEventsIndex }> {
+  const queued = await getFromStorage<ActivityEvent[] | null>(STORAGE_KEYS.queue, null);
+  if (!Array.isArray(queued)) {
+    return { migrated: false, nextIndex: index };
+  }
+
+  const grouped = groupEventsByDay(
+    retainedEvents(
+      queued.map((event) => ({
+        ...normalizeEvent(event),
+        is_synced: false
+      })),
+      now
+    ),
+    timezone
+  );
+
+  if (!grouped.size) {
+    await removeFromStorage(STORAGE_KEYS.queue);
+    return { migrated: true, nextIndex: index };
+  }
+
+  const dateKeys = Array.from(new Set([...index.days, ...grouped.keys()])).sort();
+  const existing = await readBuckets(dateKeys);
+  const writes: Record<string, ActivityEvent[] | ActivityEventsIndex> = {};
+  const dayMeta = { ...index.dayMeta };
+
+  for (const dateKey of dateKeys) {
+    const key = activityDayBucketKey(dateKey);
+    const merged = dedupeEvents([
+      ...(existing[key] || []),
+      ...(grouped.get(dateKey) || [])
+    ]);
+
+    if (merged.length) {
+      writes[key] = merged;
+      dayMeta[dateKey] = dayMetaFor(merged, now);
+      continue;
+    }
+
+    delete dayMeta[dateKey];
+  }
+
+  const nextIndex = normalizeIndex({
+    ...index,
+    days: dateKeys.filter((dateKey) => Boolean(dayMeta[dateKey])),
+    timezone,
+    dayMeta,
+    updatedAt: new Date(now).toISOString()
+  });
+
+  writes[STORAGE_KEYS.activityEventsIndex] = nextIndex;
+  await setManyInStorage(writes);
+  await removeFromStorage(STORAGE_KEYS.queue);
+  return { migrated: true, nextIndex };
+}
+
 async function migrateActivityEventsNow(settings: Partial<Settings> = {}, now = Date.now()): Promise<void> {
   const timezone = settings.timezone || "UTC";
-  const index = await getActivityEventsIndex();
+  let index = await getActivityEventsIndex();
 
   if (index.migratedFromV1) {
+    const queueMigration = await mergeQueuedEventsIntoBuckets(index, timezone, now);
+    index = queueMigration.nextIndex;
     await removeFromStorage(STORAGE_KEYS.activityEvents);
     await pruneActivityEventBuckets(settings, now);
     return;
@@ -305,13 +381,14 @@ async function migrateActivityEventsNow(settings: Partial<Settings> = {}, now = 
 
   const legacyEvents = await getFromStorage<ActivityEvent[] | null>(STORAGE_KEYS.activityEvents, null);
   if (!Array.isArray(legacyEvents)) {
-    await saveActivityEventsIndex({
+    index = await saveActivityEventsIndex({
       ...index,
       migratedFromV1: true,
       migratedAt: new Date(now).toISOString(),
       updatedAt: new Date(now).toISOString(),
       timezone
     });
+    await mergeQueuedEventsIntoBuckets(index, timezone, now);
     await pruneActivityEventBuckets(settings, now);
     return;
   }
@@ -350,6 +427,10 @@ async function migrateActivityEventsNow(settings: Partial<Settings> = {}, now = 
     [STORAGE_KEYS.activityEventsIndex]: nextIndex
   });
   await removeFromStorage(STORAGE_KEYS.activityEvents);
+  const queueMigration = await mergeQueuedEventsIntoBuckets(nextIndex, timezone, now);
+  if (queueMigration.migrated) {
+    index = queueMigration.nextIndex;
+  }
   await pruneActivityEventBuckets(settings, now);
 }
 
@@ -460,7 +541,13 @@ export async function appendActivityEvent(
     getActivityEventsIndex(),
     getFromStorage<ActivityEvent[]>(key, [])
   ]);
-  const nextBucket = retainedEvents(dedupeEvents([...current, event]), now);
+  const nextBucket = retainedEvents(dedupeEvents([
+    ...current,
+    {
+      ...event,
+      is_synced: event.is_synced === true
+    }
+  ]), now);
   const nextIndex = normalizeIndex({
     ...index,
     days: [...index.days, dateKey],
@@ -478,6 +565,82 @@ export async function appendActivityEvent(
   });
   await pruneActivityEventIndex(now);
   return nextBucket;
+}
+
+export async function getPendingSyncEvents(
+  settings: Partial<Settings> = {},
+  limit?: number,
+  now = Date.now()
+): Promise<ActivityEvent[]> {
+  const events = await getActivityEvents(settings, now);
+  const pending = events.filter((event) => event.tracking_status === "active_tracked" && event.is_synced !== true);
+  return typeof limit === "number" ? pending.slice(0, limit) : pending;
+}
+
+export async function getPendingSyncCount(
+  settings: Partial<Settings> = {},
+  now = Date.now()
+): Promise<number> {
+  const pending = await getPendingSyncEvents(settings, undefined, now);
+  return pending.length;
+}
+
+export async function markActivityEventsSynced(
+  eventIds: string[],
+  settings: Partial<Settings> = {},
+  now = Date.now()
+): Promise<number> {
+  await migrateActivityEventsIfNeeded(settings, now);
+
+  const pendingIds = new Set(eventIds.filter(Boolean));
+  if (!pendingIds.size) {
+    return 0;
+  }
+
+  const index = await getActivityEventsIndex();
+  const keys = index.days.map(activityDayBucketKey);
+  const buckets = await getManyFromStorage<ActivityEvent[]>(keys);
+  const writes: Record<string, ActivityEvent[]> = {};
+  const nextDayMeta = { ...index.dayMeta };
+  let updated = 0;
+
+  for (const dateKey of index.days) {
+    const key = activityDayBucketKey(dateKey);
+    const currentBucket = retainedEvents((buckets[key] || []).map(normalizeEvent), now);
+    let changed = false;
+    const nextBucket = currentBucket.map((event) => {
+      if (!pendingIds.has(event.event_id) || event.is_synced === true) {
+        return event;
+      }
+      changed = true;
+      updated += 1;
+      return {
+        ...event,
+        is_synced: true
+      };
+    });
+
+    if (!changed) {
+      continue;
+    }
+
+    writes[key] = nextBucket;
+    nextDayMeta[dateKey] = dayMetaFor(nextBucket, now);
+  }
+
+  if (!updated) {
+    return 0;
+  }
+
+  await setManyInStorage({
+    ...writes,
+    [STORAGE_KEYS.activityEventsIndex]: normalizeIndex({
+      ...index,
+      dayMeta: nextDayMeta,
+      updatedAt: new Date(now).toISOString()
+    })
+  });
+  return updated;
 }
 
 export async function recategorizeEventsForHost(

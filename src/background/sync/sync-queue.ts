@@ -2,11 +2,10 @@ import { APP_SETTINGS } from "../../lib/app-settings.js";
 import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { pushEvents } from "../../lib/api/events.js";
 import { registerDevice } from "../../lib/api/devices.js";
-import { getQueue, replaceQueue } from "../../lib/storage/activity-events.js";
+import { getPendingSyncCount, getPendingSyncEvents, markActivityEventsSynced } from "../../lib/storage/activity-events.js";
 import { saveDashboardCache } from "../../lib/storage/dashboard-cache.js";
 import { getDeviceState, resetDeviceRegistration, saveDeviceState } from "../../lib/storage/device-state.js";
 import { getSettings } from "../../lib/storage/site-rules.js";
-import { isActiveTrackedEvent } from "../../lib/tracking-diagnostics.js";
 import { getErrorMessage } from "../../lib/utils.js";
 import type { DeviceState, Settings } from "../../lib/types.js";
 
@@ -87,38 +86,33 @@ export async function withRegisteredDevice<T>(
   }
 }
 
-export async function syncQueue(): Promise<{ synced: number; queueSize: number }> {
-  const storedQueue = await getQueue();
-  const queue = storedQueue.filter(isActiveTrackedEvent);
-  if (queue.length !== storedQueue.length) {
-    await replaceQueue(queue);
-  }
-
-  if (queue.length === 0) {
-    return { synced: 0, queueSize: queue.length };
+export async function syncQueue(): Promise<{ synced: number; pendingSyncCount: number }> {
+  const pending = await getPendingSyncEvents();
+  if (pending.length === 0) {
+    return { synced: 0, pendingSyncCount: 0 };
   }
 
   try {
     return await withRegisteredDevice(async (settings, deviceState) => {
-      const batch = queue.slice(0, 100);
+      const batch = pending.slice(0, 100);
       const response = await pushEvents(settings.apiBaseUrl, deviceState.deviceId, batch);
       const acceptedIds = new Set(response.accepted_event_ids || []);
-      const remaining = queue.filter((item) => !acceptedIds.has(item.event_id));
-      await replaceQueue(remaining);
+      const synced = await markActivityEventsSynced(Array.from(acceptedIds), settings);
+      const pendingSyncCount = await getPendingSyncCount(settings);
       await saveDashboardCache({
         lastSyncAt: new Date().toISOString(),
         lastError: null
       });
 
       return {
-        synced: acceptedIds.size,
-        queueSize: remaining.length
+        synced,
+        pendingSyncCount
       };
     });
   } catch (error) {
     await saveDashboardCache({
-      lastError: getErrorMessage(error, "Unable to sync activity queue")
+      lastError: getErrorMessage(error, "Unable to sync pending activity events")
     });
-    return { synced: 0, queueSize: queue.length };
+    return { synced: 0, pendingSyncCount: pending.length };
   }
 }
