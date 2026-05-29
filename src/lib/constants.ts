@@ -19,6 +19,7 @@ export const MESSAGE_TYPES = {
   getBootstrap: "GET_BOOTSTRAP",
   refreshViews: "REFRESH_VIEWS",
   syncNow: "SYNC_NOW",
+  retrySiteClassifications: "RETRY_SITE_CLASSIFICATIONS",
   getMediaState: "GET_MEDIA_STATE",
   mediaStateUpdate: "MEDIA_STATE_UPDATE",
   startFocusSession: "START_FOCUS_SESSION",

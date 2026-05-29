@@ -144,6 +144,11 @@ body::before {
   border-bottom: 1px solid #edf0f4;
 }
 
+.debug-site-row {
+  grid-template-columns: 180px 140px 110px 90px 190px minmax(220px, 1fr) 190px;
+  min-width: 1120px;
+}
+
 .debug-row:last-child {
   border-bottom: 0;
 }
@@ -164,6 +169,12 @@ body::before {
 .debug-head span {
   color: #475569;
   font-weight: 750;
+}
+
+.debug-empty-state {
+  padding: 16px 18px;
+  color: #64748b;
+  font-size: 14px;
 }
 
 @media (max-width: 720px) {

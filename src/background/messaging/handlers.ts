@@ -40,7 +40,11 @@ import { getErrorMessage } from "../../lib/utils.js";
 import type { BootstrapResponse, Category, DashboardCache, Settings } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
 import { buildPopupModel, evaluateFocusNudgeNotification, forceFocusNudge } from "../focus/focus-session-flow.js";
-import { ensureClassificationForHost, processSiteClassificationQueue } from "../tracking/site-classification-worker.js";
+import {
+  ensureClassificationForHost,
+  processSiteClassificationQueue,
+  retrySiteClassificationsNow
+} from "../tracking/site-classification-worker.js";
 import { flushCurrentSession, logTransition } from "../tracking/transitions.js";
 import { syncQueue, withRegisteredDevice } from "../sync/sync-queue.js";
 import { updateProductivityActionIcon } from "../action/productivity-icon.js";
@@ -173,6 +177,7 @@ export function createBackgroundMessageListener(
             pendingSyncCount,
             runtimeState: context.runtimeState,
             dashboardCache,
+            lastError: dashboardCache.lastError,
             popupModel: buildPopupModel(context, dashboardCache, settings)
           } satisfies BootstrapResponse;
         }
@@ -196,6 +201,7 @@ export function createBackgroundMessageListener(
             pendingSyncEvents,
             runtimeState: context.runtimeState,
             dashboardCache,
+            lastError: dashboardCache.lastError,
             activityEvents: events,
             transitions,
             focusSessions,
@@ -227,6 +233,19 @@ export function createBackgroundMessageListener(
             sync,
             dashboardCache,
             popupModel: buildPopupModel(context, dashboardCache, settings)
+          };
+        }
+        case MESSAGE_TYPES.retrySiteClassifications: {
+          const retriedCount = await retrySiteClassificationsNow(context, refreshViews);
+          const [dashboardCache, siteClassifications] = await Promise.all([
+            getDashboardCache(),
+            getSiteClassifications()
+          ]);
+          return {
+            retriedCount,
+            dashboardCache,
+            siteClassifications,
+            lastError: dashboardCache.lastError
           };
         }
         case MESSAGE_TYPES.startFocusSession:

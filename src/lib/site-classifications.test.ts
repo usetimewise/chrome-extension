@@ -7,6 +7,7 @@ import {
   ensureSiteClassificationPending,
   getHostsReadyForClassification,
   getSiteClassifications,
+  selectHostsForForcedClassification,
   scheduleSiteClassificationRetry
 } from "./storage/site-classifications.js";
 
@@ -94,4 +95,43 @@ test("ready hosts are restored from storage after restart", async () => {
   storage["twt_site_classifications_v1"] = clone(state);
 
   assert.deepEqual(await getHostsReadyForClassification(10), ["pending.example", "retry.example"]);
+});
+
+test("forced classification selector includes pending retry_scheduled and failed hosts only", () => {
+  assert.deepEqual(selectHostsForForcedClassification({
+    byHost: {
+      "pending.example": {
+        category: "other",
+        status: "pending",
+        attempts: 0,
+        nextRetryAt: null,
+        lastError: null,
+        updatedAt: "2026-05-20T00:00:00.000Z"
+      },
+      "retry.example": {
+        category: "other",
+        status: "retry_scheduled",
+        attempts: 2,
+        nextRetryAt: "2099-01-01T00:00:00.000Z",
+        lastError: "temporary",
+        updatedAt: "2026-05-20T00:00:00.000Z"
+      },
+      "failed.example": {
+        category: "other",
+        status: "failed",
+        attempts: 20,
+        nextRetryAt: null,
+        lastError: "final",
+        updatedAt: "2026-05-20T00:00:00.000Z"
+      },
+      "resolved.example": {
+        category: "work",
+        status: "resolved",
+        attempts: 1,
+        nextRetryAt: null,
+        lastError: null,
+        updatedAt: "2026-05-20T00:00:00.000Z"
+      }
+    }
+  }), ["failed.example", "pending.example", "retry.example"]);
 });

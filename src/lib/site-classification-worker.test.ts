@@ -3,7 +3,10 @@ import test from "node:test";
 
 import { STORAGE_KEYS } from "./constants.js";
 import { DEFAULT_RUNTIME_STATE } from "./constants.js";
-import { processSiteClassificationQueue } from "../background/tracking/site-classification-worker.js";
+import {
+  processSiteClassificationQueue,
+  retrySiteClassificationsNow
+} from "../background/tracking/site-classification-worker.js";
 import type { BackgroundRuntimeContext } from "../background/runtime/runtime-state.js";
 
 let storage: Record<string, unknown> = {};
@@ -169,4 +172,113 @@ test("item-level classification error keeps other category and schedules retry",
   assert.equal(record.attempts, 1);
   assert.ok(record.nextRetryAt);
   assert.equal(createdAlarms.length > 0, true);
+});
+
+test("forced retry ignores nextRetryAt and reprocesses failed and scheduled hosts", async () => {
+  storage[STORAGE_KEYS.device] = {
+    installationId: "installation-1",
+    deviceId: "device-1",
+    registeredAt: "2026-05-20T00:00:00.000Z"
+  };
+  storage[STORAGE_KEYS.siteClassifications] = {
+    byHost: {
+      "failed.example": {
+        category: "other",
+        status: "failed",
+        attempts: 20,
+        nextRetryAt: null,
+        lastError: "old failure",
+        updatedAt: "2026-05-20T00:00:00.000Z"
+      },
+      "later.example": {
+        category: "other",
+        status: "retry_scheduled",
+        attempts: 1,
+        nextRetryAt: "2099-01-01T00:00:00.000Z",
+        lastError: "scheduled",
+        updatedAt: "2026-05-20T00:00:00.000Z"
+      }
+    }
+  };
+
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body || "{}")) as { domains?: string[] };
+    assert.deepEqual(body.domains?.sort(), ["failed.example", "later.example"]);
+    return {
+      ok: true,
+      async json() {
+        return {
+          results: [
+            { domain: "failed.example", category: "tools" },
+            { domain: "later.example", error: "still broken" }
+          ]
+        };
+      }
+    };
+  }) as typeof fetch;
+
+  let refreshCount = 0;
+  const retriedCount = await retrySiteClassificationsNow(baseContext(), async () => {
+    refreshCount += 1;
+    return null;
+  });
+
+  const state = storage[STORAGE_KEYS.siteClassifications] as {
+    byHost: Record<string, { status: string; category: string; lastError: string | null }>
+  };
+  assert.equal(retriedCount, 2);
+  assert.equal(state.byHost["failed.example"]?.status, "resolved");
+  assert.equal(state.byHost["failed.example"]?.category, "tools");
+  assert.equal(state.byHost["failed.example"]?.lastError, null);
+  assert.equal(state.byHost["later.example"]?.status, "retry_scheduled");
+  assert.equal(state.byHost["later.example"]?.lastError, "still broken");
+  assert.equal(refreshCount, 1);
+});
+
+test("forced retry applies request-level error policy to every selected host", async () => {
+  storage[STORAGE_KEYS.device] = {
+    installationId: "installation-1",
+    deviceId: "device-1",
+    registeredAt: "2026-05-20T00:00:00.000Z"
+  };
+  storage[STORAGE_KEYS.siteClassifications] = {
+    byHost: {
+      "pending.example": {
+        category: "other",
+        status: "pending",
+        attempts: 0,
+        nextRetryAt: null,
+        lastError: null,
+        updatedAt: "2026-05-20T00:00:00.000Z"
+      },
+      "failed.example": {
+        category: "other",
+        status: "failed",
+        attempts: 20,
+        nextRetryAt: null,
+        lastError: "old failure",
+        updatedAt: "2026-05-20T00:00:00.000Z"
+      }
+    }
+  };
+
+  globalThis.fetch = (async () => {
+    throw new Error("backend unavailable");
+  }) as unknown as typeof fetch;
+
+  const retriedCount = await retrySiteClassificationsNow(baseContext(), async () => null);
+  const state = storage[STORAGE_KEYS.siteClassifications] as {
+    byHost: Record<string, { status: string; attempts: number; nextRetryAt: string | null; lastError: string | null }>
+  };
+  const dashboardCache = storage[STORAGE_KEYS.dashboardCache] as { lastError: string | null };
+
+  assert.equal(retriedCount, 2);
+  assert.equal(state.byHost["pending.example"]?.status, "retry_scheduled");
+  assert.equal(state.byHost["pending.example"]?.attempts, 1);
+  assert.ok(state.byHost["pending.example"]?.nextRetryAt);
+  assert.equal(state.byHost["failed.example"]?.status, "failed");
+  assert.equal(state.byHost["failed.example"]?.attempts, 20);
+  assert.equal(state.byHost["failed.example"]?.nextRetryAt, null);
+  assert.equal(state.byHost["failed.example"]?.lastError, "backend unavailable");
+  assert.equal(dashboardCache.lastError, "backend unavailable");
 });

@@ -5,10 +5,21 @@ import type { BootstrapResponse } from "../../../lib/types.js";
 import { getErrorMessage } from "../../../lib/utils.js";
 import { buildDebugExport, downloadJsonFile, exportFileName } from "../lib/export.js";
 
+function countPendingSiteClassifications(debugState: BootstrapResponse | null): number {
+  return Object.values(debugState?.siteClassifications?.byHost || {})
+    .filter((record) => (
+      record.status === "pending" ||
+      record.status === "retry_scheduled" ||
+      record.status === "failed"
+    ))
+    .length;
+}
+
 export function useDebugState() {
   const [debugState, setDebugState] = useState<BootstrapResponse | null>(null);
   const [error, setError] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  const [isRetryingClassifications, setIsRetryingClassifications] = useState(false);
 
   async function loadDebugState(): Promise<BootstrapResponse | null> {
     try {
@@ -39,6 +50,25 @@ export function useDebugState() {
     }
   }
 
+  async function retrySiteClassifications(): Promise<void> {
+    setIsRetryingClassifications(true);
+    try {
+      const response = await sendBackgroundMessage({ type: MESSAGE_TYPES.retrySiteClassifications });
+      setDebugState((current) => current ? {
+        ...current,
+        dashboardCache: response.dashboardCache,
+        siteClassifications: response.siteClassifications,
+        lastError: response.lastError
+      } : current);
+      setError("");
+      await loadDebugState();
+    } catch (retryError) {
+      setError(getErrorMessage(retryError, "Unable to retry site classifications"));
+    } finally {
+      setIsRetryingClassifications(false);
+    }
+  }
+
   useEffect(() => {
     void loadDebugState();
 
@@ -54,7 +84,10 @@ export function useDebugState() {
     debugState,
     error,
     isExporting,
+    isRetryingClassifications,
+    pendingClassificationCount: countPendingSiteClassifications(debugState),
     loadDebugState,
-    exportDebugState
+    exportDebugState,
+    retrySiteClassifications
   };
 }

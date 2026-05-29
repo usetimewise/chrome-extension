@@ -8,6 +8,7 @@ import {
   getResolvedClassificationCategory,
   getSiteClassifications,
   saveResolvedSiteClassification,
+  selectHostsForForcedClassification,
   scheduleSiteClassificationRetry
 } from "../../lib/storage/site-classifications.js";
 import { saveDashboardCache } from "../../lib/storage/dashboard-cache.js";
@@ -18,8 +19,9 @@ import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
 import { withRegisteredDevice } from "../sync/sync-queue.js";
 
 export const SITE_CLASSIFICATION_RETRY_ALARM = "site-classification-retry";
+const SITE_CLASSIFICATION_BATCH_SIZE = 100;
 
-let activeClassificationRun: Promise<void> | null = null;
+let activeClassificationRun: Promise<number> | null = null;
 
 function shouldSkipClassification(host: string, settings: Settings): boolean {
   if (settings.excludedHosts.some((rule) => hostMatchesRule(host, rule))) {
@@ -76,7 +78,20 @@ export function processSiteClassificationQueue(
   refreshViews: (context: BackgroundRuntimeContext, options?: { includeSitesView?: boolean }) => Promise<unknown>
 ): Promise<void> {
   if (!activeClassificationRun) {
-    activeClassificationRun = processSiteClassificationQueueNow(context, refreshViews)
+    activeClassificationRun = processSiteClassificationQueueNow(context, refreshViews, false)
+      .finally(() => {
+        activeClassificationRun = null;
+      });
+  }
+  return activeClassificationRun.then((): void => undefined);
+}
+
+export async function retrySiteClassificationsNow(
+  context: BackgroundRuntimeContext,
+  refreshViews: (context: BackgroundRuntimeContext, options?: { includeSitesView?: boolean }) => Promise<unknown>
+): Promise<number> {
+  if (!activeClassificationRun) {
+    activeClassificationRun = processSiteClassificationQueueNow(context, refreshViews, true)
       .finally(() => {
         activeClassificationRun = null;
       });
@@ -86,13 +101,20 @@ export function processSiteClassificationQueue(
 
 async function processSiteClassificationQueueNow(
   context: BackgroundRuntimeContext,
-  refreshViews: (context: BackgroundRuntimeContext, options?: { includeSitesView?: boolean }) => Promise<unknown>
-): Promise<void> {
+  refreshViews: (context: BackgroundRuntimeContext, options?: { includeSitesView?: boolean }) => Promise<unknown>,
+  forceRetry: boolean
+): Promise<number> {
   const settings = await getSettings();
   let refreshed = false;
+  let retriedCount = 0;
+  const forcedQueue = forceRetry
+    ? selectHostsForForcedClassification(await getSiteClassifications(), Number.MAX_SAFE_INTEGER)
+    : null;
 
   while (true) {
-    const readyHosts = await getHostsReadyForClassification(100);
+    const readyHosts = forceRetry
+      ? forcedQueue?.splice(0, SITE_CLASSIFICATION_BATCH_SIZE) || []
+      : await getHostsReadyForClassification(SITE_CLASSIFICATION_BATCH_SIZE);
     const hosts: string[] = [];
     for (const host of readyHosts) {
       if (shouldSkipClassification(host, settings)) {
@@ -105,6 +127,8 @@ async function processSiteClassificationQueueNow(
     if (!hosts.length) {
       break;
     }
+
+    retriedCount += hosts.length;
 
     try {
       const response = await withRegisteredDevice(async (resolvedSettings, deviceState) => (
@@ -132,7 +156,9 @@ async function processSiteClassificationQueueNow(
       await saveDashboardCache({ lastError: null });
     } catch (error) {
       const message = getErrorMessage(error, "Unable to classify sites");
-      await Promise.all(hosts.map((host) => scheduleSiteClassificationRetry(host, message)));
+      for (const host of hosts) {
+        await scheduleSiteClassificationRetry(host, message);
+      }
       await saveDashboardCache({ lastError: message });
       break;
     }
@@ -142,6 +168,8 @@ async function processSiteClassificationQueueNow(
   if (refreshed) {
     await refreshViews(context, { includeSitesView: true });
   }
+
+  return retriedCount;
 }
 
 export function applyCategoryToCurrentHost(host: string | null | undefined, category: Category | null): ActivityEvent["category"] {

@@ -176,6 +176,18 @@ export async function getHostsReadyForClassification(limit = 100, now = Date.now
     .map(([host]) => host);
 }
 
+export function selectHostsForForcedClassification(state: SiteClassificationState, limit = 100): string[] {
+  return Object.entries(state.byHost)
+    .filter(([, record]) => (
+      record.status === "pending" ||
+      record.status === "retry_scheduled" ||
+      record.status === "failed"
+    ))
+    .sort(([leftHost], [rightHost]) => leftHost.localeCompare(rightHost))
+    .slice(0, limit)
+    .map(([host]) => host);
+}
+
 export async function getNextClassificationRetryAt(): Promise<number | null> {
   const state = await getSiteClassifications();
   let nextRetryAt: number | null = null;

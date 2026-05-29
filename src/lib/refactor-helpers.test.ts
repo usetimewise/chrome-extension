@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createBackgroundMessageListener } from "../background/messaging/handlers.js";
 import { buildPopupModel } from "../background/focus/focus-session-flow.js";
 import { classifyUrl, safeTabUrl } from "../background/tracking/classify-url.js";
 import { createBackgroundRuntimeContext } from "../background/runtime/runtime-state.js";
@@ -35,6 +36,7 @@ import {
 
 test("background messaging contracts validate payload shape and error envelopes", () => {
   assert.equal(isBackgroundRequest({ type: MESSAGE_TYPES.getBootstrap }), true);
+  assert.equal(isBackgroundRequest({ type: MESSAGE_TYPES.retrySiteClassifications }), true);
   assert.equal(
     isBackgroundRequest({ type: MESSAGE_TYPES.saveSiteRule, host: "github.com", category: "work", excluded: false }),
     true
@@ -49,6 +51,107 @@ test("background messaging contracts validate payload shape and error envelopes"
   );
   assert.equal(isBackgroundErrorResponse({ ok: false, error: "sync failed" }), true);
   assert.equal(isBackgroundErrorResponse({ ok: true, error: "sync failed" }), false);
+});
+
+test("background retry classifications message returns updated debug snapshot fields", async () => {
+  const storage: Record<string, unknown> = {
+    twt_device_v2: {
+      installationId: "installation-1",
+      deviceId: "device-1",
+      registeredAt: "2026-05-20T00:00:00.000Z"
+    },
+    twt_dashboard_cache_v2: {
+      overview: null,
+      todayView: null,
+      trendsView: null,
+      sitesView: null,
+      insightsView: null,
+      focusSessionsView: null,
+      currentHostCategory: null,
+      lastSyncAt: null,
+      lastError: null
+    },
+    twt_site_rules_v1: {
+      excludedHosts: [],
+      categoryOverrides: {}
+    },
+    twt_site_classifications_v1: {
+      byHost: {
+        "pending.example": {
+          category: "other",
+          status: "pending",
+          attempts: 0,
+          nextRetryAt: null,
+          lastError: null,
+          updatedAt: "2026-05-20T00:00:00.000Z"
+        }
+      }
+    }
+  };
+  globalThis.chrome = {
+    action: {
+      async setBadgeBackgroundColor() {},
+      async setBadgeText() {},
+      async setTitle() {},
+      async setIcon() {}
+    },
+    alarms: {
+      async clear() {
+        return true;
+      },
+      create() {}
+    },
+    storage: {
+      local: {
+        async get(keys: string | string[]) {
+          if (Array.isArray(keys)) {
+            return Object.fromEntries(keys.map((key) => [key, structuredClone(storage[key])]));
+          }
+          return { [keys]: structuredClone(storage[keys]) };
+        },
+        async set(values: Record<string, unknown>) {
+          Object.assign(storage, structuredClone(values));
+        },
+        async remove(keys: string | string[]) {
+          for (const key of Array.isArray(keys) ? keys : [keys]) {
+            delete storage[key];
+          }
+        }
+      },
+      onChanged: {
+        addListener() {},
+        removeListener() {}
+      }
+    },
+    runtime: {
+      getManifest() {
+        return { version: "0.2.0" };
+      }
+    }
+  } as unknown as typeof chrome;
+  globalThis.fetch = (async () => ({
+    ok: true,
+    async json() {
+      return {
+        results: [{ domain: "pending.example", category: "work" }]
+      };
+    }
+  })) as unknown as typeof fetch;
+
+  const listener = createBackgroundMessageListener(createBackgroundRuntimeContext());
+  const response = await new Promise<unknown>((resolve) => {
+    listener({ type: MESSAGE_TYPES.retrySiteClassifications }, {} as chrome.runtime.MessageSender, resolve);
+  }) as {
+    retriedCount: number;
+    lastError: string | null;
+    siteClassifications: { byHost: Record<string, { status: string; category: string }> };
+  };
+
+  assert.equal(response.retriedCount, 1);
+  assert.equal(response.lastError, null);
+  assert.equal(response.siteClassifications.byHost["pending.example"]?.status, "resolved");
+  assert.equal(response.siteClassifications.byHost["pending.example"]?.category, "work");
+  assert.equal((storage.twt_dashboard_cache_v2 as { lastError: string | null }).lastError, null);
 });
 
 test("URL classification keeps safe tab URLs and marks restricted pages explicitly", () => {

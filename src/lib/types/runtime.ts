@@ -61,6 +61,7 @@ export interface BootstrapResponse {
   device?: DeviceState;
   pendingSyncCount?: number;
   pendingSyncEvents?: ActivityEvent[];
+  lastError?: string | null;
   runtimeState?: RuntimeState;
   transitions?: TrackingTransition[];
   activityEvents?: ActivityEvent[];
@@ -69,6 +70,13 @@ export interface BootstrapResponse {
   siteClassifications?: SiteClassificationState;
   dashboardCache?: DashboardCache;
   popupModel?: PopupModel;
+}
+
+export interface RetrySiteClassificationsResponse {
+  retriedCount: number;
+  dashboardCache: DashboardCache;
+  siteClassifications: SiteClassificationState;
+  lastError: string | null;
 }
 
 export interface MediaStateResponse {

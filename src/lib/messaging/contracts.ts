@@ -7,6 +7,7 @@ import type {
   FocusSession,
   MediaStateResponse,
   PopupModel,
+  RetrySiteClassificationsResponse,
   SiteRuleState
 } from "../types.js";
 
@@ -24,6 +25,10 @@ export type BackgroundRefreshViewsRequest = {
 
 export type BackgroundSyncNowRequest = {
   type: typeof MESSAGE_TYPES.syncNow;
+};
+
+export type BackgroundRetrySiteClassificationsRequest = {
+  type: typeof MESSAGE_TYPES.retrySiteClassifications;
 };
 
 export type BackgroundStartFocusSessionRequest = {
@@ -68,6 +73,7 @@ export type BackgroundRequest =
   | BackgroundDebugStateRequest
   | BackgroundRefreshViewsRequest
   | BackgroundSyncNowRequest
+  | BackgroundRetrySiteClassificationsRequest
   | BackgroundStartFocusSessionRequest
   | BackgroundPauseFocusSessionRequest
   | BackgroundResumeFocusSessionRequest
@@ -97,6 +103,8 @@ export interface BackgroundSyncNowResponse extends BackgroundRefreshViewsRespons
   };
 }
 
+export type BackgroundRetrySiteClassificationsResponse = RetrySiteClassificationsResponse;
+
 export interface BackgroundFocusSessionResponse {
   ok: true;
   session: FocusSession;
@@ -124,6 +132,7 @@ export type BackgroundSuccessResponseMap = {
   [MESSAGE_TYPES.getDebugState]: BootstrapResponse;
   [MESSAGE_TYPES.refreshViews]: BackgroundRefreshViewsResponse;
   [MESSAGE_TYPES.syncNow]: BackgroundSyncNowResponse;
+  [MESSAGE_TYPES.retrySiteClassifications]: BackgroundRetrySiteClassificationsResponse;
   [MESSAGE_TYPES.startFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.pauseFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.resumeFocusSession]: BackgroundFocusSessionResponse;
@@ -210,6 +219,7 @@ export function isBackgroundRequest(value: unknown): value is BackgroundRequest 
     case MESSAGE_TYPES.getDebugState:
     case MESSAGE_TYPES.refreshViews:
     case MESSAGE_TYPES.syncNow:
+    case MESSAGE_TYPES.retrySiteClassifications:
     case MESSAGE_TYPES.forceFocusNudge:
       return true;
     case MESSAGE_TYPES.startFocusSession:
