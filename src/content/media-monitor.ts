@@ -1,11 +1,16 @@
-import { MESSAGE_TYPES } from "../lib/constants.js";
-import { isContentRequestType } from "../lib/messaging/contracts.js";
-
+const MEDIA_MESSAGE_TYPES = {
+  getMediaState: "GET_MEDIA_STATE",
+  mediaStateUpdate: "MEDIA_STATE_UPDATE"
+} as const;
 const HEARTBEAT_MS = 15_000;
 const trackedMedia = new WeakSet();
 let observer: MutationObserver | null = null;
 let heartbeatId: number | null = null;
 let lastKnownState: boolean | null = null;
+
+function isGetMediaStateMessage(message: unknown): message is { type: typeof MEDIA_MESSAGE_TYPES.getMediaState } {
+  return Boolean(message && typeof message === "object" && (message as Record<string, unknown>).type === MEDIA_MESSAGE_TYPES.getMediaState);
+}
 
 function isMediaPlaying(element: Element): boolean {
   if (!(element instanceof HTMLMediaElement)) {
@@ -38,7 +43,7 @@ function scheduleHeartbeat(): void {
 
   heartbeatId = window.setInterval(() => {
     void chrome.runtime.sendMessage({
-      type: MESSAGE_TYPES.mediaStateUpdate,
+      type: MEDIA_MESSAGE_TYPES.mediaStateUpdate,
       isPlayingMedia: true
     }).catch(() => {});
   }, HEARTBEAT_MS);
@@ -53,7 +58,7 @@ function notifyState(force = false): void {
   lastKnownState = nextState;
   scheduleHeartbeat();
   void chrome.runtime.sendMessage({
-    type: MESSAGE_TYPES.mediaStateUpdate,
+    type: MEDIA_MESSAGE_TYPES.mediaStateUpdate,
     isPlayingMedia: nextState
   }).catch(() => {});
 }
@@ -126,7 +131,7 @@ function ensureObserver() {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!isContentRequestType(message, MESSAGE_TYPES.getMediaState)) {
+  if (!isGetMediaStateMessage(message)) {
     return false;
   }
 

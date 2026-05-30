@@ -12,7 +12,8 @@ export const STORAGE_KEYS = {
   trackingTransitions: "twt_tracking_transitions_v1",
   focusSessions: "twt_focus_sessions_v1",
   siteRules: "twt_site_rules_v1",
-  siteClassifications: "twt_site_classifications_v1"
+  siteClassifications: "twt_site_classifications_v1",
+  siteDecisionCache: "twt_site_decision_cache_v1"
 } as const;
 
 export const MESSAGE_TYPES = {
@@ -49,6 +50,7 @@ export const DEFAULT_RUNTIME_STATE: RuntimeState = {
   currentHost: null,
   currentUrl: null,
   currentTabId: null,
+  currentTabTitle: null,
   currentWindowId: null,
   currentHostStartedAt: null,
   sessionStartedAt: null,

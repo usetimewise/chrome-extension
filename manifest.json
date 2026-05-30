@@ -5,6 +5,7 @@
   "description": "A focus-first browser companion that tracks attention, surfaces drift patterns, and suggests calmer next steps.",
   "permissions": [
     "tabs",
+    "scripting",
     "storage",
     "alarms",
     "idle",

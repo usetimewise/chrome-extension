@@ -41,6 +41,7 @@ export interface RuntimeState {
   currentHost: string | null;
   currentUrl: string | null;
   currentTabId: number | null;
+  currentTabTitle?: string | null;
   currentWindowId?: number | null;
   currentHostStartedAt: number | null;
   sessionStartedAt: number | null;

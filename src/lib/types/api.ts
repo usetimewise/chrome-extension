@@ -94,6 +94,28 @@ export interface SiteRuleResponse {
   updated_at?: string;
 }
 
+export type SiteDecisionValue = "allow" | "block";
+export type SiteDecisionFocusMode = "normal";
+export type SiteDecisionMatchedRulePatternType = "domain" | "url_prefix";
+
+export interface SiteDecisionMatchedRule {
+  pattern: string;
+  patternType: SiteDecisionMatchedRulePatternType;
+}
+
+export interface SiteDecisionRequest {
+  url: string;
+  focus_mode: SiteDecisionFocusMode;
+  tab_title?: string;
+}
+
+export interface SiteDecisionResponse {
+  decision: SiteDecisionValue;
+  category: string;
+  confidence: number;
+  matchedRule?: SiteDecisionMatchedRule;
+}
+
 export interface UpdatePreferencesRequest extends Partial<Settings> {}
 
 export interface PreferencesResponse {

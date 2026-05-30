@@ -1,8 +1,10 @@
 import { APP_SETTINGS, NUDGE_SENSITIVITY_THRESHOLDS_MINUTES } from "../../lib/app-settings.js";
 import { DISTRACTION_CATEGORIES, MESSAGE_TYPES } from "../../lib/constants.js";
+import { decideSite } from "../../lib/api/site-decision.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
 import { getDashboardCache, saveDashboardCache } from "../../lib/storage/dashboard-cache.js";
 import { saveRuntimeState } from "../../lib/storage/runtime-state.js";
+import { cacheSiteDecision, findCachedSiteDecision } from "../../lib/storage/site-decision-cache.js";
 import { getErrorMessage } from "../../lib/utils.js";
 import type {
   BootstrapResponse,
@@ -13,7 +15,10 @@ import type {
   Settings
 } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
+import { withRegisteredDevice } from "../sync/sync-queue.js";
 import { isTrackingEligible } from "../tracking/transitions.js";
+
+const FOCUS_DECISION_MODE = "normal" as const;
 
 function driftThresholdMinutes(sensitivity: Settings["nudgeSensitivity"] = APP_SETTINGS.nudgeSensitivity): number {
   return NUDGE_SENSITIVITY_THRESHOLDS_MINUTES[sensitivity] ||
@@ -42,28 +47,41 @@ export async function showFocusNudge(
   message: string,
   details: { sessionId: string; host: string; category: string }
 ): Promise<{ ok: boolean; response: unknown }> {
-  if (!context.runtimeState.currentTabId) {
+  const tabId = context.runtimeState.currentTabId;
+  if (!tabId) {
     const error = new Error("No active tab available for focus nudge");
     await saveDashboardCache({ lastError: getErrorMessage(error) });
     throw error;
   }
 
+  const payload = {
+    type: MESSAGE_TYPES.showFocusNudge,
+    sessionId: details.sessionId,
+    message,
+    host: details.host,
+    category: details.category
+  } as const;
+
   try {
-    const response = await sendContentMessage(context.runtimeState.currentTabId, {
-      type: MESSAGE_TYPES.showFocusNudge,
-      sessionId: details.sessionId,
-      message,
-      host: details.host,
-      category: details.category
-    });
+    const response = await sendContentMessage(tabId, payload);
 
     await saveDashboardCache({ lastError: null });
     return { ok: true, response };
-  } catch (error) {
-    await saveDashboardCache({
-      lastError: `Unable to show focus nudge on this page: ${getErrorMessage(error)}`
-    });
-    throw error;
+  } catch (initialError) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["assets/focus-nudge.js"]
+      });
+      const response = await sendContentMessage(tabId, payload);
+      await saveDashboardCache({ lastError: null });
+      return { ok: true, response };
+    } catch (retryError) {
+      await saveDashboardCache({
+        lastError: `Unable to show focus nudge on this page: ${getErrorMessage(retryError, getErrorMessage(initialError))}`
+      });
+      throw retryError;
+    }
   }
 }
 
@@ -72,7 +90,10 @@ export async function evaluateFocusNudgeNotification(
   cache: DashboardCache | null = null,
   _settings: Settings | null = null
 ): Promise<void> {
-  if (!context.runtimeState.currentHost) {
+  const currentUrl = context.runtimeState.currentUrl;
+  const currentHost = context.runtimeState.currentHost;
+  const currentTabId = context.runtimeState.currentTabId;
+  if (!currentUrl || !currentHost || !currentTabId) {
     return;
   }
 
@@ -82,15 +103,30 @@ export async function evaluateFocusNudgeNotification(
     return;
   }
 
-  const category = resolvedCache.currentHostCategory;
-  if (!DISTRACTION_CATEGORIES.has(category)) {
-    return;
-  }
-
   const notificationState = getFocusNotificationState(context, activeSession);
   if (context.runtimeState.focusNudgeNotifications !== notificationState) {
     context.runtimeState.focusNudgeNotifications = notificationState;
     await saveRuntimeState(context.runtimeState);
+  }
+
+  let decision = await findCachedSiteDecision(currentUrl, FOCUS_DECISION_MODE);
+  if (!decision) {
+    try {
+      const response = await withRegisteredDevice(async (settings, deviceState) => (
+        decideSite(settings.apiBaseUrl, deviceState.deviceId, {
+          url: currentUrl,
+          focus_mode: FOCUS_DECISION_MODE,
+          ...(context.runtimeState.currentTabTitle ? { tab_title: context.runtimeState.currentTabTitle } : {})
+        })
+      ));
+      decision = await cacheSiteDecision(currentUrl, FOCUS_DECISION_MODE, response);
+    } catch {
+      return;
+    }
+  }
+
+  if (decision?.decision !== "block") {
+    return;
   }
 
   try {
@@ -99,8 +135,8 @@ export async function evaluateFocusNudgeNotification(
       "Ты отвлекся. Этот сайт выглядит как отвлечение во время фокусировки.",
       {
         sessionId: activeSession.id,
-        host: context.runtimeState.currentHost,
-        category: category || "other"
+        host: currentHost,
+        category: decision.category || "other"
       }
     );
   } catch {

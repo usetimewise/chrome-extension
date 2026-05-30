@@ -33,6 +33,7 @@ export async function setActiveFromTab(
     context.runtimeState.currentHost = urlClass.host;
     context.runtimeState.currentUrl = urlClass.safeUrl;
     context.runtimeState.currentTabId = tab?.id ?? null;
+    context.runtimeState.currentTabTitle = tab?.title ?? null;
     context.runtimeState.currentWindowId = tab?.windowId ?? null;
     context.runtimeState.currentHostStartedAt = null;
     context.runtimeState.isPlayingMedia = false;
@@ -51,6 +52,7 @@ export async function setActiveFromTab(
   context.runtimeState.currentHost = nextHost;
   context.runtimeState.currentUrl = tabUrl;
   context.runtimeState.currentTabId = tab.id ?? null;
+  context.runtimeState.currentTabTitle = tab.title ?? null;
   context.runtimeState.currentWindowId = tab.windowId ?? null;
   context.runtimeState.isPlayingMedia = await queryMediaState(context.runtimeState.currentTabId);
   context.runtimeState.mediaStateUpdatedAt = new Date().toISOString();

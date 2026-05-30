@@ -1,7 +1,3 @@
-import { MESSAGE_TYPES } from "../lib/constants.js";
-import { sendBackgroundMessage } from "../lib/messaging/client.js";
-import { isContentRequestType } from "../lib/messaging/contracts.js";
-
 type FocusOverlayMessage = {
   sessionId: string;
   message: string;
@@ -9,9 +5,31 @@ type FocusOverlayMessage = {
   category: string;
 };
 
+const FOCUS_MESSAGE_TYPES = {
+  showFocusNudge: "SHOW_FOCUS_NUDGE",
+  saveSiteRule: "SAVE_SITE_RULE",
+  closeCurrentTab: "CLOSE_CURRENT_TAB"
+} as const;
 const OVERLAY_ID = "time-wise-focus-overlay";
 const suppressedHosts = new Set<string>();
 let activeOverlayKey: string | null = null;
+
+function isShowFocusNudgeMessage(message: unknown): message is FocusOverlayMessage & { type: typeof FOCUS_MESSAGE_TYPES.showFocusNudge } {
+  if (!message || typeof message !== "object") {
+    return false;
+  }
+
+  const candidate = message as Record<string, unknown>;
+  return candidate.type === FOCUS_MESSAGE_TYPES.showFocusNudge &&
+    typeof candidate.sessionId === "string" &&
+    typeof candidate.message === "string" &&
+    typeof candidate.host === "string" &&
+    typeof candidate.category === "string";
+}
+
+function sendBackgroundMessage<TResponse = unknown>(message: unknown): Promise<TResponse> {
+  return chrome.runtime.sendMessage(message) as Promise<TResponse>;
+}
 
 function overlayKey(message: FocusOverlayMessage): string {
   return `${message.sessionId}:${message.host}`;
@@ -201,7 +219,7 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
   leaveButton.textContent = "Виноват, ухожу";
   leaveButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
-    void sendBackgroundMessage({ type: MESSAGE_TYPES.closeCurrentTab })
+    void sendBackgroundMessage({ type: FOCUS_MESSAGE_TYPES.closeCurrentTab })
       .catch((error: unknown) => {
         setButtonsDisabled(shadow, false);
         setStatus(shadow, error instanceof Error ? error.message : "Не удалось закрыть вкладку");
@@ -214,7 +232,7 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
   workButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
     void sendBackgroundMessage({
-      type: MESSAGE_TYPES.saveSiteRule,
+      type: FOCUS_MESSAGE_TYPES.saveSiteRule,
       host: message.host,
       category: "work",
       excluded: false
@@ -262,7 +280,7 @@ function showFocusOverlay(message: FocusOverlayMessage): void {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!isContentRequestType(message, MESSAGE_TYPES.showFocusNudge)) {
+  if (!isShowFocusNudgeMessage(message)) {
     return false;
   }
 
