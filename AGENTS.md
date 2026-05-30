@@ -17,6 +17,15 @@
 
 ---
 
+# Live-проверки Chrome extension
+
+Для live-проверок расширения используй Chromium-Gost, а не стандартный Chrome DevTools MCP-браузер.
+
+Причины:
+* браузер, которым управляет `chrome-devtools` MCP, запускается с `--disable-extensions`, поэтому расширение там не загрузится;
+* Google Chrome на этой машине игнорирует `--load-extension` для unpacked extension и пишет в логах `--load-extension is not allowed in Google Chrome, ignoring`;
+* Chromium-Gost корректно загружает unpacked extension из `dist` и доступен по `/Applications/Chromium-Gost.app/Contents/MacOS/Chromium-Gost`.
+
 # Основные принципы
 
 ## 1. Production-ready подход
