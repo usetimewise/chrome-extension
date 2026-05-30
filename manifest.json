@@ -43,7 +43,7 @@
     }
   ],
   "action": {
-    "default_title": "Focus Snapshot",
+    "default_title": "Time Wise: фокусировка выключена",
     "default_popup": "popup.html"
   }
 }

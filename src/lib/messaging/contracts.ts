@@ -59,6 +59,10 @@ export type BackgroundSaveSiteRuleRequest = {
   excluded: boolean;
 };
 
+export type BackgroundCloseCurrentTabRequest = {
+  type: typeof MESSAGE_TYPES.closeCurrentTab;
+};
+
 export type BackgroundForceFocusNudgeRequest = {
   type: typeof MESSAGE_TYPES.forceFocusNudge;
 };
@@ -79,6 +83,7 @@ export type BackgroundRequest =
   | BackgroundResumeFocusSessionRequest
   | BackgroundEndFocusSessionRequest
   | BackgroundSaveSiteRuleRequest
+  | BackgroundCloseCurrentTabRequest
   | BackgroundForceFocusNudgeRequest
   | BackgroundMediaStateUpdateRequest;
 
@@ -117,6 +122,10 @@ export interface BackgroundSaveSiteRuleResponse {
   dashboardCache: DashboardCache;
 }
 
+export interface BackgroundCloseCurrentTabResponse {
+  ok: true;
+}
+
 export interface BackgroundForceFocusNudgeResponse {
   ok: true;
   response: unknown;
@@ -138,6 +147,7 @@ export type BackgroundSuccessResponseMap = {
   [MESSAGE_TYPES.resumeFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.endFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.saveSiteRule]: BackgroundSaveSiteRuleResponse;
+  [MESSAGE_TYPES.closeCurrentTab]: BackgroundCloseCurrentTabResponse;
   [MESSAGE_TYPES.forceFocusNudge]: BackgroundForceFocusNudgeResponse;
   [MESSAGE_TYPES.mediaStateUpdate]: BackgroundMediaStateUpdateResponse;
 };
@@ -154,11 +164,10 @@ export type ContentGetMediaStateRequest = {
 
 export type ContentShowFocusNudgeRequest = {
   type: typeof MESSAGE_TYPES.showFocusNudge;
-  title: string;
+  sessionId: string;
   message: string;
   host: string;
   category: string;
-  duration: string;
 };
 
 export type ContentRequest = ContentGetMediaStateRequest | ContentShowFocusNudgeRequest;
@@ -221,6 +230,7 @@ export function isBackgroundRequest(value: unknown): value is BackgroundRequest 
     case MESSAGE_TYPES.syncNow:
     case MESSAGE_TYPES.retrySiteClassifications:
     case MESSAGE_TYPES.forceFocusNudge:
+    case MESSAGE_TYPES.closeCurrentTab:
       return true;
     case MESSAGE_TYPES.startFocusSession:
       return isOptionalString(value.intent) && isOptionalNumber(value.minutes);
@@ -246,11 +256,10 @@ export function isContentRequest(value: unknown): value is ContentRequest {
     case MESSAGE_TYPES.getMediaState:
       return true;
     case MESSAGE_TYPES.showFocusNudge:
-      return isRequiredString(value.title) &&
+      return isRequiredString(value.sessionId) &&
         isRequiredString(value.message) &&
-        typeof value.host === "string" &&
-        typeof value.category === "string" &&
-        typeof value.duration === "string";
+        isRequiredString(value.host) &&
+        isRequiredString(value.category);
     default:
       return false;
   }

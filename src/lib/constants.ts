@@ -27,6 +27,7 @@ export const MESSAGE_TYPES = {
   resumeFocusSession: "RESUME_FOCUS_SESSION",
   endFocusSession: "END_FOCUS_SESSION",
   saveSiteRule: "SAVE_SITE_RULE",
+  closeCurrentTab: "CLOSE_CURRENT_TAB",
   forceFocusNudge: "FORCE_FOCUS_NUDGE",
   showFocusNudge: "SHOW_FOCUS_NUDGE",
   getDebugState: "GET_DEBUG_STATE"

@@ -1,278 +1,264 @@
 import { MESSAGE_TYPES } from "../lib/constants.js";
+import { sendBackgroundMessage } from "../lib/messaging/client.js";
 import { isContentRequestType } from "../lib/messaging/contracts.js";
 
-type FocusNudgeMessage = {
-  title: string;
+type FocusOverlayMessage = {
+  sessionId: string;
   message: string;
   host: string;
   category: string;
-  duration: string;
 };
 
-const TOAST_ID = "time-wise-focus-nudge";
-let dismissTimer: number | null = null;
+const OVERLAY_ID = "time-wise-focus-overlay";
+const suppressedHosts = new Set<string>();
+let activeOverlayKey: string | null = null;
 
-function removeExistingToast() {
-  const existing = document.getElementById(TOAST_ID);
+function overlayKey(message: FocusOverlayMessage): string {
+  return `${message.sessionId}:${message.host}`;
+}
+
+function removeExistingOverlay() {
+  const existing = document.getElementById(OVERLAY_ID);
   if (existing) {
     existing.remove();
   }
+  activeOverlayKey = null;
+}
 
-  if (dismissTimer !== null) {
-    window.clearTimeout(dismissTimer);
-    dismissTimer = null;
+function setStatus(shadow: ShadowRoot, message: string): void {
+  const status = shadow.querySelector<HTMLElement>(".status");
+  if (status) {
+    status.textContent = message;
   }
 }
 
-function compactDuration(value: string): string {
-  return String(value || "")
-    .replace(/\bhours?\b/g, "h")
-    .replace(/\bminutes?\b/g, "m")
-    .replace(/\s+/g, " ")
-    .replace(/(\d+)\s+([hm])/g, "$1$2")
-    .trim();
+function setButtonsDisabled(shadow: ShadowRoot, disabled: boolean): void {
+  shadow.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+    button.disabled = disabled;
+  });
 }
 
-function buildToast(message: FocusNudgeMessage): HTMLDivElement {
+function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
   const host = document.createElement("div");
-  host.id = TOAST_ID;
+  host.id = OVERLAY_ID;
 
   const shadow = host.attachShadow({ mode: "open" });
   const style = document.createElement("style");
-  const fontAwesomeSolidUrl = chrome.runtime.getURL("vendor/fontawesome/webfonts/fa-solid-900.woff2");
   style.textContent = `
-    @font-face {
-      font-family: "Font Awesome 7 Free";
-      font-style: normal;
-      font-weight: 900;
-      font-display: block;
-      src: url("${fontAwesomeSolidUrl}") format("woff2");
-    }
-
     :host {
       all: initial;
-      display: block;
       position: fixed;
-      top: 14px;
-      right: 28px;
+      inset: 0;
       z-index: 2147483647;
-      max-width: 363px;
-      width: calc(100vw - 56px);
-      pointer-events: auto;
-      color-scheme: light;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    .fa-solid {
-      -webkit-font-smoothing: antialiased;
-      display: inline-block;
-      font-family: "Font Awesome 7 Free";
-      font-style: normal;
-      font-variant: normal;
-      font-weight: 900;
-      line-height: 1;
-      text-rendering: auto;
-    }
-
-    .fa-triangle-exclamation::before {
-      content: "\\f071";
-    }
-
-    .fa-xmark::before {
-      content: "\\f00d";
-    }
-
-    .toast {
       box-sizing: border-box;
-      width: 100%;
-      overflow: hidden;
-      border: 1px solid #dbe3ee;
-      border-radius: 12px;
-      background: #ffffff;
-      color: #172033;
-      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.18);
-    }
-
-    .header {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 14px 16px 14px;
-      background: #fff8eb;
-    }
-
-    .title-row {
-      display: flex;
-      align-items: center;
-      min-width: 0;
-      gap: 12px;
-    }
-
-    .title-copy {
-      min-width: 0;
-    }
-
-    .warning {
-      display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 31px;
-      height: 31px;
-      flex: 0 0 auto;
-      border-radius: 999px;
-      background: #fff0c7;
-      color: #f59e0b;
-      font-size: 17px;
-      font-weight: 800;
-      line-height: 1;
+      padding: 100px;
+      background: rgba(255, 255, 255, 0.96);
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      pointer-events: auto;
+    }
+
+    .panel {
+      box-sizing: border-box;
+      width: min(100%, 560px);
+      padding: 32px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      background: #ffffff;
+      color: #030213;
+      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.14);
+    }
+
+    .kicker {
+      margin: 0 0 12px;
+      color: #717182;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      line-height: 1.2;
+      text-transform: uppercase;
     }
 
     .title {
       margin: 0;
-      overflow: hidden;
-      font-size: 14px;
-      line-height: 1.3;
-      font-weight: 700;
-      color: #0f172a;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .meta {
-      margin: 2px 0 0;
-      overflow: hidden;
-      color: #475569;
-      font-size: 13px;
-      line-height: 1.25;
+      color: #030213;
+      font-size: 28px;
       font-weight: 500;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .body {
-      padding: 15px 16px 16px;
+      letter-spacing: 0;
+      line-height: 1.18;
     }
 
     .message {
-      margin: 0;
-      color: #253047;
-      font-size: 14px;
-      line-height: 1.55;
-      font-weight: 500;
+      margin: 14px 0 0;
+      color: #4b5563;
+      font-size: 16px;
+      line-height: 1.6;
     }
 
-    .close {
-      flex: 0 0 auto;
-      width: 22px;
-      height: 22px;
-      border: 0;
-      border-radius: 999px;
-      background: transparent;
-      color: #64748b;
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1;
-      padding: 0;
+    .meta {
+      margin: 10px 0 0;
+      color: #717182;
+      font-size: 13px;
+      line-height: 1.45;
     }
 
-    .close:hover {
-      background: #f1f5f9;
-      color: #0f172a;
+    .actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 28px;
     }
 
-    .return {
-      display: block;
-      width: 100%;
-      margin-top: 13px;
-      border: 0;
+    button {
+      min-height: 44px;
+      border: 1px solid #d1d5db;
       border-radius: 8px;
-      background: #111827;
-      color: #ffffff;
+      background: #ffffff;
+      color: #030213;
       cursor: pointer;
       font: inherit;
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 500;
       line-height: 1.2;
       padding: 12px 16px;
       text-align: center;
+      transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease;
     }
 
-    .return:hover {
-      background: #0b1220;
+    button:hover:not(:disabled) {
+      background: #f3f4f6;
+      border-color: #b8bec7;
     }
 
-    @media (max-width: 480px) {
+    button:disabled {
+      cursor: default;
+      opacity: 0.62;
+    }
+
+    .primary {
+      border-color: #030213;
+      background: #030213;
+      color: #ffffff;
+    }
+
+    .primary:hover:not(:disabled) {
+      border-color: #1f2937;
+      background: #1f2937;
+    }
+
+    .status {
+      min-height: 19px;
+      margin: 14px 0 0;
+      color: #b42318;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 720px) {
       :host {
-        top: 12px;
-        right: 12px;
-        width: calc(100vw - 24px);
+        align-items: stretch;
+        padding: 24px;
+      }
+
+      .panel {
+        align-self: center;
+        padding: 24px;
       }
     }
   `;
 
-  const toast = document.createElement("section");
-  toast.className = "toast";
-  toast.setAttribute("role", "status");
-  toast.setAttribute("aria-live", "polite");
+  const panel = document.createElement("section");
+  panel.className = "panel";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+  panel.setAttribute("aria-labelledby", "time-wise-focus-overlay-title");
 
-  const header = document.createElement("div");
-  header.className = "header";
+  const kicker = document.createElement("p");
+  kicker.className = "kicker";
+  kicker.textContent = "Time Wise";
 
-  const titleRow = document.createElement("div");
-  titleRow.className = "title-row";
-
-  const warning = document.createElement("span");
-  warning.className = "warning fa-solid fa-triangle-exclamation";
-  warning.setAttribute("aria-hidden", "true");
-
-  const titleCopy = document.createElement("div");
-  titleCopy.className = "title-copy";
-
-  const title = document.createElement("p");
+  const title = document.createElement("h1");
   title.className = "title";
-  title.textContent = "Attention shifted";
+  title.id = "time-wise-focus-overlay-title";
+  title.textContent = "Ты отвлекся";
+
+  const copy = document.createElement("p");
+  copy.className = "message";
+  copy.textContent = message.message;
 
   const meta = document.createElement("p");
   meta.className = "meta";
-  const duration = compactDuration(message.duration);
-  const currentHost = message.host || "this site";
-  meta.textContent = duration ? `${duration} on ${currentHost} today` : currentHost;
+  meta.textContent = `${message.host} · ${message.category}`;
 
-  const close = document.createElement("button");
-  close.className = "close fa-solid fa-xmark";
-  close.type = "button";
-  close.setAttribute("aria-label", "Dismiss focus nudge");
-  close.addEventListener("click", removeExistingToast);
+  const actions = document.createElement("div");
+  actions.className = "actions";
 
-  const body = document.createElement("p");
-  body.className = "message";
-  body.textContent = message.message || "Just a gentle reminder - you're browsing outside your focus areas.";
+  const leaveButton = document.createElement("button");
+  leaveButton.className = "primary";
+  leaveButton.type = "button";
+  leaveButton.textContent = "Виноват, ухожу";
+  leaveButton.addEventListener("click", () => {
+    setButtonsDisabled(shadow, true);
+    void sendBackgroundMessage({ type: MESSAGE_TYPES.closeCurrentTab })
+      .catch((error: unknown) => {
+        setButtonsDisabled(shadow, false);
+        setStatus(shadow, error instanceof Error ? error.message : "Не удалось закрыть вкладку");
+      });
+  });
 
-  const bodyWrap = document.createElement("div");
-  bodyWrap.className = "body";
+  const workButton = document.createElement("button");
+  workButton.type = "button";
+  workButton.textContent = "Это не отвлечение";
+  workButton.addEventListener("click", () => {
+    setButtonsDisabled(shadow, true);
+    void sendBackgroundMessage({
+      type: MESSAGE_TYPES.saveSiteRule,
+      host: message.host,
+      category: "work",
+      excluded: false
+    })
+      .then(removeExistingOverlay)
+      .catch((error: unknown) => {
+        setButtonsDisabled(shadow, false);
+        setStatus(shadow, error instanceof Error ? error.message : "Не удалось сохранить правило для сайта");
+      });
+  });
 
-  const returnButton = document.createElement("button");
-  returnButton.className = "return";
-  returnButton.type = "button";
-  returnButton.textContent = "Return to focus";
-  returnButton.addEventListener("click", removeExistingToast);
+  const urgentButton = document.createElement("button");
+  urgentButton.type = "button";
+  urgentButton.textContent = "Мне сейчас срочно нужен сайт";
+  urgentButton.addEventListener("click", () => {
+    suppressedHosts.add(overlayKey(message));
+    removeExistingOverlay();
+  });
 
-  titleCopy.append(title, meta);
-  titleRow.append(warning, titleCopy);
-  header.append(titleRow, close);
-  bodyWrap.append(body, returnButton);
-  toast.append(header, bodyWrap);
-  shadow.append(style, toast);
+  const status = document.createElement("p");
+  status.className = "status";
+  status.setAttribute("role", "status");
+
+  actions.append(leaveButton, workButton, urgentButton);
+  panel.append(kicker, title, copy, meta, actions, status);
+  shadow.append(style, panel);
 
   return host;
 }
 
-function showFocusNudge(message: FocusNudgeMessage): void {
-  removeExistingToast();
-  const toast = buildToast(message);
-  document.documentElement.append(toast);
-  dismissTimer = window.setTimeout(removeExistingToast, 15000);
+function showFocusOverlay(message: FocusOverlayMessage): void {
+  const key = overlayKey(message);
+  if (suppressedHosts.has(key)) {
+    removeExistingOverlay();
+    return;
+  }
+
+  if (activeOverlayKey === key && document.getElementById(OVERLAY_ID)) {
+    return;
+  }
+
+  removeExistingOverlay();
+  activeOverlayKey = key;
+  document.documentElement.append(buildOverlay(message));
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -280,7 +266,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return false;
   }
 
-  showFocusNudge(message);
+  showFocusOverlay(message);
   sendResponse({ ok: true });
   return true;
 });

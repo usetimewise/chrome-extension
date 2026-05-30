@@ -21,6 +21,7 @@ export default defineConfig(() => {
   const includeDebug = process.env.VITE_TIMEWISE_DEV_DEBUG === "true";
   const input = {
     popup: resolve(__dirname, "popup.html"),
+    "legacy-popup": resolve(__dirname, "legacy-popup.html"),
     dashboard: resolve(__dirname, "dashboard.html"),
     background: resolve(__dirname, "src/background/index.ts"),
     "media-monitor": resolve(__dirname, "src/content/media-monitor.ts"),

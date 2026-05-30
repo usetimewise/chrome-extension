@@ -296,6 +296,15 @@ export function createBackgroundMessageListener(
           const dashboardCache = await refreshViews(context);
           return { ok: true, payload, dashboardCache };
         }
+        case MESSAGE_TYPES.closeCurrentTab: {
+          const tabId = sender.tab?.id;
+          if (typeof tabId !== "number") {
+            return { ok: false, error: "No sender tab available to close" };
+          }
+
+          await chrome.tabs.remove(tabId);
+          return { ok: true };
+        }
         case MESSAGE_TYPES.forceFocusNudge:
           return forceFocusNudge(context);
         case MESSAGE_TYPES.mediaStateUpdate: {

@@ -46,9 +46,10 @@ test("background messaging contracts validate payload shape and error envelopes"
     false
   );
   assert.equal(
-    isContentRequest({ type: MESSAGE_TYPES.showFocusNudge, title: "Refocus", message: "Back to work", host: "x.com", category: "social", duration: "10m" }),
+    isContentRequest({ type: MESSAGE_TYPES.showFocusNudge, sessionId: "session-1", message: "Back to work", host: "x.com", category: "social" }),
     true
   );
+  assert.equal(isBackgroundRequest({ type: MESSAGE_TYPES.closeCurrentTab }), true);
   assert.equal(isBackgroundErrorResponse({ ok: false, error: "sync failed" }), true);
   assert.equal(isBackgroundErrorResponse({ ok: true, error: "sync failed" }), false);
 });
@@ -297,6 +298,40 @@ test("buildPopupModel uses dashboard productivity score and safe fallbacks", () 
 
   assert.deepEqual(populatedModel.productivityScore, { value: 72, label: "Good" });
   assert.deepEqual(populatedModel.scoreComparison, { label: "vs yesterday", delta: 8 });
+
+  const activeFocusModel = buildPopupModel(context, {
+    overview: null,
+    todayView: null,
+    trendsView: null,
+    sitesView: null,
+    insightsView: null,
+    focusSessionsView: {
+      summary: {
+        sessions_completed: 0,
+        average_duration_ms: 0,
+        longest_duration_ms: 0
+      },
+      active_session: {
+        id: "session-1",
+        intent: "Focus block",
+        status: "active",
+        planned_minutes: 45,
+        started_at: "2026-05-29T00:00:00.000Z",
+        last_resumed_at: "2026-05-29T00:00:00.000Z",
+        active_duration_ms: 0,
+        pause_count: 0,
+        distraction_count: 0
+      },
+      items: [],
+      recommendations: []
+    },
+    currentHostCategory: null,
+    lastSyncAt: null,
+    lastError: null
+  }, settings);
+
+  assert.equal(activeFocusModel.state, "focus_active");
+  assert.equal(activeFocusModel.focusSession?.id, "session-1");
 
   const fallbackModel = buildPopupModel(context, {
     overview: null,

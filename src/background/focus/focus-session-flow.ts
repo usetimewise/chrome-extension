@@ -1,20 +1,11 @@
-import {
-  APP_SETTINGS,
-  NUDGE_SENSITIVITY_THRESHOLDS_MINUTES
-} from "../../lib/app-settings.js";
-import {
-  CATEGORY_LABELS,
-  DISTRACTION_CATEGORIES,
-  MESSAGE_TYPES
-} from "../../lib/constants.js";
+import { APP_SETTINGS, NUDGE_SENSITIVITY_THRESHOLDS_MINUTES } from "../../lib/app-settings.js";
+import { DISTRACTION_CATEGORIES, MESSAGE_TYPES } from "../../lib/constants.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
 import { getDashboardCache, saveDashboardCache } from "../../lib/storage/dashboard-cache.js";
 import { saveRuntimeState } from "../../lib/storage/runtime-state.js";
-import { getSettings } from "../../lib/storage/site-rules.js";
 import { getErrorMessage } from "../../lib/utils.js";
 import type {
   BootstrapResponse,
-  Category,
   DashboardCache,
   FocusSession,
   PopupModel,
@@ -46,30 +37,10 @@ function getFocusNotificationState(
   };
 }
 
-function formatNudgeDuration(durationMs: number): string {
-  const totalMinutes = Math.max(1, Math.round(durationMs / 60000));
-  if (totalMinutes < 60) {
-    return `${totalMinutes} minute${totalMinutes === 1 ? "" : "s"}`;
-  }
-
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (minutes === 0) {
-    return `${hours} hour${hours === 1 ? "" : "s"}`;
-  }
-
-  return `${hours} hour${hours === 1 ? "" : "s"} ${minutes} minute${minutes === 1 ? "" : "s"}`;
-}
-
-function activeSessionStartedAt(activeSession: FocusSession | null | undefined): number | null {
-  const activeSince = Date.parse(activeSession?.last_resumed_at || activeSession?.started_at || "");
-  return Number.isNaN(activeSince) ? null : activeSince;
-}
-
 export async function showFocusNudge(
   context: BackgroundRuntimeContext,
   message: string,
-  details: { host?: string; category?: string; duration?: string } = {}
+  details: { sessionId: string; host: string; category: string }
 ): Promise<{ ok: boolean; response: unknown }> {
   if (!context.runtimeState.currentTabId) {
     const error = new Error("No active tab available for focus nudge");
@@ -80,11 +51,10 @@ export async function showFocusNudge(
   try {
     const response = await sendContentMessage(context.runtimeState.currentTabId, {
       type: MESSAGE_TYPES.showFocusNudge,
-      title: "Focus mode: distraction detected",
+      sessionId: details.sessionId,
       message,
-      host: details.host || context.runtimeState.currentHost || "",
-      category: details.category || "",
-      duration: details.duration || ""
+      host: details.host,
+      category: details.category
     });
 
     await saveDashboardCache({ lastError: null });
@@ -100,14 +70,9 @@ export async function showFocusNudge(
 export async function evaluateFocusNudgeNotification(
   context: BackgroundRuntimeContext,
   cache: DashboardCache | null = null,
-  settings: Settings | null = null
+  _settings: Settings | null = null
 ): Promise<void> {
-  const resolvedSettings = settings || await getSettings();
-  if (
-    !resolvedSettings.nudgesEnabled ||
-    !context.runtimeState.currentHost ||
-    !context.runtimeState.currentHostStartedAt
-  ) {
+  if (!context.runtimeState.currentHost) {
     return;
   }
 
@@ -122,48 +87,25 @@ export async function evaluateFocusNudgeNotification(
     return;
   }
 
-  const now = Date.now();
-  const sessionStartedAt = activeSessionStartedAt(activeSession);
-  const dwellStartedAt = Math.max(context.runtimeState.currentHostStartedAt, sessionStartedAt || 0);
-  const dwellMs = now - dwellStartedAt;
-  const thresholdMs = driftThresholdMinutes(resolvedSettings.nudgeSensitivity) * 60 * 1000;
-  if (dwellMs < thresholdMs) {
-    return;
-  }
-
-  const snoozeMinutes = Number(resolvedSettings.snoozeMinutes) > 0
-    ? Number(resolvedSettings.snoozeMinutes)
-    : APP_SETTINGS.snoozeMinutes;
-  const snoozeMs = snoozeMinutes * 60 * 1000;
   const notificationState = getFocusNotificationState(context, activeSession);
-  const lastShownAt = Number(notificationState.hosts[context.runtimeState.currentHost] || 0);
-  if (lastShownAt && now - lastShownAt < snoozeMs) {
-    if (context.runtimeState.focusNudgeNotifications !== notificationState) {
-      context.runtimeState.focusNudgeNotifications = notificationState;
-      await saveRuntimeState(context.runtimeState);
-    }
-    return;
+  if (context.runtimeState.focusNudgeNotifications !== notificationState) {
+    context.runtimeState.focusNudgeNotifications = notificationState;
+    await saveRuntimeState(context.runtimeState);
   }
 
-  const categoryLabel = CATEGORY_LABELS[category as Category] || category;
-  const duration = formatNudgeDuration(dwellMs);
   try {
     await showFocusNudge(
       context,
-      "Just a gentle reminder - you're browsing outside your focus areas.",
+      "Ты отвлекся. Этот сайт выглядит как отвлечение во время фокусировки.",
       {
+        sessionId: activeSession.id,
         host: context.runtimeState.currentHost,
-        category: categoryLabel || "",
-        duration
+        category: category || "other"
       }
     );
   } catch {
     return;
   }
-
-  notificationState.hosts[context.runtimeState.currentHost] = now;
-  context.runtimeState.focusNudgeNotifications = notificationState;
-  await saveRuntimeState(context.runtimeState);
 }
 
 export function buildPopupModel(
@@ -251,7 +193,7 @@ export async function forceFocusNudge(context: BackgroundRuntimeContext): Promis
   const host = context.runtimeState.currentHost || "current site";
   return showFocusNudge(
     context,
-    "Just a gentle reminder - you're browsing outside your focus areas.",
-    { host }
+    "Ты отвлекся. Этот сайт выглядит как отвлечение во время фокусировки.",
+    { sessionId: "manual", host, category: "other" }
   );
 }
