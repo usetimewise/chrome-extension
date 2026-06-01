@@ -164,21 +164,26 @@ export function createBackgroundMessageListener(
     const handler = async (): Promise<unknown> => {
       switch (message.type) {
         case MESSAGE_TYPES.getBootstrap: {
-          const [settings, device, dashboardCache, pendingSyncCount] = await Promise.all([
+          const [settings, device, dashboardCache, pendingSyncCount, focusSessions] = await Promise.all([
             getSettings(),
             getDeviceState(),
             getDashboardCache(),
-            getPendingSyncCount()
+            getPendingSyncCount(),
+            getFocusSessions()
           ]);
+          const currentDashboardCache: DashboardCache = {
+            ...dashboardCache,
+            focusSessionsView: buildFocusSessionsView(focusSessions)
+          };
 
           return {
             settings,
             device,
             pendingSyncCount,
             runtimeState: context.runtimeState,
-            dashboardCache,
-            lastError: dashboardCache.lastError,
-            popupModel: buildPopupModel(context, dashboardCache, settings)
+            dashboardCache: currentDashboardCache,
+            lastError: currentDashboardCache.lastError,
+            popupModel: buildPopupModel(context, currentDashboardCache, settings)
           } satisfies BootstrapResponse;
         }
         case MESSAGE_TYPES.getDebugState: {

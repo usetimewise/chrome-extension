@@ -11,7 +11,7 @@ import {
   isBackgroundRequest,
   isContentRequest
 } from "./messaging/contracts.js";
-import type { ActivityEvent, PopupModel, Settings, TodayView, TrackingTransition } from "./types.js";
+import type { ActivityEvent, BootstrapResponse, PopupModel, Settings, TodayView, TrackingTransition } from "./types.js";
 import {
   donutBackground,
   getComparisonText,
@@ -52,6 +52,80 @@ test("background messaging contracts validate payload shape and error envelopes"
   assert.equal(isBackgroundRequest({ type: MESSAGE_TYPES.closeCurrentTab }), true);
   assert.equal(isBackgroundErrorResponse({ ok: false, error: "sync failed" }), true);
   assert.equal(isBackgroundErrorResponse({ ok: true, error: "sync failed" }), false);
+});
+
+test("bootstrap builds popup model from fresh focus sessions instead of stale dashboard cache", async () => {
+  const storage: Record<string, unknown> = {
+    twt_device_v2: {
+      installationId: "installation-1",
+      deviceId: "device-1",
+      registeredAt: "2026-05-20T00:00:00.000Z"
+    },
+    twt_dashboard_cache_v2: {
+      overview: null,
+      todayView: null,
+      trendsView: null,
+      sitesView: null,
+      insightsView: null,
+      focusSessionsView: null,
+      currentHostCategory: null,
+      lastSyncAt: null,
+      lastError: null
+    },
+    twt_focus_sessions_v1: [{
+      id: "session-1",
+      intent: "Focus block",
+      status: "active",
+      planned_minutes: 45,
+      started_at: "2026-05-20T00:00:00.000Z",
+      last_resumed_at: "2026-05-20T00:00:00.000Z",
+      active_duration_ms: 0,
+      pause_count: 0,
+      distraction_count: 0
+    }],
+    twt_site_rules_v1: {
+      excludedHosts: [],
+      categoryOverrides: {}
+    }
+  };
+  globalThis.chrome = {
+    storage: {
+      local: {
+        async get(keys: string | string[]) {
+          if (Array.isArray(keys)) {
+            return Object.fromEntries(keys.map((key) => [key, structuredClone(storage[key])]));
+          }
+          return { [keys]: structuredClone(storage[keys]) };
+        },
+        async set(values: Record<string, unknown>) {
+          Object.assign(storage, structuredClone(values));
+        },
+        async remove(keys: string | string[]) {
+          for (const key of Array.isArray(keys) ? keys : [keys]) {
+            delete storage[key];
+          }
+        }
+      },
+      onChanged: {
+        addListener() {},
+        removeListener() {}
+      }
+    },
+    runtime: {
+      getManifest() {
+        return { version: "0.2.0" };
+      }
+    }
+  } as unknown as typeof chrome;
+
+  const listener = createBackgroundMessageListener(createBackgroundRuntimeContext());
+  const response = await new Promise<unknown>((resolve) => {
+    listener({ type: MESSAGE_TYPES.getBootstrap }, {} as chrome.runtime.MessageSender, resolve);
+  }) as BootstrapResponse;
+
+  assert.equal(response.popupModel?.state, "focus_active");
+  assert.equal(response.popupModel?.focusSession?.id, "session-1");
+  assert.equal(response.dashboardCache?.focusSessionsView?.active_session?.id, "session-1");
 });
 
 test("background retry classifications message returns updated debug snapshot fields", async () => {
