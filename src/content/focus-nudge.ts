@@ -19,6 +19,8 @@ const FOCUS_MESSAGE_TYPES = {
   closeCurrentTab: "CLOSE_CURRENT_TAB"
 } as const;
 const OVERLAY_ID = "time-wise-focus-overlay";
+const FOCUS_BLOCKER_ENGAGE_EVENT = "time-wise-focus-blocker-engage";
+const FOCUS_BLOCKER_RELEASE_EVENT = "time-wise-focus-blocker-release";
 const stateHost = globalThis as typeof globalThis & {
   __timeWiseFocusNudgeState?: FocusNudgeState;
 };
@@ -69,6 +71,14 @@ function removeExistingOverlay() {
     existing.remove();
   }
   focusNudgeState.activeOverlayKey = null;
+}
+
+function releaseFocusBlocker(): void {
+  window.dispatchEvent(new CustomEvent(FOCUS_BLOCKER_RELEASE_EVENT));
+}
+
+function engageFocusBlocker(): void {
+  window.dispatchEvent(new CustomEvent(FOCUS_BLOCKER_ENGAGE_EVENT));
 }
 
 function setStatus(shadow: ShadowRoot, message: string): void {
@@ -265,7 +275,10 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
       category: "work",
       excluded: false
     })
-      .then(removeExistingOverlay)
+      .then(() => {
+        releaseFocusBlocker();
+        removeExistingOverlay();
+      })
       .catch((error: unknown) => {
         setButtonsDisabled(shadow, false);
         setStatus(shadow, error instanceof Error ? error.message : "Не удалось сохранить правило для сайта");
@@ -277,6 +290,7 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
   urgentButton.textContent = "Мне сейчас срочно нужен сайт";
   urgentButton.addEventListener("click", () => {
     focusNudgeState.suppressedHosts.add(overlayKey(message));
+    releaseFocusBlocker();
     removeExistingOverlay();
   });
 
@@ -304,6 +318,7 @@ function showFocusOverlay(message: FocusOverlayMessage): void {
 
   removeExistingOverlay();
   focusNudgeState.activeOverlayKey = key;
+  engageFocusBlocker();
   document.documentElement.append(buildOverlay(message));
 }
 

@@ -67,6 +67,13 @@ export type BackgroundForceFocusNudgeRequest = {
   type: typeof MESSAGE_TYPES.forceFocusNudge;
 };
 
+export type BackgroundFocusBlockerBlockedRequest = {
+  type: typeof MESSAGE_TYPES.focusBlockerBlocked;
+  sessionId: string;
+  host: string;
+  category: string;
+};
+
 export type BackgroundMediaStateUpdateRequest = {
   type: typeof MESSAGE_TYPES.mediaStateUpdate;
   isPlayingMedia: boolean;
@@ -85,6 +92,7 @@ export type BackgroundRequest =
   | BackgroundSaveSiteRuleRequest
   | BackgroundCloseCurrentTabRequest
   | BackgroundForceFocusNudgeRequest
+  | BackgroundFocusBlockerBlockedRequest
   | BackgroundMediaStateUpdateRequest;
 
 export type BackgroundRequestType = BackgroundRequest["type"];
@@ -131,6 +139,11 @@ export interface BackgroundForceFocusNudgeResponse {
   response: unknown;
 }
 
+export interface BackgroundFocusBlockerBlockedResponse {
+  ok: true;
+  response: unknown;
+}
+
 export interface BackgroundMediaStateUpdateResponse {
   ok: true;
   ignored?: true;
@@ -149,6 +162,7 @@ export type BackgroundSuccessResponseMap = {
   [MESSAGE_TYPES.saveSiteRule]: BackgroundSaveSiteRuleResponse;
   [MESSAGE_TYPES.closeCurrentTab]: BackgroundCloseCurrentTabResponse;
   [MESSAGE_TYPES.forceFocusNudge]: BackgroundForceFocusNudgeResponse;
+  [MESSAGE_TYPES.focusBlockerBlocked]: BackgroundFocusBlockerBlockedResponse;
   [MESSAGE_TYPES.mediaStateUpdate]: BackgroundMediaStateUpdateResponse;
 };
 
@@ -240,6 +254,10 @@ export function isBackgroundRequest(value: unknown): value is BackgroundRequest 
       return isRequiredString(value.sessionId);
     case MESSAGE_TYPES.saveSiteRule:
       return isRequiredString(value.host) && isCategory(value.category) && typeof value.excluded === "boolean";
+    case MESSAGE_TYPES.focusBlockerBlocked:
+      return isRequiredString(value.sessionId) &&
+        isRequiredString(value.host) &&
+        isRequiredString(value.category);
     case MESSAGE_TYPES.mediaStateUpdate:
       return typeof value.isPlayingMedia === "boolean";
     default:

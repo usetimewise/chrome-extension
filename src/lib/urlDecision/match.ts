@@ -114,6 +114,39 @@ export async function lookupUrlDecision(rawUrl: string, userContext: UserContext
   }
 }
 
+export async function lookupCachedUrlDecision(rawUrl: string, userContext: UserContext = {}): Promise<UrlDecisionResult> {
+  try {
+    const normalized = normalizeUrl(rawUrl);
+    if (!normalized) {
+      return { action: "unknown", confidence: 0, reason: "url_not_normalized", source: "unknown" };
+    }
+
+    const lookupKeys = buildLookupKeyCandidates(normalized);
+    const candidates = await buildHashCandidates(lookupKeys);
+    const prefixes = Array.from(new Set(candidates.map((candidate) => candidate.prefix)));
+    const buckets = await loadCachedBuckets(prefixes);
+    const matches = matchCandidates(candidates, buckets, true);
+    if (matches.length === 0) {
+      return { action: "unknown", confidence: 0, reason: "no_cached_matching_hash_suffix", source: "unknown" };
+    }
+
+    matches.sort(compareMatches);
+    const best = matches[0];
+    const threshold = focusModeThreshold(userContext.focusMode);
+    const action = best.entry.decision === "block" && best.entry.confidence < threshold ? "allow" : best.entry.decision;
+    return {
+      action,
+      category: best.entry.category,
+      confidence: Number(best.entry.confidence) || 0,
+      reason: action === best.entry.decision ? "matched_cached_hash_suffix" : "matched_cached_below_focus_threshold",
+      matchedKey: best.key,
+      source: "cache"
+    };
+  } catch {
+    return { action: "unknown", confidence: 0, reason: "cached_lookup_error", source: "error" };
+  }
+}
+
 async function buildHashCandidates(keys: string[]): Promise<HashCandidate[]> {
   return Promise.all(keys.map(async (key) => {
     const hash = await sha256Hex(key);
@@ -162,6 +195,17 @@ async function loadBuckets(
     buckets: [...buckets, ...response.buckets],
     allFromCache: false
   };
+}
+
+async function loadCachedBuckets(prefixes: string[]): Promise<Array<{ prefix: string; entries: LookupBucketEntry[] }>> {
+  const buckets: Array<{ prefix: string; entries: LookupBucketEntry[] }> = [];
+  for (const prefix of prefixes) {
+    const cached = await getCachedBucket(prefix);
+    if (cached) {
+      buckets.push(cached);
+    }
+  }
+  return buckets;
 }
 
 function matchCandidates(

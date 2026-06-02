@@ -1,7 +1,14 @@
 import react from "@vitejs/plugin-react";
+import { build as buildWithEsbuild } from "esbuild";
 import { cpSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
+
+const CONTENT_SCRIPT_INPUTS = {
+  "focus-blocker": "src/content/focus-blocker.ts",
+  "media-monitor": "src/content/media-monitor.ts",
+  "focus-nudge": "src/content/focus-nudge.ts"
+} as const;
 
 function copyExtensionStatic(): Plugin {
   return {
@@ -17,6 +24,31 @@ function copyExtensionStatic(): Plugin {
   };
 }
 
+function bundleContentScripts(): Plugin {
+  return {
+    name: "bundle-content-scripts",
+    async closeBundle() {
+      const root = process.cwd();
+      const outDir = resolve(root, "dist");
+      await Promise.all(Object.entries(CONTENT_SCRIPT_INPUTS).map(([name, entry]) => (
+        buildWithEsbuild({
+          entryPoints: [resolve(root, entry)],
+          outfile: resolve(outDir, `assets/${name}.js`),
+          bundle: true,
+          format: "iife",
+          platform: "browser",
+          target: "chrome114",
+          sourcemap: true,
+          define: {
+            "import.meta.env.VITE_TIMEWISE_DEV_DEBUG": JSON.stringify(process.env.VITE_TIMEWISE_DEV_DEBUG || "")
+          },
+          legalComments: "none"
+        })
+      )));
+    }
+  };
+}
+
 export default defineConfig(() => {
   const includeDebug = process.env.VITE_TIMEWISE_DEV_DEBUG === "true";
   const input = {
@@ -24,13 +56,11 @@ export default defineConfig(() => {
     "legacy-popup": resolve(__dirname, "legacy-popup.html"),
     dashboard: resolve(__dirname, "dashboard.html"),
     background: resolve(__dirname, "src/background/index.ts"),
-    "media-monitor": resolve(__dirname, "src/content/media-monitor.ts"),
-    "focus-nudge": resolve(__dirname, "src/content/focus-nudge.ts"),
     ...(includeDebug ? { debug: resolve(__dirname, "debug.html") } : {})
   };
 
   return {
-    plugins: [react(), copyExtensionStatic()],
+    plugins: [react(), copyExtensionStatic(), bundleContentScripts()],
     build: {
       outDir: "dist",
       emptyOutDir: true,

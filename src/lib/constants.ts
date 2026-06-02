@@ -31,6 +31,7 @@ export const MESSAGE_TYPES = {
   closeCurrentTab: "CLOSE_CURRENT_TAB",
   forceFocusNudge: "FORCE_FOCUS_NUDGE",
   showFocusNudge: "SHOW_FOCUS_NUDGE",
+  focusBlockerBlocked: "FOCUS_BLOCKER_BLOCKED",
   getDebugState: "GET_DEBUG_STATE"
 } as const;
 

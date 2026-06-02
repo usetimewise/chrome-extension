@@ -39,7 +39,12 @@ import { updateSiteRule } from "../../lib/api/site-rules.js";
 import { getErrorMessage } from "../../lib/utils.js";
 import type { BootstrapResponse, Category, DashboardCache, Settings } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
-import { buildPopupModel, evaluateFocusNudgeNotification, forceFocusNudge } from "../focus/focus-session-flow.js";
+import {
+  buildPopupModel,
+  evaluateFocusNudgeNotification,
+  forceFocusNudge,
+  showFocusNudgeInTab
+} from "../focus/focus-session-flow.js";
 import {
   ensureClassificationForHost,
   processSiteClassificationQueue,
@@ -312,6 +317,22 @@ export function createBackgroundMessageListener(
         }
         case MESSAGE_TYPES.forceFocusNudge:
           return forceFocusNudge(context);
+        case MESSAGE_TYPES.focusBlockerBlocked: {
+          const tabId = sender.tab?.id;
+          if (typeof tabId !== "number") {
+            return { ok: false, error: "No sender tab available for focus blocker" };
+          }
+
+          return showFocusNudgeInTab(
+            tabId,
+            "Ты отвлекся. Этот сайт выглядит как отвлечение во время фокусировки.",
+            {
+              sessionId: message.sessionId,
+              host: message.host,
+              category: message.category
+            }
+          );
+        }
         case MESSAGE_TYPES.mediaStateUpdate: {
           if (!sender.tab?.id || sender.tab.id !== context.runtimeState.currentTabId) {
             return { ok: true, ignored: true };

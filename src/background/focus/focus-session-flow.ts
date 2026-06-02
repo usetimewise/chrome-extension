@@ -53,6 +53,14 @@ export async function showFocusNudge(
     throw error;
   }
 
+  return showFocusNudgeInTab(tabId, message, details);
+}
+
+export async function showFocusNudgeInTab(
+  tabId: number,
+  message: string,
+  details: { sessionId: string; host: string; category: string }
+): Promise<{ ok: boolean; response: unknown }> {
   const payload = {
     type: MESSAGE_TYPES.showFocusNudge,
     sessionId: details.sessionId,
