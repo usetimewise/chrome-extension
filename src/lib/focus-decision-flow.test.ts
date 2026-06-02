@@ -4,6 +4,10 @@ import test from "node:test";
 import { evaluateFocusNudgeNotification } from "../background/focus/focus-session-flow.js";
 import type { BackgroundRuntimeContext } from "../background/runtime/runtime-state.js";
 import { DEFAULT_RUNTIME_STATE, STORAGE_KEYS } from "./constants.js";
+import type { LookupBucketEntry } from "./urlDecision/api.js";
+import { sha256Hex, splitHashPrefixSuffix } from "./urlDecision/hash.js";
+import { buildLookupKeyCandidates } from "./urlDecision/lookupKeys.js";
+import { normalizeUrl } from "./urlDecision/normalizeUrl.js";
 import type { DashboardCache } from "./types.js";
 
 let storage: Record<string, unknown> = {};
@@ -110,6 +114,28 @@ function activeCache(): DashboardCache {
   };
 }
 
+async function hashCandidateKeys(rawUrl: string) {
+  const normalized = normalizeUrl(rawUrl);
+  assert.ok(normalized);
+  return Promise.all(buildLookupKeyCandidates(normalized).map(async (key) => ({
+    key,
+    ...splitHashPrefixSuffix(await sha256Hex(key), 20)
+  })));
+}
+
+async function cacheBucketsForUrl(rawUrl: string, entriesByKey: Record<string, LookupBucketEntry> = {}) {
+  for (const candidate of await hashCandidateKeys(rawUrl)) {
+    const entry = entriesByKey[candidate.key];
+    storage[`urlDecisionBucket:v1:${candidate.prefix}`] = {
+      bucket: {
+        prefix: candidate.prefix,
+        entries: entry ? [{ ...entry, suffix: candidate.suffix }] : []
+      },
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    };
+  }
+}
+
 test.beforeEach(() => {
   storage = {
     [STORAGE_KEYS.device]: {
@@ -125,18 +151,17 @@ test.beforeEach(() => {
 });
 
 test("focus decision cache hit block shows overlay without fetch", async () => {
-  storage[STORAGE_KEYS.siteDecisionCache] = {
-    entries: [{
+  await cacheBucketsForUrl("https://youtube.com/shorts/abc", {
+    "p1:youtube.com/shorts": {
+      suffix: "",
       decision: "block",
       category: "short_video",
       confidence: 1,
-      focusMode: "normal",
-      cacheType: "url_prefix",
-      cacheKey: "youtube.com/shorts",
-      expiresAt: Date.now() + 60_000,
-      updatedAt: Date.now()
-    }]
-  };
+      rank: 10,
+      pattern_type: "url_prefix",
+      specificity: 2
+    }
+  });
   globalThis.fetch = (async () => {
     fetchCalls += 1;
     throw new Error("unexpected fetch");
@@ -151,18 +176,17 @@ test("focus decision cache hit block shows overlay without fetch", async () => {
 
 test("focus decision block injects overlay content script when the tab has no receiver yet", async () => {
   installChromeMock({ failFirstMessage: true });
-  storage[STORAGE_KEYS.siteDecisionCache] = {
-    entries: [{
+  await cacheBucketsForUrl("https://youtube.com/shorts/abc", {
+    "p1:youtube.com/shorts": {
+      suffix: "",
       decision: "block",
       category: "short_video",
       confidence: 1,
-      focusMode: "normal",
-      cacheType: "url_prefix",
-      cacheKey: "youtube.com/shorts",
-      expiresAt: Date.now() + 60_000,
-      updatedAt: Date.now()
-    }]
-  };
+      rank: 10,
+      pattern_type: "url_prefix",
+      specificity: 2
+    }
+  });
   globalThis.fetch = (async () => {
     fetchCalls += 1;
     throw new Error("unexpected fetch");
@@ -176,18 +200,17 @@ test("focus decision block injects overlay content script when the tab has no re
 });
 
 test("focus decision cache hit allow does not show overlay or fetch", async () => {
-  storage[STORAGE_KEYS.siteDecisionCache] = {
-    entries: [{
+  await cacheBucketsForUrl("https://youtube.com/shorts/abc", {
+    "p1:youtube.com/shorts": {
+      suffix: "",
       decision: "allow",
       category: "other",
       confidence: 0,
-      focusMode: "normal",
-      cacheType: "url",
-      cacheKey: "youtube.com/shorts/abc",
-      expiresAt: Date.now() + 60_000,
-      updatedAt: Date.now()
-    }]
-  };
+      rank: 10,
+      pattern_type: "url_prefix",
+      specificity: 2
+    }
+  });
   globalThis.fetch = (async () => {
     fetchCalls += 1;
     throw new Error("unexpected fetch");
@@ -200,19 +223,39 @@ test("focus decision cache hit allow does not show overlay or fetch", async () =
 });
 
 test("focus decision cache miss block saves cache and shows overlay", async () => {
-  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+  const candidates = await hashCandidateKeys("https://youtube.com/shorts/abc");
+  const matchingCandidate = candidates.find((candidate) => candidate.key === "p1:youtube.com/shorts");
+  assert.ok(matchingCandidate);
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     fetchCalls += 1;
-    const body = JSON.parse(String(init?.body || "{}")) as { focus_mode?: string; tab_title?: string };
-    assert.equal(body.focus_mode, "normal");
-    assert.equal(body.tab_title, "Shorts");
+    assert.equal(String(input), "http://80.74.24.127:8081/v1/url-decision/lookup-buckets");
+    const body = JSON.parse(String(init?.body || "{}")) as { schema_version?: number; prefixes?: string[]; url?: string; tab_title?: string };
+    assert.equal(body.schema_version, 1);
+    assert.ok(Array.isArray(body.prefixes));
+    assert.equal(body.url, undefined);
+    assert.equal(body.tab_title, undefined);
     return {
       ok: true,
       async json() {
         return {
-          decision: "block",
-          category: "short_video",
-          confidence: 1,
-          matchedRule: { pattern: "youtube.com/shorts", patternType: "url_prefix" }
+          schema_version: 1,
+          prefix_bits: 20,
+          expires_at: new Date(Date.now() + 60_000).toISOString(),
+          buckets: body.prefixes?.map((prefix) => ({
+            prefix,
+            entries: prefix === matchingCandidate.prefix
+              ? [{
+                  suffix: matchingCandidate.suffix,
+                  decision: "block",
+                  category: "short_video",
+                  confidence: 1,
+                  rank: 10,
+                  pattern_type: "url_prefix",
+                  specificity: 2
+                }]
+              : []
+          }))
         };
       }
     } as Response;
@@ -220,10 +263,8 @@ test("focus decision cache miss block saves cache and shows overlay", async () =
 
   await evaluateFocusNudgeNotification(baseContext(), activeCache());
 
-  const cache = storage[STORAGE_KEYS.siteDecisionCache] as { entries: Array<{ cacheKey: string; decision: string }> };
   assert.equal(fetchCalls, 1);
-  assert.equal(cache.entries[0]?.cacheKey, "youtube.com/shorts");
-  assert.equal(cache.entries[0]?.decision, "block");
+  assert.ok(storage[`urlDecisionBucket:v1:${matchingCandidate.prefix}`]);
   assert.equal(sentMessages.length, 1);
 });
 

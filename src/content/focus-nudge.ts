@@ -5,14 +5,30 @@ type FocusOverlayMessage = {
   category: string;
 };
 
+{
+type FocusNudgeState = {
+  activeOverlayKey: string | null;
+  contextInvalidated: boolean;
+  listenerInstalled: boolean;
+  suppressedHosts: Set<string>;
+};
+
 const FOCUS_MESSAGE_TYPES = {
   showFocusNudge: "SHOW_FOCUS_NUDGE",
   saveSiteRule: "SAVE_SITE_RULE",
   closeCurrentTab: "CLOSE_CURRENT_TAB"
 } as const;
 const OVERLAY_ID = "time-wise-focus-overlay";
-const suppressedHosts = new Set<string>();
-let activeOverlayKey: string | null = null;
+const stateHost = globalThis as typeof globalThis & {
+  __timeWiseFocusNudgeState?: FocusNudgeState;
+};
+const focusNudgeState = stateHost.__timeWiseFocusNudgeState || {
+  activeOverlayKey: null,
+  contextInvalidated: false,
+  listenerInstalled: false,
+  suppressedHosts: new Set<string>()
+};
+stateHost.__timeWiseFocusNudgeState = focusNudgeState;
 
 function isShowFocusNudgeMessage(message: unknown): message is FocusOverlayMessage & { type: typeof FOCUS_MESSAGE_TYPES.showFocusNudge } {
   if (!message || typeof message !== "object") {
@@ -28,7 +44,19 @@ function isShowFocusNudgeMessage(message: unknown): message is FocusOverlayMessa
 }
 
 function sendBackgroundMessage<TResponse = unknown>(message: unknown): Promise<TResponse> {
-  return chrome.runtime.sendMessage(message) as Promise<TResponse>;
+  if (focusNudgeState.contextInvalidated) {
+    return Promise.reject(new Error("Extension context invalidated."));
+  }
+
+  try {
+    return chrome.runtime.sendMessage(message) as Promise<TResponse>;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Extension context invalidated")) {
+      focusNudgeState.contextInvalidated = true;
+      removeExistingOverlay();
+    }
+    return Promise.reject(error);
+  }
 }
 
 function overlayKey(message: FocusOverlayMessage): string {
@@ -40,7 +68,7 @@ function removeExistingOverlay() {
   if (existing) {
     existing.remove();
   }
-  activeOverlayKey = null;
+  focusNudgeState.activeOverlayKey = null;
 }
 
 function setStatus(shadow: ShadowRoot, message: string): void {
@@ -248,7 +276,7 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
   urgentButton.type = "button";
   urgentButton.textContent = "Мне сейчас срочно нужен сайт";
   urgentButton.addEventListener("click", () => {
-    suppressedHosts.add(overlayKey(message));
+    focusNudgeState.suppressedHosts.add(overlayKey(message));
     removeExistingOverlay();
   });
 
@@ -265,26 +293,30 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
 
 function showFocusOverlay(message: FocusOverlayMessage): void {
   const key = overlayKey(message);
-  if (suppressedHosts.has(key)) {
+  if (focusNudgeState.suppressedHosts.has(key)) {
     removeExistingOverlay();
     return;
   }
 
-  if (activeOverlayKey === key && document.getElementById(OVERLAY_ID)) {
+  if (focusNudgeState.activeOverlayKey === key && document.getElementById(OVERLAY_ID)) {
     return;
   }
 
   removeExistingOverlay();
-  activeOverlayKey = key;
+  focusNudgeState.activeOverlayKey = key;
   document.documentElement.append(buildOverlay(message));
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!isShowFocusNudgeMessage(message)) {
-    return false;
-  }
+if (!focusNudgeState.listenerInstalled && !focusNudgeState.contextInvalidated) {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (!isShowFocusNudgeMessage(message)) {
+      return false;
+    }
 
-  showFocusOverlay(message);
-  sendResponse({ ok: true });
-  return true;
-});
+    showFocusOverlay(message);
+    sendResponse({ ok: true });
+    return true;
+  });
+  focusNudgeState.listenerInstalled = true;
+}
+}

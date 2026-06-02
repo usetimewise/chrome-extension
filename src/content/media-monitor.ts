@@ -3,10 +3,29 @@ const MEDIA_MESSAGE_TYPES = {
   mediaStateUpdate: "MEDIA_STATE_UPDATE"
 } as const;
 const HEARTBEAT_MS = 15_000;
-const trackedMedia = new WeakSet();
-let observer: MutationObserver | null = null;
-let heartbeatId: number | null = null;
-let lastKnownState: boolean | null = null;
+
+{
+type MediaMonitorState = {
+  contextInvalidated: boolean;
+  heartbeatId: number | null;
+  lastKnownState: boolean | null;
+  listenerInstalled: boolean;
+  observer: MutationObserver | null;
+  trackedMedia: WeakSet<Element>;
+};
+
+const stateHost = globalThis as typeof globalThis & {
+  __timeWiseMediaMonitorState?: MediaMonitorState;
+};
+const mediaMonitorState = stateHost.__timeWiseMediaMonitorState || {
+  contextInvalidated: false,
+  heartbeatId: null,
+  lastKnownState: null,
+  listenerInstalled: false,
+  observer: null,
+  trackedMedia: new WeakSet<Element>()
+};
+stateHost.__timeWiseMediaMonitorState = mediaMonitorState;
 
 function isGetMediaStateMessage(message: unknown): message is { type: typeof MEDIA_MESSAGE_TYPES.getMediaState } {
   return Boolean(message && typeof message === "object" && (message as Record<string, unknown>).type === MEDIA_MESSAGE_TYPES.getMediaState);
@@ -32,35 +51,39 @@ function computeMediaState(): boolean {
 }
 
 function scheduleHeartbeat(): void {
-  if (heartbeatId !== null) {
-    clearInterval(heartbeatId);
-    heartbeatId = null;
+  if (mediaMonitorState.heartbeatId !== null) {
+    clearInterval(mediaMonitorState.heartbeatId);
+    mediaMonitorState.heartbeatId = null;
   }
 
-  if (!lastKnownState) {
+  if (!mediaMonitorState.lastKnownState || mediaMonitorState.contextInvalidated) {
     return;
   }
 
-  heartbeatId = window.setInterval(() => {
-    void chrome.runtime.sendMessage({
+  mediaMonitorState.heartbeatId = window.setInterval(() => {
+    void safeSendRuntimeMessage({
       type: MEDIA_MESSAGE_TYPES.mediaStateUpdate,
       isPlayingMedia: true
-    }).catch(() => {});
+    });
   }, HEARTBEAT_MS);
 }
 
 function notifyState(force = false): void {
-  const nextState = computeMediaState();
-  if (!force && nextState === lastKnownState) {
+  if (mediaMonitorState.contextInvalidated) {
     return;
   }
 
-  lastKnownState = nextState;
+  const nextState = computeMediaState();
+  if (!force && nextState === mediaMonitorState.lastKnownState) {
+    return;
+  }
+
+  mediaMonitorState.lastKnownState = nextState;
   scheduleHeartbeat();
-  void chrome.runtime.sendMessage({
+  void safeSendRuntimeMessage({
     type: MEDIA_MESSAGE_TYPES.mediaStateUpdate,
     isPlayingMedia: nextState
-  }).catch(() => {});
+  });
 }
 
 function handleMediaSignal() {
@@ -68,11 +91,11 @@ function handleMediaSignal() {
 }
 
 function attachListeners(element: Element): void {
-  if (!(element instanceof HTMLMediaElement) || trackedMedia.has(element)) {
+  if (!(element instanceof HTMLMediaElement) || mediaMonitorState.trackedMedia.has(element)) {
     return;
   }
 
-  trackedMedia.add(element);
+  mediaMonitorState.trackedMedia.add(element);
   for (const eventName of [
     "play",
     "playing",
@@ -111,11 +134,11 @@ function scanMediaTree(root: ParentNode | Element | Document | DocumentFragment 
 }
 
 function ensureObserver() {
-  if (observer) {
+  if (mediaMonitorState.observer || mediaMonitorState.contextInvalidated) {
     return;
   }
 
-  observer = new MutationObserver((mutations) => {
+  mediaMonitorState.observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
         scanMediaTree(node);
@@ -124,26 +147,54 @@ function ensureObserver() {
     notifyState(false);
   });
 
-  observer.observe(document.documentElement || document, {
+  mediaMonitorState.observer.observe(document.documentElement || document, {
     childList: true,
     subtree: true
   });
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!isGetMediaStateMessage(message)) {
-    return false;
+function shutdownInvalidatedContext(): void {
+  mediaMonitorState.contextInvalidated = true;
+  if (mediaMonitorState.heartbeatId !== null) {
+    clearInterval(mediaMonitorState.heartbeatId);
+    mediaMonitorState.heartbeatId = null;
+  }
+  mediaMonitorState.observer?.disconnect();
+  mediaMonitorState.observer = null;
+}
+
+async function safeSendRuntimeMessage(message: unknown): Promise<void> {
+  if (mediaMonitorState.contextInvalidated) {
+    return;
   }
 
-  const isPlayingMedia = computeMediaState();
-  if (isPlayingMedia !== lastKnownState) {
-    lastKnownState = isPlayingMedia;
-    scheduleHeartbeat();
+  try {
+    await chrome.runtime.sendMessage(message);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Extension context invalidated")) {
+      shutdownInvalidatedContext();
+    }
   }
-  sendResponse({ isPlayingMedia });
-  return true;
-});
+}
+
+if (!mediaMonitorState.listenerInstalled && !mediaMonitorState.contextInvalidated) {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (!isGetMediaStateMessage(message)) {
+      return false;
+    }
+
+    const isPlayingMedia = computeMediaState();
+    if (isPlayingMedia !== mediaMonitorState.lastKnownState) {
+      mediaMonitorState.lastKnownState = isPlayingMedia;
+      scheduleHeartbeat();
+    }
+    sendResponse({ isPlayingMedia });
+    return true;
+  });
+  mediaMonitorState.listenerInstalled = true;
+}
 
 scanMediaTree();
 ensureObserver();
 notifyState(true);
+}

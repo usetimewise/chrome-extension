@@ -6,7 +6,7 @@
   "scripts": {
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/lib/*.test.ts"
+    "test": "tsx --test src/lib/*.test.ts src/lib/urlDecision/*.test.ts"
   },
   "dependencies": {
     "react": "^19.0.0",

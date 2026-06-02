@@ -1,10 +1,10 @@
 import { APP_SETTINGS, NUDGE_SENSITIVITY_THRESHOLDS_MINUTES } from "../../lib/app-settings.js";
 import { DISTRACTION_CATEGORIES, MESSAGE_TYPES } from "../../lib/constants.js";
-import { decideSite } from "../../lib/api/site-decision.js";
+import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
 import { getDashboardCache, saveDashboardCache } from "../../lib/storage/dashboard-cache.js";
 import { saveRuntimeState } from "../../lib/storage/runtime-state.js";
-import { cacheSiteDecision, findCachedSiteDecision } from "../../lib/storage/site-decision-cache.js";
+import { lookupUrlDecision } from "../../lib/urlDecision/match.js";
 import { getErrorMessage } from "../../lib/utils.js";
 import type {
   BootstrapResponse,
@@ -15,7 +15,6 @@ import type {
   Settings
 } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
-import { withRegisteredDevice } from "../sync/sync-queue.js";
 import { isTrackingEligible } from "../tracking/transitions.js";
 
 const FOCUS_DECISION_MODE = "normal" as const;
@@ -88,18 +87,27 @@ export async function showFocusNudge(
 export async function evaluateFocusNudgeNotification(
   context: BackgroundRuntimeContext,
   cache: DashboardCache | null = null,
-  _settings: Settings | null = null
+  settings: Settings | null = null
 ): Promise<void> {
   const currentUrl = context.runtimeState.currentUrl;
   const currentHost = context.runtimeState.currentHost;
   const currentTabId = context.runtimeState.currentTabId;
   if (!currentUrl || !currentHost || !currentTabId) {
+    devDebugLog("focusNudge.evaluate.skip", {
+      hasCurrentUrl: Boolean(currentUrl),
+      hasCurrentHost: Boolean(currentHost),
+      hasCurrentTabId: Boolean(currentTabId)
+    });
     return;
   }
 
   const resolvedCache = cache || await getDashboardCache();
   const activeSession = resolvedCache.focusSessionsView?.active_session || null;
   if (activeSession?.status !== "active") {
+    devDebugLog("focusNudge.evaluate.skip", {
+      reason: "no_active_focus_session",
+      sessionStatus: activeSession?.status || null
+    });
     return;
   }
 
@@ -109,23 +117,19 @@ export async function evaluateFocusNudgeNotification(
     await saveRuntimeState(context.runtimeState);
   }
 
-  let decision = await findCachedSiteDecision(currentUrl, FOCUS_DECISION_MODE);
-  if (!decision) {
-    try {
-      const response = await withRegisteredDevice(async (settings, deviceState) => (
-        decideSite(settings.apiBaseUrl, deviceState.deviceId, {
-          url: currentUrl,
-          focus_mode: FOCUS_DECISION_MODE,
-          ...(context.runtimeState.currentTabTitle ? { tab_title: context.runtimeState.currentTabTitle } : {})
-        })
-      ));
-      decision = await cacheSiteDecision(currentUrl, FOCUS_DECISION_MODE, response);
-    } catch {
-      return;
-    }
-  }
+  const decision = await lookupUrlDecision(currentUrl, {
+    apiBaseUrl: (settings || APP_SETTINGS).apiBaseUrl,
+    focusMode: FOCUS_DECISION_MODE
+  });
+  devDebugLog("focusNudge.decision", {
+    action: decision.action,
+    category: decision.category || null,
+    confidence: decision.confidence,
+    reason: decision.reason,
+    source: decision.source
+  });
 
-  if (decision?.decision !== "block") {
+  if (decision.action !== "block") {
     return;
   }
 
@@ -140,6 +144,7 @@ export async function evaluateFocusNudgeNotification(
       }
     );
   } catch {
+    devDebugWarn("focusNudge.showFailed");
     return;
   }
 }
