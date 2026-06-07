@@ -1,6 +1,4 @@
-import type { ActivityEvent, Category } from "./activity.js";
-import type { FocusSession, FocusSessionRequest } from "./focus.js";
-import type { FocusSessionsView, SitesView, TodayView } from "./dashboard.js";
+import type { Category } from "./activity.js";
 import type { Settings } from "./runtime.js";
 
 export interface ApiErrorPayload {
@@ -19,51 +17,6 @@ export interface RegisterDeviceRequest {
 
 export interface RegisterDeviceResponse {
   device_id: string;
-}
-
-export interface PushEventsRequest {
-  events: ActivityEvent[];
-}
-
-export interface PushEventsResponse {
-  accepted_event_ids?: string[];
-}
-
-export interface TrendsViewResponse {
-  summary?: {
-    total_duration_ms?: number;
-    focus_duration_ms?: number;
-    distraction_duration_ms?: number;
-  };
-  points?: Array<{
-    date?: string;
-    focus_duration_ms?: number;
-    distraction_duration_ms?: number;
-    total_duration_ms?: number;
-  }>;
-  recommendations?: Array<{
-    id?: string;
-    title?: string;
-    body?: string;
-  }>;
-  range?: string;
-}
-
-export interface InsightsViewResponse {
-  generated_at?: string;
-  tone?: string;
-  items?: Array<{
-    id?: string;
-    type?: string;
-    title?: string;
-    body?: string;
-    priority?: string;
-  }>;
-  recommendations?: Array<{
-    id?: string;
-    title?: string;
-    body?: string;
-  }>;
 }
 
 export interface SiteClassificationResult {
@@ -117,23 +70,3 @@ export interface SiteDecisionResponse {
 }
 
 export interface UpdatePreferencesRequest extends Partial<Settings> {}
-
-export interface PreferencesResponse {
-  updated_at?: string;
-  preferences?: Partial<Settings>;
-}
-
-export type FocusSessionAction = "pause" | "resume" | "end";
-
-export interface FocusSessionResponse {
-  session?: FocusSession;
-  sessions?: FocusSession[];
-  updated_at?: string;
-}
-
-export type {
-  FocusSessionRequest,
-  FocusSessionsView,
-  SitesView,
-  TodayView
-};

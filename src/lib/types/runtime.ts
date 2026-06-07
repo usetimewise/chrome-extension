@@ -1,12 +1,4 @@
-import type {
-  ActivityEvent,
-  Category,
-  IdleState,
-  SiteClassificationState,
-  SiteRuleState,
-  TrackingTransition
-} from "./activity.js";
-import type { DashboardCache, PopupModel } from "./dashboard.js";
+import type { Category, SiteClassificationState, SiteRuleState } from "./activity.js";
 import type { FocusSession } from "./focus.js";
 
 export type NudgeSensitivity = "direct" | "balanced" | "gentle";
@@ -14,9 +6,6 @@ export type NudgeSensitivity = "direct" | "balanced" | "gentle";
 export interface Settings {
   apiBaseUrl: string;
   timezone: string;
-  trackingPaused: boolean;
-  idleDetectionSeconds: number;
-  trackMediaWhenIdle: boolean;
   workHoursStart: string;
   workHoursEnd: string;
   workdays: number[];
@@ -44,13 +33,6 @@ export interface RuntimeState {
   currentTabTitle?: string | null;
   currentWindowId?: number | null;
   currentHostStartedAt: number | null;
-  sessionStartedAt: number | null;
-  lastObservedAt?: number | null;
-  lastHeartbeatAt?: number | null;
-  isWindowFocused: boolean;
-  idleState: IdleState;
-  isPlayingMedia: boolean;
-  mediaStateUpdatedAt: string | null;
   focusNudgeNotifications: {
     sessionId: string | null;
     hosts: Record<string, number>;
@@ -60,26 +42,36 @@ export interface RuntimeState {
 export interface BootstrapResponse {
   settings?: Settings;
   device?: DeviceState;
-  pendingSyncCount?: number;
-  pendingSyncEvents?: ActivityEvent[];
   lastError?: string | null;
   runtimeState?: RuntimeState;
-  transitions?: TrackingTransition[];
-  activityEvents?: ActivityEvent[];
   focusSessions?: FocusSession[];
   siteRules?: SiteRuleState;
   siteClassifications?: SiteClassificationState;
-  dashboardCache?: DashboardCache;
   popupModel?: PopupModel;
 }
 
 export interface RetrySiteClassificationsResponse {
   retriedCount: number;
-  dashboardCache: DashboardCache;
   siteClassifications: SiteClassificationState;
   lastError: string | null;
 }
 
-export interface MediaStateResponse {
-  isPlayingMedia?: boolean;
+export interface PopupModel {
+  state: "empty" | "focus_active";
+  statusLabel: string;
+  statusMessage: string;
+  currentSite: {
+    host: string;
+    category: Category;
+  } | null;
+  focusSession: FocusSession | null;
+  primaryAction: {
+    type: string;
+    label: string;
+  };
+  secondaryActions: Array<{
+    type: string;
+    label: string;
+  }>;
+  canReclassify: boolean;
 }

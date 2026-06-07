@@ -3,28 +3,13 @@ import { isPlainObject } from "../utils.js";
 import type {
   BootstrapResponse,
   Category,
-  DashboardCache,
   FocusSession,
-  MediaStateResponse,
-  PopupModel,
   RetrySiteClassificationsResponse,
   SiteRuleState
 } from "../types.js";
 
 export type BackgroundBootstrapRequest = {
   type: typeof MESSAGE_TYPES.getBootstrap;
-};
-
-export type BackgroundDebugStateRequest = {
-  type: typeof MESSAGE_TYPES.getDebugState;
-};
-
-export type BackgroundRefreshViewsRequest = {
-  type: typeof MESSAGE_TYPES.refreshViews;
-};
-
-export type BackgroundSyncNowRequest = {
-  type: typeof MESSAGE_TYPES.syncNow;
 };
 
 export type BackgroundRetrySiteClassificationsRequest = {
@@ -74,16 +59,8 @@ export type BackgroundFocusBlockerBlockedRequest = {
   category: string;
 };
 
-export type BackgroundMediaStateUpdateRequest = {
-  type: typeof MESSAGE_TYPES.mediaStateUpdate;
-  isPlayingMedia: boolean;
-};
-
 export type BackgroundRequest =
   | BackgroundBootstrapRequest
-  | BackgroundDebugStateRequest
-  | BackgroundRefreshViewsRequest
-  | BackgroundSyncNowRequest
   | BackgroundRetrySiteClassificationsRequest
   | BackgroundStartFocusSessionRequest
   | BackgroundPauseFocusSessionRequest
@@ -92,8 +69,7 @@ export type BackgroundRequest =
   | BackgroundSaveSiteRuleRequest
   | BackgroundCloseCurrentTabRequest
   | BackgroundForceFocusNudgeRequest
-  | BackgroundFocusBlockerBlockedRequest
-  | BackgroundMediaStateUpdateRequest;
+  | BackgroundFocusBlockerBlockedRequest;
 
 export type BackgroundRequestType = BackgroundRequest["type"];
 
@@ -104,30 +80,20 @@ export interface BackgroundErrorResponse {
   error: string;
 }
 
-export interface BackgroundRefreshViewsResponse {
-  dashboardCache: DashboardCache;
-  popupModel: PopupModel;
+export function isBackgroundErrorResponse(value: unknown): value is BackgroundErrorResponse {
+  return isPlainObject(value) && value.ok === false && typeof value.error === "string";
 }
-
-export interface BackgroundSyncNowResponse extends BackgroundRefreshViewsResponse {
-  sync: {
-    synced: number;
-    pendingSyncCount: number;
-  };
-}
-
-export type BackgroundRetrySiteClassificationsResponse = RetrySiteClassificationsResponse;
 
 export interface BackgroundFocusSessionResponse {
   ok: true;
   session: FocusSession;
-  dashboardCache: DashboardCache;
+  bootstrap: BootstrapResponse;
 }
 
 export interface BackgroundSaveSiteRuleResponse {
   ok: true;
   payload: SiteRuleState;
-  dashboardCache: DashboardCache;
+  bootstrap: BootstrapResponse;
 }
 
 export interface BackgroundCloseCurrentTabResponse {
@@ -144,17 +110,9 @@ export interface BackgroundFocusBlockerBlockedResponse {
   response: unknown;
 }
 
-export interface BackgroundMediaStateUpdateResponse {
-  ok: true;
-  ignored?: true;
-}
-
 export type BackgroundSuccessResponseMap = {
   [MESSAGE_TYPES.getBootstrap]: BootstrapResponse;
-  [MESSAGE_TYPES.getDebugState]: BootstrapResponse;
-  [MESSAGE_TYPES.refreshViews]: BackgroundRefreshViewsResponse;
-  [MESSAGE_TYPES.syncNow]: BackgroundSyncNowResponse;
-  [MESSAGE_TYPES.retrySiteClassifications]: BackgroundRetrySiteClassificationsResponse;
+  [MESSAGE_TYPES.retrySiteClassifications]: RetrySiteClassificationsResponse;
   [MESSAGE_TYPES.startFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.pauseFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.resumeFocusSession]: BackgroundFocusSessionResponse;
@@ -163,7 +121,6 @@ export type BackgroundSuccessResponseMap = {
   [MESSAGE_TYPES.closeCurrentTab]: BackgroundCloseCurrentTabResponse;
   [MESSAGE_TYPES.forceFocusNudge]: BackgroundForceFocusNudgeResponse;
   [MESSAGE_TYPES.focusBlockerBlocked]: BackgroundFocusBlockerBlockedResponse;
-  [MESSAGE_TYPES.mediaStateUpdate]: BackgroundMediaStateUpdateResponse;
 };
 
 export type BackgroundSuccessResponse<TType extends BackgroundRequestType> = BackgroundSuccessResponseMap[TType];
@@ -171,10 +128,6 @@ export type BackgroundSuccessResponse<TType extends BackgroundRequestType> = Bac
 export type BackgroundResponse<TType extends BackgroundRequestType> =
   | BackgroundSuccessResponse<TType>
   | BackgroundErrorResponse;
-
-export type ContentGetMediaStateRequest = {
-  type: typeof MESSAGE_TYPES.getMediaState;
-};
 
 export type ContentShowFocusNudgeRequest = {
   type: typeof MESSAGE_TYPES.showFocusNudge;
@@ -184,7 +137,7 @@ export type ContentShowFocusNudgeRequest = {
   category: string;
 };
 
-export type ContentRequest = ContentGetMediaStateRequest | ContentShowFocusNudgeRequest;
+export type ContentRequest = ContentShowFocusNudgeRequest;
 
 export type ContentRequestType = ContentRequest["type"];
 
@@ -195,7 +148,6 @@ export interface ContentShowFocusNudgeResponse {
 }
 
 export type ContentResponseMap = {
-  [MESSAGE_TYPES.getMediaState]: MediaStateResponse;
   [MESSAGE_TYPES.showFocusNudge]: ContentShowFocusNudgeResponse;
 };
 
@@ -239,9 +191,6 @@ export function isBackgroundRequest(value: unknown): value is BackgroundRequest 
 
   switch (value.type) {
     case MESSAGE_TYPES.getBootstrap:
-    case MESSAGE_TYPES.getDebugState:
-    case MESSAGE_TYPES.refreshViews:
-    case MESSAGE_TYPES.syncNow:
     case MESSAGE_TYPES.retrySiteClassifications:
     case MESSAGE_TYPES.forceFocusNudge:
     case MESSAGE_TYPES.closeCurrentTab:
@@ -258,8 +207,6 @@ export function isBackgroundRequest(value: unknown): value is BackgroundRequest 
       return isRequiredString(value.sessionId) &&
         isRequiredString(value.host) &&
         isRequiredString(value.category);
-    case MESSAGE_TYPES.mediaStateUpdate:
-      return typeof value.isPlayingMedia === "boolean";
     default:
       return false;
   }
@@ -271,8 +218,6 @@ export function isContentRequest(value: unknown): value is ContentRequest {
   }
 
   switch (value.type) {
-    case MESSAGE_TYPES.getMediaState:
-      return true;
     case MESSAGE_TYPES.showFocusNudge:
       return isRequiredString(value.sessionId) &&
         isRequiredString(value.message) &&
@@ -281,15 +226,4 @@ export function isContentRequest(value: unknown): value is ContentRequest {
     default:
       return false;
   }
-}
-
-export function isContentRequestType<TType extends ContentRequestType>(
-  value: unknown,
-  type: TType
-): value is ContentRequestOf<TType> {
-  return isContentRequest(value) && value.type === type;
-}
-
-export function isBackgroundErrorResponse(value: unknown): value is BackgroundErrorResponse {
-  return isPlainObject(value) && value.ok === false && typeof value.error === "string";
 }

@@ -6,7 +6,6 @@ import { defineConfig, type Plugin } from "vite";
 
 const CONTENT_SCRIPT_INPUTS = {
   "focus-blocker": "src/content/focus-blocker.ts",
-  "media-monitor": "src/content/media-monitor.ts",
   "focus-nudge": "src/content/focus-nudge.ts"
 } as const;
 
@@ -50,13 +49,9 @@ function bundleContentScripts(): Plugin {
 }
 
 export default defineConfig(() => {
-  const includeDebug = process.env.VITE_TIMEWISE_DEV_DEBUG === "true";
   const input = {
     popup: resolve(__dirname, "popup.html"),
-    "legacy-popup": resolve(__dirname, "legacy-popup.html"),
-    dashboard: resolve(__dirname, "dashboard.html"),
-    background: resolve(__dirname, "src/background/index.ts"),
-    ...(includeDebug ? { debug: resolve(__dirname, "debug.html") } : {})
+    background: resolve(__dirname, "src/background/index.ts")
   };
 
   return {

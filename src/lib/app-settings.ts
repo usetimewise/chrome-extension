@@ -1,19 +1,8 @@
-import type { NudgeSensitivity, Settings } from "./types.js";
-
-export const IDLE_DETECTION_OPTIONS = [30, 60, 90, 120, 180, 300, 600, 900, 1800];
-
-export const NUDGE_SENSITIVITY_THRESHOLDS_MINUTES: Record<NudgeSensitivity, number> = {
-  direct: 1,
-  balanced: 10,
-  gentle: 18
-};
+import type { Settings } from "./types.js";
 
 export const APP_SETTINGS: Settings = {
   apiBaseUrl: "http://80.74.24.127:8081",
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-  trackingPaused: false,
-  idleDetectionSeconds: 60,
-  trackMediaWhenIdle: true,
   workHoursStart: "09:00",
   workHoursEnd: "18:00",
   workdays: [1, 2, 3, 4, 5],

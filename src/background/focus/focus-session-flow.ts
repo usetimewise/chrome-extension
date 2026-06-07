@@ -1,60 +1,11 @@
-import { APP_SETTINGS, NUDGE_SENSITIVITY_THRESHOLDS_MINUTES } from "../../lib/app-settings.js";
-import { DISTRACTION_CATEGORIES, MESSAGE_TYPES } from "../../lib/constants.js";
+import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
-import { getDashboardCache, saveDashboardCache } from "../../lib/storage/dashboard-cache.js";
-import { saveRuntimeState } from "../../lib/storage/runtime-state.js";
 import { lookupUrlDecision } from "../../lib/urlDecision/match.js";
-import { getErrorMessage } from "../../lib/utils.js";
-import type {
-  BootstrapResponse,
-  DashboardCache,
-  FocusSession,
-  PopupModel,
-  RuntimeState,
-  Settings
-} from "../../lib/types.js";
+import type { BootstrapResponse, Category, FocusSession, Settings } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
-import { isTrackingEligible } from "../tracking/transitions.js";
 
 const FOCUS_DECISION_MODE = "normal" as const;
-
-function driftThresholdMinutes(sensitivity: Settings["nudgeSensitivity"] = APP_SETTINGS.nudgeSensitivity): number {
-  return NUDGE_SENSITIVITY_THRESHOLDS_MINUTES[sensitivity] ||
-    NUDGE_SENSITIVITY_THRESHOLDS_MINUTES[APP_SETTINGS.nudgeSensitivity];
-}
-
-function getFocusNotificationState(
-  context: BackgroundRuntimeContext,
-  activeSession: FocusSession | null | undefined
-): RuntimeState["focusNudgeNotifications"] {
-  const sessionId = activeSession?.id || null;
-  const current = context.runtimeState.focusNudgeNotifications;
-
-  if (current.sessionId === sessionId && current.hosts && typeof current.hosts === "object") {
-    return current;
-  }
-
-  return {
-    sessionId,
-    hosts: {}
-  };
-}
-
-export async function showFocusNudge(
-  context: BackgroundRuntimeContext,
-  message: string,
-  details: { sessionId: string; host: string; category: string }
-): Promise<{ ok: boolean; response: unknown }> {
-  const tabId = context.runtimeState.currentTabId;
-  if (!tabId) {
-    const error = new Error("No active tab available for focus nudge");
-    await saveDashboardCache({ lastError: getErrorMessage(error) });
-    throw error;
-  }
-
-  return showFocusNudgeInTab(tabId, message, details);
-}
 
 export async function showFocusNudgeInTab(
   tabId: number,
@@ -71,62 +22,50 @@ export async function showFocusNudgeInTab(
 
   try {
     const response = await sendContentMessage(tabId, payload);
-
-    await saveDashboardCache({ lastError: null });
     return { ok: true, response };
-  } catch (initialError) {
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ["assets/focus-nudge.js"]
-      });
-      const response = await sendContentMessage(tabId, payload);
-      await saveDashboardCache({ lastError: null });
-      return { ok: true, response };
-    } catch (retryError) {
-      await saveDashboardCache({
-        lastError: `Unable to show focus nudge on this page: ${getErrorMessage(retryError, getErrorMessage(initialError))}`
-      });
-      throw retryError;
-    }
+  } catch {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["assets/focus-nudge.js"]
+    });
+    const response = await sendContentMessage(tabId, payload);
+    return { ok: true, response };
   }
+}
+
+export async function showFocusNudge(
+  context: BackgroundRuntimeContext,
+  message: string,
+  details: { sessionId: string; host: string; category: string }
+): Promise<{ ok: boolean; response: unknown }> {
+  const tabId = context.runtimeState.currentTabId;
+  if (!tabId) {
+    throw new Error("No active tab available for focus nudge");
+  }
+
+  return showFocusNudgeInTab(tabId, message, details);
 }
 
 export async function evaluateFocusNudgeNotification(
   context: BackgroundRuntimeContext,
-  cache: DashboardCache | null = null,
-  settings: Settings | null = null
+  activeSession: FocusSession | null,
+  settings: Settings
 ): Promise<void> {
   const currentUrl = context.runtimeState.currentUrl;
   const currentHost = context.runtimeState.currentHost;
   const currentTabId = context.runtimeState.currentTabId;
-  if (!currentUrl || !currentHost || !currentTabId) {
+  if (!currentUrl || !currentHost || !currentTabId || activeSession?.status !== "active") {
     devDebugLog("focusNudge.evaluate.skip", {
       hasCurrentUrl: Boolean(currentUrl),
       hasCurrentHost: Boolean(currentHost),
-      hasCurrentTabId: Boolean(currentTabId)
-    });
-    return;
-  }
-
-  const resolvedCache = cache || await getDashboardCache();
-  const activeSession = resolvedCache.focusSessionsView?.active_session || null;
-  if (activeSession?.status !== "active") {
-    devDebugLog("focusNudge.evaluate.skip", {
-      reason: "no_active_focus_session",
+      hasCurrentTabId: Boolean(currentTabId),
       sessionStatus: activeSession?.status || null
     });
     return;
   }
 
-  const notificationState = getFocusNotificationState(context, activeSession);
-  if (context.runtimeState.focusNudgeNotifications !== notificationState) {
-    context.runtimeState.focusNudgeNotifications = notificationState;
-    await saveRuntimeState(context.runtimeState);
-  }
-
   const decision = await lookupUrlDecision(currentUrl, {
-    apiBaseUrl: (settings || APP_SETTINGS).apiBaseUrl,
+    apiBaseUrl: settings.apiBaseUrl,
     focusMode: FOCUS_DECISION_MODE
   });
   devDebugLog("focusNudge.decision", {
@@ -153,39 +92,14 @@ export async function evaluateFocusNudgeNotification(
     );
   } catch {
     devDebugWarn("focusNudge.showFailed");
-    return;
   }
 }
 
 export function buildPopupModel(
   context: BackgroundRuntimeContext,
-  cache: DashboardCache,
-  settings: Settings
+  activeSession: FocusSession | null,
+  currentHostCategory: Category | null
 ): BootstrapResponse["popupModel"] {
-  const today = cache.todayView;
-  const productivityScore = cache.overview?.today?.summary?.productivity_score;
-  const activeSession = cache.focusSessionsView?.active_session || null;
-  const currentDwellStartedAt = context.runtimeState.currentHostStartedAt || context.runtimeState.sessionStartedAt;
-  const currentDwellMs = currentDwellStartedAt ? Date.now() - currentDwellStartedAt : 0;
-  const liveSessionMs = context.runtimeState.sessionStartedAt &&
-    isTrackingEligible(context, context.runtimeState.currentHost, settings)
-    ? Math.max(0, Date.now() - context.runtimeState.sessionStartedAt)
-    : 0;
-  const currentCategory = cache.currentHostCategory;
-  const thresholdMs = driftThresholdMinutes(settings.nudgeSensitivity) * 60 * 1000;
-  const isDistractingCurrent = DISTRACTION_CATEGORIES.has(currentCategory);
-  const isDrifting = isDistractingCurrent && currentDwellMs >= thresholdMs;
-
-  let state: PopupModel["state"] = "empty";
-  if (today?.summary?.total_duration_ms > 0) {
-    state = "default";
-  }
-  if (activeSession?.status === "active") {
-    state = "focus_active";
-  } else if (isDrifting) {
-    state = "drifting";
-  }
-
   const focusSession = activeSession
     ? {
         ...activeSession,
@@ -197,43 +111,24 @@ export function buildPopupModel(
     : null;
 
   return {
-    state,
-    statusLabel: today?.status?.label || "Welcome",
-    statusMessage: today?.status?.message || "Your focus data will appear here soon.",
-    trackedTimeMs: (today?.summary?.total_duration_ms || 0) + liveSessionMs,
-    focusedTimeMs: today?.summary?.focus_duration_ms || 0,
-    distractedTimeMs: today?.summary?.distraction_duration_ms || 0,
-    productivityScore: {
-      value: productivityScore?.value || 0,
-      label: productivityScore?.label || "No score yet"
-    },
-    scoreComparison: {
-      label: today?.comparison?.label || "vs yesterday",
-      delta: today?.comparison?.productivity_score_delta || 0
-    },
-    topCategories: (today?.top_categories || []).slice(0, 3),
-    topSites: (today?.top_sites || []).slice(0, 8),
-    insight: today?.main_insight || {
-      title: "Your focus picture is still forming",
-      body: "Keep browsing normally. The first useful pattern appears after enough tracked time accumulates."
-    },
+    state: activeSession?.status === "active" ? "focus_active" : "empty",
+    statusLabel: activeSession?.status === "active" ? "Focus mode active" : "Focus mode off",
+    statusMessage: activeSession?.status === "active"
+      ? "Distracting URLs are blocked for this focus session."
+      : "Start focus mode to block distracting URLs.",
     currentSite: context.runtimeState.currentHost
       ? {
           host: context.runtimeState.currentHost,
-          category: currentCategory || "other",
-          dwellMs: currentDwellMs
+          category: currentHostCategory || "other"
         }
       : null,
     focusSession,
-    primaryAction: state === "focus_active"
+    primaryAction: activeSession?.status === "active"
       ? { type: MESSAGE_TYPES.pauseFocusSession, label: "Pause focus" }
-      : {
-          type: MESSAGE_TYPES.startFocusSession,
-          label: state === "drifting" ? "Return to focus" : "Start focus mode"
-        },
-    secondaryActions: state === "focus_active"
+      : { type: MESSAGE_TYPES.startFocusSession, label: "Start focus mode" },
+    secondaryActions: activeSession?.status === "active"
       ? [{ type: MESSAGE_TYPES.endFocusSession, label: "End session" }]
-      : [{ type: "OPEN_DASHBOARD", label: "Open dashboard" }],
+      : [],
     canReclassify: Boolean(context.runtimeState.currentHost)
   };
 }

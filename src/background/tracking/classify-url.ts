@@ -1,8 +1,9 @@
-import type { TrackingStatus } from "../../lib/types.js";
 import { normalizeHost } from "../../lib/utils.js";
 
+export type UrlStatus = "trackable" | "restricted_page" | "unknown_url";
+
 export interface ClassifiedUrl {
-  status: TrackingStatus;
+  status: UrlStatus;
   host: string | null;
   safeUrl: string | null;
 }
@@ -18,7 +19,7 @@ export function classifyUrl(url: string | null | undefined): ClassifiedUrl {
 
   if (/^(http|https):\/\//.test(url)) {
     return {
-      status: "active_tracked",
+      status: "trackable",
       host: normalizeHost(url),
       safeUrl: url
     };

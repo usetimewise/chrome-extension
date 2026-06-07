@@ -2,14 +2,12 @@
   "manifest_version": 3,
   "name": "Time Wise Tracker",
   "version": "0.2.0",
-  "description": "A focus-first browser companion that tracks attention, surfaces drift patterns, and suggests calmer next steps.",
+  "description": "A focus-first browser companion that blocks distracting URLs during focus sessions.",
   "permissions": [
     "tabs",
     "scripting",
     "storage",
-    "alarms",
-    "idle",
-    "history"
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -36,7 +34,6 @@
         "https://*/*"
       ],
       "js": [
-        "assets/media-monitor.js",
         "assets/focus-nudge.js"
       ],
       "all_frames": false,

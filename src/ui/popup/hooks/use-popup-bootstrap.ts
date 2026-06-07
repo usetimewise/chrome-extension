@@ -6,24 +6,8 @@ import type { BootstrapResponse } from "../../../lib/types.js";
 export function usePopupBootstrap() {
   const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
   const bootstrapInFlightRef = useRef(false);
-  const refreshInFlightRef = useRef(false);
 
-  async function loadBootstrap(messageType: typeof MESSAGE_TYPES.getBootstrap | typeof MESSAGE_TYPES.refreshViews) {
-    if (messageType === MESSAGE_TYPES.refreshViews) {
-      if (refreshInFlightRef.current) {
-        return;
-      }
-
-      refreshInFlightRef.current = true;
-      try {
-        const next = await sendBackgroundMessage({ type: MESSAGE_TYPES.refreshViews });
-        setBootstrap((current) => (current ? { ...current, ...next } : next));
-      } finally {
-        refreshInFlightRef.current = false;
-      }
-      return;
-    }
-
+  async function loadBootstrap() {
     if (bootstrapInFlightRef.current) {
       return;
     }
@@ -40,11 +24,10 @@ export function usePopupBootstrap() {
   useEffect(() => {
     let refreshTimer: number | null = null;
 
-    void loadBootstrap(MESSAGE_TYPES.getBootstrap)
-      .finally(() => loadBootstrap(MESSAGE_TYPES.refreshViews));
+    void loadBootstrap();
 
     refreshTimer = window.setInterval(() => {
-      void loadBootstrap(MESSAGE_TYPES.getBootstrap);
+      void loadBootstrap();
     }, 1000);
 
     return () => {
@@ -56,6 +39,6 @@ export function usePopupBootstrap() {
 
   return {
     bootstrap,
-    refreshBootstrap: () => loadBootstrap(MESSAGE_TYPES.refreshViews)
+    refreshBootstrap: loadBootstrap
   };
 }

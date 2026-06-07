@@ -1,5 +1,4 @@
 import { classifySites } from "../../lib/api/site-rules.js";
-import { recategorizeActivityEventsForHost } from "../../lib/storage/activity-events.js";
 import {
   clearSiteClassification,
   ensureSiteClassificationPending,
@@ -11,12 +10,11 @@ import {
   selectHostsForForcedClassification,
   scheduleSiteClassificationRetry
 } from "../../lib/storage/site-classifications.js";
-import { saveDashboardCache } from "../../lib/storage/dashboard-cache.js";
 import { getSettings } from "../../lib/storage/site-rules.js";
 import { getErrorMessage, hostMatchesRule } from "../../lib/utils.js";
-import type { ActivityEvent, Category, Settings } from "../../lib/types.js";
+import type { Settings } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
-import { withRegisteredDevice } from "../sync/sync-queue.js";
+import { withRegisteredDevice } from "../device/registration.js";
 
 export const SITE_CLASSIFICATION_RETRY_ALARM = "site-classification-retry";
 const SITE_CLASSIFICATION_BATCH_SIZE = 100;
@@ -29,10 +27,6 @@ function shouldSkipClassification(host: string, settings: Settings): boolean {
   }
 
   return Object.keys(settings.categoryOverrides).some((rule) => hostMatchesRule(host, rule));
-}
-
-async function backfillResolvedCategory(host: string, category: Category, settings: Settings): Promise<void> {
-  await recategorizeActivityEventsForHost(host, "other", category, settings);
 }
 
 export async function scheduleSiteClassificationAlarm(): Promise<void> {
@@ -48,8 +42,7 @@ export async function scheduleSiteClassificationAlarm(): Promise<void> {
 
 export async function ensureClassificationForHost(
   context: BackgroundRuntimeContext,
-  host: string | null | undefined,
-  refreshViews: (context: BackgroundRuntimeContext, options?: { includeSitesView?: boolean }) => Promise<unknown>
+  host: string | null | undefined
 ): Promise<void> {
   if (!host) {
     return;
@@ -70,15 +63,14 @@ export async function ensureClassificationForHost(
 
   await ensureSiteClassificationPending(host);
   await scheduleSiteClassificationAlarm();
-  void processSiteClassificationQueue(context, refreshViews);
+  void processSiteClassificationQueue(context);
 }
 
 export function processSiteClassificationQueue(
-  context: BackgroundRuntimeContext,
-  refreshViews: (context: BackgroundRuntimeContext, options?: { includeSitesView?: boolean }) => Promise<unknown>
+  context: BackgroundRuntimeContext
 ): Promise<void> {
   if (!activeClassificationRun) {
-    activeClassificationRun = processSiteClassificationQueueNow(context, refreshViews, false)
+    activeClassificationRun = processSiteClassificationQueueNow(context, false)
       .finally(() => {
         activeClassificationRun = null;
       });
@@ -87,11 +79,10 @@ export function processSiteClassificationQueue(
 }
 
 export async function retrySiteClassificationsNow(
-  context: BackgroundRuntimeContext,
-  refreshViews: (context: BackgroundRuntimeContext, options?: { includeSitesView?: boolean }) => Promise<unknown>
+  context: BackgroundRuntimeContext
 ): Promise<number> {
   if (!activeClassificationRun) {
-    activeClassificationRun = processSiteClassificationQueueNow(context, refreshViews, true)
+    activeClassificationRun = processSiteClassificationQueueNow(context, true)
       .finally(() => {
         activeClassificationRun = null;
       });
@@ -100,12 +91,10 @@ export async function retrySiteClassificationsNow(
 }
 
 async function processSiteClassificationQueueNow(
-  context: BackgroundRuntimeContext,
-  refreshViews: (context: BackgroundRuntimeContext, options?: { includeSitesView?: boolean }) => Promise<unknown>,
+  _context: BackgroundRuntimeContext,
   forceRetry: boolean
 ): Promise<number> {
   const settings = await getSettings();
-  let refreshed = false;
   let retriedCount = 0;
   const forcedQueue = forceRetry
     ? selectHostsForForcedClassification(await getSiteClassifications(), Number.MAX_SAFE_INTEGER)
@@ -142,8 +131,6 @@ async function processSiteClassificationQueueNow(
         const result = resultsByHost.get(host);
         if (result?.category) {
           await saveResolvedSiteClassification(host, result.category);
-          await backfillResolvedCategory(host, result.category, settings);
-          refreshed = true;
           continue;
         }
 
@@ -152,29 +139,15 @@ async function processSiteClassificationQueueNow(
           result?.error || result?.reason || "Missing classification result"
         );
       }
-
-      await saveDashboardCache({ lastError: null });
     } catch (error) {
       const message = getErrorMessage(error, "Unable to classify sites");
       for (const host of hosts) {
         await scheduleSiteClassificationRetry(host, message);
       }
-      await saveDashboardCache({ lastError: message });
       break;
     }
   }
 
   await scheduleSiteClassificationAlarm();
-  if (refreshed) {
-    await refreshViews(context, { includeSitesView: true });
-  }
-
   return retriedCount;
-}
-
-export function applyCategoryToCurrentHost(host: string | null | undefined, category: Category | null): ActivityEvent["category"] {
-  if (!host) {
-    return undefined;
-  }
-  return category || "other";
 }

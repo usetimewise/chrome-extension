@@ -19,3 +19,27 @@ export interface FocusSessionRequest {
   duration_minutes?: number;
   minutes?: number;
 }
+
+export interface FocusSessionsView {
+  summary: {
+    sessions_completed: number;
+    average_duration_ms: number;
+    longest_duration_ms: number;
+  };
+  active_session: FocusSession | null;
+  items: FocusSession[];
+  recommendations: Array<{
+    id?: string;
+    type?: string;
+    priority?: string;
+    title: string;
+    body: string;
+    action?: {
+      type?: string;
+      label?: string;
+      payload?: {
+        minutes?: number;
+      };
+    };
+  }>;
+}

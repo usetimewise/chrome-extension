@@ -1,5 +1,3 @@
-import type { DashboardCache } from "../../lib/types.js";
-
 const ACTION_ICON_SIZES = [16, 32] as const;
 const INACTIVE_ICON_COLOR = "#7b8794";
 const ACTIVE_ICON_COLOR = "#2563eb";
@@ -15,10 +13,6 @@ export interface ActionVisualState {
 let lastActionStateKey: string | null = null;
 const iconImageCache = new Map<string, Record<number, ImageData>>();
 
-export function extractFocusActionState(cache: DashboardCache | null | undefined): boolean {
-  return cache?.focusSessionsView?.active_session?.status === "active";
-}
-
 export function buildActionVisualState(focusActive: boolean): ActionVisualState {
   return {
     badgeText: focusActive ? "ON" : "",
@@ -29,10 +23,8 @@ export function buildActionVisualState(focusActive: boolean): ActionVisualState 
   };
 }
 
-export async function updateProductivityActionIcon(
-  cache: DashboardCache | null | undefined
-): Promise<void> {
-  const visualState = buildActionVisualState(extractFocusActionState(cache));
+export async function updateProductivityActionIcon(focusActive: boolean): Promise<void> {
+  const visualState = buildActionVisualState(focusActive);
   if (visualState.stateKey === lastActionStateKey) {
     return;
   }
