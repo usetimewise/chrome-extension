@@ -6,6 +6,11 @@ type FocusOverlayMessage = {
 };
 
 {
+type OverlayCopyVariant = {
+  imageFileName: string;
+  text: string;
+};
+
 type FocusNudgeState = {
   activeOverlayKey: string | null;
   contextInvalidated: boolean;
@@ -16,11 +21,54 @@ type FocusNudgeState = {
 const FOCUS_MESSAGE_TYPES = {
   showFocusNudge: "SHOW_FOCUS_NUDGE",
   saveSiteRule: "SAVE_SITE_RULE",
-  closeCurrentTab: "CLOSE_CURRENT_TAB"
+  closeCurrentTab: "CLOSE_CURRENT_TAB",
+  endFocusSession: "END_FOCUS_SESSION"
 } as const;
 const OVERLAY_ID = "time-wise-focus-overlay";
 const FOCUS_BLOCKER_ENGAGE_EVENT = "time-wise-focus-blocker-engage";
 const FOCUS_BLOCKER_RELEASE_EVENT = "time-wise-focus-blocker-release";
+const OVERLAY_COPY_VARIANTS: readonly OverlayCopyVariant[] = [
+  {
+    imageFileName: "ceo-s02p01-kpi-frown.png",
+    text: "Distraction detected. ROI on YouTube: negative. Reallocate."
+  },
+  {
+    imageFileName: "ceo-s02p02-phone-no.png",
+    text: "Twelve minutes of TikTok. That's a $40 mistake. Course-correct."
+  },
+  {
+    imageFileName: "ceo-s02p03-watch-tap.png",
+    text: "Entertainment is not on the roadmap. Close the tab."
+  },
+  {
+    imageFileName: "ceo-s02p04-clipboard-flip.png",
+    text: "You're optimizing for dopamine, not impact. Switch."
+  },
+  {
+    imageFileName: "ceo-s02p05-pinch-bridge.png",
+    text: "Top performers don't scroll during sprint hours."
+  },
+  {
+    imageFileName: "ceo-s02p06-meeting-call.png",
+    text: "Quick audit: is this tab on your OKRs? No? Close it."
+  },
+  {
+    imageFileName: "ceo-s02p07-folded-arms.png",
+    text: "Reels won't appear in your performance review. Refocus."
+  },
+  {
+    imageFileName: "ceo-s02p08-redline-pen.png",
+    text: "Your competitors are shipping. You're watching. Adjust."
+  },
+  {
+    imageFileName: "ceo-s02p09-firm-stare.png",
+    text: "Calendar this for after-hours. Now back to the task."
+  },
+  {
+    imageFileName: "ceo-s02p10-tap-table.png",
+    text: "Execution gap detected. Close it now."
+  }
+] as const;
 const stateHost = globalThis as typeof globalThis & {
   __timeWiseFocusNudgeState?: FocusNudgeState;
 };
@@ -65,7 +113,15 @@ function overlayKey(message: FocusOverlayMessage): string {
   return `${message.sessionId}:${message.host}`;
 }
 
-function removeExistingOverlay() {
+function getRandomCopyVariant(): OverlayCopyVariant {
+  return OVERLAY_COPY_VARIANTS[Math.floor(Math.random() * OVERLAY_COPY_VARIANTS.length)];
+}
+
+function getCeoImageUrl(imageFileName: string): string {
+  return chrome.runtime.getURL(`images/ceo/${imageFileName}`);
+}
+
+function removeExistingOverlay(): void {
   const existing = document.getElementById(OVERLAY_ID);
   if (existing) {
     existing.remove();
@@ -95,6 +151,7 @@ function setButtonsDisabled(shadow: ShadowRoot, disabled: boolean): void {
 }
 
 function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
+  const copyVariant = getRandomCopyVariant();
   const host = document.createElement("div");
   host.id = OVERLAY_ID;
 
@@ -110,118 +167,214 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 100px;
-      background: rgba(255, 255, 255, 0.96);
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(6px);
       color-scheme: light;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       pointer-events: auto;
+      animation: overlay-fade-in 300ms ease-out both;
     }
 
     .panel {
       box-sizing: border-box;
-      width: min(100%, 560px);
-      padding: 32px;
+      position: relative;
+      width: min(100%, 448px);
+      padding: 40px 32px;
       border: 1px solid rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
+      border-radius: 16px;
       background: #ffffff;
       color: #030213;
-      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.14);
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.28);
+      text-align: center;
+      animation: panel-zoom-in 300ms ease-out both;
     }
 
-    .kicker {
-      margin: 0 0 12px;
+    .close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
       color: #717182;
-      font-size: 12px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 24px;
       font-weight: 500;
-      letter-spacing: 0.12em;
-      line-height: 1.2;
-      text-transform: uppercase;
+      line-height: 1;
+      padding: 0;
+      transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
+    }
+
+    .close:hover:not(:disabled) {
+      background: #e9ebef;
+      color: #030213;
+    }
+
+    .image-wrap {
+      display: flex;
+      justify-content: center;
+      margin: 0 0 24px;
+    }
+
+    .image {
+      display: block;
+      width: 160px;
+      height: 160px;
+      object-fit: contain;
     }
 
     .title {
-      margin: 0;
+      margin: 0 0 4px;
       color: #030213;
-      font-size: 28px;
-      font-weight: 500;
+      font-size: 24px;
+      font-weight: 600;
       letter-spacing: 0;
-      line-height: 1.18;
+      line-height: 1.15;
     }
 
-    .message {
-      margin: 14px 0 0;
-      color: #4b5563;
-      font-size: 16px;
-      line-height: 1.6;
-    }
-
-    .meta {
-      margin: 10px 0 0;
+    .site {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-sizing: border-box;
+      max-width: 100%;
+      margin: 4px 0 32px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: #ececf0;
       color: #717182;
-      font-size: 13px;
-      line-height: 1.45;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.35;
+    }
+
+    .site-icon {
+      position: relative;
+      width: 14px;
+      height: 14px;
+      flex: 0 0 auto;
+    }
+
+    .site-icon::before {
+      content: "";
+      position: absolute;
+      inset: 1px 2px;
+      border: 1.5px solid #d97706;
+      border-radius: 7px 7px 5px 5px;
+      clip-path: polygon(50% 0, 100% 18%, 100% 62%, 50% 100%, 0 62%, 0 18%);
+    }
+
+    .site-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .actions {
       display: grid;
-      gap: 10px;
-      margin-top: 28px;
+      gap: 12px;
+      width: 100%;
     }
 
-    button {
-      min-height: 44px;
-      border: 1px solid #d1d5db;
+    .button {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 48px;
+      border: 0;
       border-radius: 8px;
-      background: #ffffff;
-      color: #030213;
       cursor: pointer;
       font: inherit;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 500;
-      line-height: 1.2;
+      letter-spacing: 0;
+      line-height: 1.5;
       padding: 12px 16px;
       text-align: center;
-      transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease;
+      transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
     }
 
-    button:hover:not(:disabled) {
-      background: #f3f4f6;
-      border-color: #b8bec7;
-    }
-
-    button:disabled {
+    .button:disabled,
+    .close:disabled {
       cursor: default;
       opacity: 0.62;
     }
 
     .primary {
-      border-color: #030213;
       background: #030213;
       color: #ffffff;
     }
 
     .primary:hover:not(:disabled) {
-      border-color: #1f2937;
-      background: #1f2937;
+      background: rgba(3, 2, 19, 0.9);
+    }
+
+    .secondary {
+      background: #ececf0;
+      color: #030213;
+    }
+
+    .secondary:hover:not(:disabled) {
+      background: rgba(236, 236, 240, 0.8);
+    }
+
+    .tertiary {
+      min-height: 44px;
+      background: transparent;
+      color: #717182;
+      font-size: 14px;
+    }
+
+    .tertiary:hover:not(:disabled) {
+      background: #e9ebef;
+      color: #030213;
     }
 
     .status {
-      min-height: 19px;
+      min-height: 18px;
       margin: 14px 0 0;
       color: #b42318;
       font-size: 13px;
       line-height: 1.45;
     }
 
-    @media (max-width: 720px) {
-      :host {
-        align-items: stretch;
-        padding: 24px;
+    @keyframes overlay-fade-in {
+      from {
+        opacity: 0;
       }
 
-      .panel {
-        align-self: center;
-        padding: 24px;
+      to {
+        opacity: 1;
       }
+    }
+
+    @keyframes panel-zoom-in {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .panel {
+        padding: 36px 24px 28px;
+      }
+
+      .title {
+        font-size: 22px;
+      }
+
     }
   `;
 
@@ -231,30 +384,55 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
   panel.setAttribute("aria-modal", "true");
   panel.setAttribute("aria-labelledby", "time-wise-focus-overlay-title");
 
-  const kicker = document.createElement("p");
-  kicker.className = "kicker";
-  kicker.textContent = "Time Wise";
+  const closeButton = document.createElement("button");
+  closeButton.className = "close";
+  closeButton.type = "button";
+  closeButton.textContent = "×";
+  closeButton.setAttribute("aria-label", "Закрыть вкладку");
+  closeButton.addEventListener("click", () => {
+    setButtonsDisabled(shadow, true);
+    void sendBackgroundMessage({ type: FOCUS_MESSAGE_TYPES.closeCurrentTab })
+      .catch((error: unknown) => {
+        setButtonsDisabled(shadow, false);
+        setStatus(shadow, error instanceof Error ? error.message : "Не удалось закрыть вкладку");
+      });
+  });
+
+  const imageWrap = document.createElement("div");
+  imageWrap.className = "image-wrap";
+
+  const image = document.createElement("img");
+  image.className = "image";
+  image.src = getCeoImageUrl(copyVariant.imageFileName);
+  image.alt = "Focus reminder";
+  image.loading = "eager";
+  image.decoding = "async";
+  imageWrap.append(image);
 
   const title = document.createElement("h1");
   title.className = "title";
   title.id = "time-wise-focus-overlay-title";
-  title.textContent = "Ты отвлекся";
+  title.textContent = copyVariant.text;
 
-  const copy = document.createElement("p");
-  copy.className = "message";
-  copy.textContent = message.message;
+  const site = document.createElement("div");
+  site.className = "site";
 
-  const meta = document.createElement("p");
-  meta.className = "meta";
-  meta.textContent = `${message.host} · ${message.category}`;
+  const siteIcon = document.createElement("span");
+  siteIcon.className = "site-icon";
+  siteIcon.setAttribute("aria-hidden", "true");
+
+  const siteText = document.createElement("span");
+  siteText.className = "site-text";
+  siteText.textContent = message.host;
+  site.append(siteIcon, siteText);
 
   const actions = document.createElement("div");
   actions.className = "actions";
 
   const leaveButton = document.createElement("button");
-  leaveButton.className = "primary";
+  leaveButton.className = "button primary";
   leaveButton.type = "button";
-  leaveButton.textContent = "Виноват, ухожу";
+  leaveButton.textContent = "Уже ухожу";
   leaveButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
     void sendBackgroundMessage({ type: FOCUS_MESSAGE_TYPES.closeCurrentTab })
@@ -265,8 +443,9 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
   });
 
   const workButton = document.createElement("button");
+  workButton.className = "button secondary";
   workButton.type = "button";
-  workButton.textContent = "Это не отвлечение";
+  workButton.textContent = "Мне нужен этот сайт";
   workButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
     void sendBackgroundMessage({
@@ -285,21 +464,33 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
       });
   });
 
-  const urgentButton = document.createElement("button");
-  urgentButton.type = "button";
-  urgentButton.textContent = "Мне сейчас срочно нужен сайт";
-  urgentButton.addEventListener("click", () => {
-    focusNudgeState.suppressedHosts.add(overlayKey(message));
-    releaseFocusBlocker();
-    removeExistingOverlay();
+  const disableFocusButton = document.createElement("button");
+  disableFocusButton.className = "button tertiary";
+  disableFocusButton.type = "button";
+  disableFocusButton.textContent = "Отключить фокусировку";
+  disableFocusButton.addEventListener("click", () => {
+    setButtonsDisabled(shadow, true);
+    void sendBackgroundMessage({
+      type: FOCUS_MESSAGE_TYPES.endFocusSession,
+      sessionId: message.sessionId
+    })
+      .then(() => {
+        focusNudgeState.suppressedHosts.add(overlayKey(message));
+        releaseFocusBlocker();
+        removeExistingOverlay();
+      })
+      .catch((error: unknown) => {
+        setButtonsDisabled(shadow, false);
+        setStatus(shadow, error instanceof Error ? error.message : "Не удалось отключить фокусировку");
+      });
   });
 
   const status = document.createElement("p");
   status.className = "status";
   status.setAttribute("role", "status");
 
-  actions.append(leaveButton, workButton, urgentButton);
-  panel.append(kicker, title, copy, meta, actions, status);
+  actions.append(leaveButton, workButton, disableFocusButton);
+  panel.append(closeButton, imageWrap, title, site, actions, status);
   shadow.append(style, panel);
 
   return host;

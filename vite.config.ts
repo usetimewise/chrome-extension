@@ -18,6 +18,7 @@ function copyExtensionStatic(): Plugin {
       mkdirSync(outDir, { recursive: true });
       cpSync(resolve(root, "manifest.json"), resolve(outDir, "manifest.json"));
       cpSync(resolve(root, "icons"), resolve(outDir, "icons"), { recursive: true });
+      cpSync(resolve(root, "images"), resolve(outDir, "images"), { recursive: true });
       cpSync(resolve(root, "vendor"), resolve(outDir, "vendor"), { recursive: true });
     }
   };

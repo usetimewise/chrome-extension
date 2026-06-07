@@ -43,6 +43,7 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "images/ceo/*.png",
         "vendor/fontawesome/webfonts/fa-solid-900.woff2"
       ],
       "matches": [

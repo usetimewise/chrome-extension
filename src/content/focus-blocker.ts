@@ -55,11 +55,6 @@ function installGate(): void {
     html.time-wise-focus-blocked,
     html.time-wise-focus-blocked body {
       overflow: hidden !important;
-      background: #ffffff !important;
-    }
-
-    html.time-wise-focus-blocked body > :not(#${BLOCKER_ID}):not(#time-wise-focus-overlay) {
-      visibility: hidden !important;
     }
   `;
 
@@ -70,7 +65,8 @@ function installGate(): void {
     "position: fixed",
     "inset: 0",
     "z-index: 2147483646",
-    "background: #ffffff",
+    "background: rgba(0, 0, 0, 0.35)",
+    "backdrop-filter: blur(4px)",
     "pointer-events: auto"
   ].join(";");
 
