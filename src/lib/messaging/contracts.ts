@@ -214,6 +214,7 @@ function isUserPreferences(value: unknown): value is UserPreferences {
     typeof value.defaultFocusMinutes === "number" &&
     Number.isFinite(value.defaultFocusMinutes) &&
     isStringArray(value.blockedHosts) &&
+    (value.disabledDefaultBlockRuleIds === undefined || isStringArray(value.disabledDefaultBlockRuleIds)) &&
     normalizeLanguage(value.language) !== null;
 }
 

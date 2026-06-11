@@ -18,6 +18,7 @@ export const APP_SETTINGS: Settings = {
   selectedCompanionId: "ceo",
   defaultFocusMinutes: 20,
   blockedHosts: [],
+  disabledDefaultBlockRuleIds: [],
   language: "en"
 };
 
@@ -28,6 +29,7 @@ export function getAppSettings(): Settings {
     deepWorkBlocks: APP_SETTINGS.deepWorkBlocks.map((block) => ({ ...block })),
     excludedHosts: [...APP_SETTINGS.excludedHosts],
     categoryOverrides: { ...APP_SETTINGS.categoryOverrides },
-    blockedHosts: [...APP_SETTINGS.blockedHosts]
+    blockedHosts: [...APP_SETTINGS.blockedHosts],
+    disabledDefaultBlockRuleIds: [...APP_SETTINGS.disabledDefaultBlockRuleIds]
   };
 }

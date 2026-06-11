@@ -23,6 +23,7 @@ export interface Settings {
   selectedCompanionId: FocusCompanionId;
   defaultFocusMinutes: number;
   blockedHosts: string[];
+  disabledDefaultBlockRuleIds: string[];
   language: AppLanguage;
 }
 
@@ -30,6 +31,7 @@ export interface UserPreferences {
   selectedCompanionId: FocusCompanionId;
   defaultFocusMinutes: number;
   blockedHosts: string[];
+  disabledDefaultBlockRuleIds: string[];
   language: AppLanguage;
 }
 

@@ -4,11 +4,9 @@ import { createTranslator } from "../../lib/i18n/index.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
 import { getSettings } from "../../lib/storage/site-rules.js";
 import { sessionRemainingMs } from "../../lib/local-focus-sessions.js";
-import { lookupUrlDecision } from "../../lib/urlDecision/match.js";
+import { decideFocusBlock } from "../../lib/site-block-rules.js";
 import type { BootstrapResponse, Category, FocusSession, Settings } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
-
-const FOCUS_DECISION_MODE = "normal" as const;
 
 export async function showFocusNudgeInTab(
   tabId: number,
@@ -68,16 +66,21 @@ export async function evaluateFocusNudgeNotification(
     return;
   }
 
-  const decision = await lookupUrlDecision(currentUrl, {
+  const decision = await decideFocusBlock(currentUrl, {
+    sessions: [activeSession],
+    siteRules: {
+      excludedHosts: settings.excludedHosts,
+      categoryOverrides: settings.categoryOverrides
+    },
+    disabledDefaultBlockRuleIds: settings.disabledDefaultBlockRuleIds,
     apiBaseUrl: settings.apiBaseUrl,
-    focusMode: FOCUS_DECISION_MODE
+    allowNetworkLookup: true
   });
   devDebugLog("focusNudge.decision", {
     action: decision.action,
-    category: decision.category || null,
-    confidence: decision.confidence,
     reason: decision.reason,
-    source: decision.source
+    category: decision.action === "block" ? decision.category : null,
+    source: decision.action === "block" ? decision.matchedRule?.source || null : null
   });
 
   if (decision.action !== "block") {
@@ -92,7 +95,7 @@ export async function evaluateFocusNudgeNotification(
       {
         sessionId: activeSession.id,
         host: currentHost,
-        category: decision.category || "other",
+        category: decision.category,
         remainingMs: activeSession.remaining_ms ?? sessionRemainingMs(activeSession)
       }
     );

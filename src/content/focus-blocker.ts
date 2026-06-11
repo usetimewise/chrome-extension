@@ -148,7 +148,11 @@ function installMediaBlocker(): void {
   }
 }
 
-async function readStorage(): Promise<{ sessions: FocusSession[]; siteRules: SiteRuleState | null }> {
+async function readStorage(): Promise<{
+  sessions: FocusSession[];
+  siteRules: SiteRuleState | null;
+  disabledDefaultBlockRuleIds: string[];
+}> {
   const values = await chrome.storage.local.get([
     STORAGE_KEYS.focusSessions,
     STORAGE_KEYS.preferences,
@@ -161,7 +165,10 @@ async function readStorage(): Promise<{ sessions: FocusSession[]; siteRules: Sit
     sessions: Array.isArray(values[STORAGE_KEYS.focusSessions])
       ? values[STORAGE_KEYS.focusSessions] as FocusSession[]
       : [],
-    siteRules: buildEffectiveSiteRules(storedSiteRules, preferences)
+    siteRules: buildEffectiveSiteRules(storedSiteRules, preferences),
+    disabledDefaultBlockRuleIds: Array.isArray(preferences?.disabledDefaultBlockRuleIds)
+      ? preferences.disabledDefaultBlockRuleIds
+      : []
   };
 }
 
@@ -182,8 +189,13 @@ async function sendBlockedMessage(message: FocusBlockerBlockedMessage): Promise<
 
 async function evaluateCurrentPage(): Promise<void> {
   try {
-    const { sessions, siteRules } = await readStorage();
-    const decision = await determineEarlyFocusBlock(window.location.href, sessions, siteRules);
+    const { sessions, siteRules, disabledDefaultBlockRuleIds } = await readStorage();
+    const decision = await determineEarlyFocusBlock(
+      window.location.href,
+      sessions,
+      siteRules,
+      disabledDefaultBlockRuleIds
+    );
     if (decision.action !== "block") {
       releaseGate();
       return;

@@ -2,6 +2,7 @@ import { DISTRACTION_CATEGORIES, STORAGE_KEYS } from "../constants.js";
 import { getAppSettings } from "../app-settings.js";
 import { isFocusCompanionId } from "../focus-companions/index.js";
 import { resolveLanguage } from "../i18n/index.js";
+import { normalizeDisabledDefaultBlockRuleIds } from "../site-block-rules.js";
 import {
   DEFAULT_FOCUS_SESSION_MINUTES,
   MAX_FOCUS_SESSION_MINUTES,
@@ -14,6 +15,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   selectedCompanionId: "ceo",
   defaultFocusMinutes: DEFAULT_FOCUS_SESSION_MINUTES,
   blockedHosts: [],
+  disabledDefaultBlockRuleIds: [],
   language: resolveLanguage(null)
 };
 
@@ -58,6 +60,9 @@ export function normalizeUserPreferences(value: Partial<UserPreferences> | null 
         : DEFAULT_USER_PREFERENCES.defaultFocusMinutes
     ),
     blockedHosts: normalizeBlockedHosts(Array.isArray(value?.blockedHosts) ? value.blockedHosts : []),
+    disabledDefaultBlockRuleIds: normalizeDisabledDefaultBlockRuleIds(
+      Array.isArray(value?.disabledDefaultBlockRuleIds) ? value.disabledDefaultBlockRuleIds : []
+    ),
     language: resolveLanguage(value?.language)
   };
 }
@@ -89,6 +94,7 @@ export function buildEffectiveSettings(
     defaultFocusMinutes: preferences.defaultFocusMinutes,
     language: preferences.language,
     blockedHosts,
+    disabledDefaultBlockRuleIds: normalizeDisabledDefaultBlockRuleIds(preferences.disabledDefaultBlockRuleIds),
     excludedHosts: Array.from(new Set([
       ...baseSettings.excludedHosts,
       ...siteRules.excludedHosts

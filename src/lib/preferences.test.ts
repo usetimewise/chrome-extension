@@ -58,19 +58,21 @@ test("normalizes blocked host input to hostname", () => {
 });
 
 test("saves normalized preferences and removes duplicate blocked hosts", async () => {
-  const preferences = await saveUserPreferences({
-    selectedCompanionId: "mentor",
-    defaultFocusMinutes: 26.4,
-    blockedHosts: ["https://www.example.com/path", "example.com", "reddit.com/"],
-    language: "ru"
-  });
+    const preferences = await saveUserPreferences({
+      selectedCompanionId: "mentor",
+      defaultFocusMinutes: 26.4,
+      blockedHosts: ["https://www.example.com/path", "example.com", "reddit.com/"],
+      disabledDefaultBlockRuleIds: ["default:reddit", "default:reddit", "unknown"],
+      language: "ru"
+    });
 
   assert.deepEqual(preferences, {
-    selectedCompanionId: "mentor",
-    defaultFocusMinutes: 26,
-    blockedHosts: ["example.com", "reddit.com"],
-    language: "ru"
-  });
+      selectedCompanionId: "mentor",
+      defaultFocusMinutes: 26,
+      blockedHosts: ["example.com", "reddit.com"],
+      disabledDefaultBlockRuleIds: ["default:reddit"],
+      language: "ru"
+    });
   assert.deepEqual(await getUserPreferences(), preferences);
   assert.deepEqual(storage[STORAGE_KEYS.preferences], preferences);
 });
@@ -112,6 +114,7 @@ test("builds effective settings from app settings, preferences, and site rules",
       selectedCompanionId: "coach",
       defaultFocusMinutes: 45,
       blockedHosts: normalizeBlockedHosts(["reddit.com", "https://www.youtube.com/watch"]),
+      disabledDefaultBlockRuleIds: ["default:youtube-shorts"],
       language: "ru"
     },
     {
@@ -124,6 +127,7 @@ test("builds effective settings from app settings, preferences, and site rules",
   assert.equal(effective.defaultFocusMinutes, 45);
   assert.equal(effective.language, "ru");
   assert.deepEqual(effective.blockedHosts, ["reddit.com", "youtube.com"]);
+  assert.deepEqual(effective.disabledDefaultBlockRuleIds, ["default:youtube-shorts"]);
   assert.deepEqual(effective.excludedHosts, ["docs.example.com"]);
   assert.equal(effective.categoryOverrides["reddit.com"], "social");
   assert.equal(effective.categoryOverrides["youtube.com"], "work");

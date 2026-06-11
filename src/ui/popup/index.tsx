@@ -21,6 +21,7 @@ import {
   normalizeDefaultFocusMinutes,
   normalizePreferenceHost
 } from "../../lib/storage/preferences.js";
+import { DEFAULT_SITE_BLOCK_RULES, type SiteBlockRule } from "../../lib/site-block-rules.js";
 import type { BootstrapResponse, UserPreferences } from "../../lib/types.js";
 import { getErrorMessage } from "../../lib/utils.js";
 import { usePopupBootstrap } from "./hooks/use-popup-bootstrap.js";
@@ -68,6 +69,7 @@ function buildPreferencesDraft(bootstrap: BootstrapResponse | null): UserPrefere
     selectedCompanionId: bootstrap?.settings?.selectedCompanionId || "ceo",
     defaultFocusMinutes: getDefaultFocusMinutes(bootstrap),
     blockedHosts: [...(bootstrap?.settings?.blockedHosts || [])],
+    disabledDefaultBlockRuleIds: [...(bootstrap?.settings?.disabledDefaultBlockRuleIds || [])],
     language: getBootstrapLanguage(bootstrap)
   };
 }
@@ -152,7 +154,28 @@ function SettingsView({
   const [blockedHostError, setBlockedHostError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SettingsSaveState>({ status: "idle" });
   const initializedFromBootstrapRef = useRef(false);
-  const blockedHosts = useMemo(() => [...draft.blockedHosts].sort(), [draft.blockedHosts]);
+  const draftRef = useRef(draft);
+  const pendingPreferencesRef = useRef<UserPreferences | null>(null);
+  const isSavingPreferencesRef = useRef(false);
+  const savedStatusTimerRef = useRef<number | null>(null);
+  const blockRules = useMemo(() => {
+    const disabledDefaultIds = new Set(draft.disabledDefaultBlockRuleIds);
+    const userRules: SiteBlockRule[] = draft.blockedHosts.map((host) => ({
+      id: `user:${host}`,
+      pattern: host,
+      patternType: "domain",
+      category: "social",
+      source: "user"
+    }));
+    return [...userRules, ...DEFAULT_SITE_BLOCK_RULES.filter((rule) => !disabledDefaultIds.has(rule.id))]
+      .sort((left, right) => left.pattern.localeCompare(right.pattern));
+  }, [draft.blockedHosts, draft.disabledDefaultBlockRuleIds]);
+  const disabledDefaultRules = useMemo(() => {
+    const disabledDefaultIds = new Set(draft.disabledDefaultBlockRuleIds);
+    return DEFAULT_SITE_BLOCK_RULES
+      .filter((rule) => disabledDefaultIds.has(rule.id))
+      .sort((left, right) => left.pattern.localeCompare(right.pattern));
+  }, [draft.disabledDefaultBlockRuleIds]);
   const companionPreviews = useMemo(() => listFocusCompanions().map((companion) => (
     createFocusCompanionPreview(companion.id, {
       language,
@@ -165,9 +188,81 @@ function SettingsView({
       return;
     }
 
-    setDraft(buildPreferencesDraft(bootstrap));
+    const bootstrapPreferences = buildPreferencesDraft(bootstrap);
+    draftRef.current = bootstrapPreferences;
+    setDraft(bootstrapPreferences);
     initializedFromBootstrapRef.current = true;
   }, [bootstrap]);
+
+  useEffect(() => () => {
+    if (savedStatusTimerRef.current !== null) {
+      window.clearTimeout(savedStatusTimerRef.current);
+    }
+  }, []);
+
+  function showSavedStatus() {
+    if (savedStatusTimerRef.current !== null) {
+      window.clearTimeout(savedStatusTimerRef.current);
+    }
+
+    setSaveState({ status: "saved" });
+    savedStatusTimerRef.current = window.setTimeout(() => {
+      setSaveState((current) => current.status === "saved" ? { status: "idle" } : current);
+      savedStatusTimerRef.current = null;
+    }, 1400);
+  }
+
+  async function flushPreferencesQueue() {
+    if (isSavingPreferencesRef.current) {
+      return;
+    }
+
+    isSavingPreferencesRef.current = true;
+    setSaveState({ status: "saving" });
+
+    try {
+      while (pendingPreferencesRef.current) {
+        const nextPreferences = pendingPreferencesRef.current;
+        pendingPreferencesRef.current = null;
+
+        const response = await sendBackgroundMessage({
+          type: MESSAGE_TYPES.savePreferences,
+          preferences: nextPreferences
+        });
+
+        if (!pendingPreferencesRef.current) {
+          onSaved(response.bootstrap);
+          draftRef.current = response.payload;
+          setDraft(response.payload);
+        }
+      }
+
+      showSavedStatus();
+    } catch (error) {
+      setSaveState({
+        status: "error",
+        message: getErrorMessage(error, t("popup.saveSettingsError"))
+      });
+    } finally {
+      isSavingPreferencesRef.current = false;
+    }
+  }
+
+  function applyPreferencesChange(updater: (current: UserPreferences) => UserPreferences) {
+    if (!bootstrap) {
+      setSaveState({
+        status: "error",
+        message: t("popup.saveSettingsError")
+      });
+      return;
+    }
+
+    const nextPreferences = updater(draftRef.current);
+    draftRef.current = nextPreferences;
+    pendingPreferencesRef.current = nextPreferences;
+    setDraft(nextPreferences);
+    void flushPreferencesQueue();
+  }
 
   function handleAddBlockedHost() {
     const host = normalizePreferenceHost(newBlockedHost);
@@ -176,51 +271,40 @@ function SettingsView({
       return;
     }
 
-    if (draft.blockedHosts.includes(host)) {
+    if (draft.blockedHosts.includes(host) || DEFAULT_SITE_BLOCK_RULES.some((rule) => (
+      !draft.disabledDefaultBlockRuleIds.includes(rule.id) && rule.pattern === host
+    ))) {
       setBlockedHostError(t("popup.blockedHostDuplicate"));
       return;
     }
 
-    setDraft((current) => ({
+    applyPreferencesChange((current) => ({
       ...current,
       blockedHosts: [...current.blockedHosts, host].sort()
     }));
     setNewBlockedHost("");
     setBlockedHostError(null);
-    setSaveState({ status: "idle" });
   }
 
   function handleRemoveBlockedHost(host: string) {
-    setDraft((current) => ({
+    applyPreferencesChange((current) => ({
       ...current,
       blockedHosts: current.blockedHosts.filter((blockedHost) => blockedHost !== host)
     }));
-    setSaveState({ status: "idle" });
   }
 
-  async function handleSaveSettings() {
-    if (saveState.status === "saving") {
-      return;
-    }
+  function handleDisableDefaultRule(ruleId: string) {
+    applyPreferencesChange((current) => ({
+      ...current,
+      disabledDefaultBlockRuleIds: Array.from(new Set([...current.disabledDefaultBlockRuleIds, ruleId])).sort()
+    }));
+  }
 
-    setSaveState({ status: "saving" });
-    try {
-      const response = await sendBackgroundMessage({
-        type: MESSAGE_TYPES.savePreferences,
-        preferences: draft
-      });
-      onSaved(response.bootstrap);
-      setDraft(response.payload);
-      setSaveState({ status: "saved" });
-      window.setTimeout(() => {
-        setSaveState((current) => current.status === "saved" ? { status: "idle" } : current);
-      }, 1800);
-    } catch (error) {
-      setSaveState({
-        status: "error",
-        message: getErrorMessage(error, t("popup.saveSettingsError"))
-      });
-    }
+  function handleRestoreDefaultRule(ruleId: string) {
+    applyPreferencesChange((current) => ({
+      ...current,
+      disabledDefaultBlockRuleIds: current.disabledDefaultBlockRuleIds.filter((id) => id !== ruleId)
+    }));
   }
 
   return (
@@ -263,8 +347,7 @@ function SettingsView({
                       : "companion-card"}
                     type="button"
                     onClick={() => {
-                      setDraft((current) => ({ ...current, selectedCompanionId: companion.id }));
-                      setSaveState({ status: "idle" });
+                      applyPreferencesChange((current) => ({ ...current, selectedCompanionId: companion.id }));
                     }}
                   >
                     <span className={companion.visual.kind === "avatar"
@@ -305,11 +388,10 @@ function SettingsView({
                 value={draft.defaultFocusMinutes}
                 onChange={(event) => {
                   const nextDefaultFocusMinutes = clampFocusMinutes(event.currentTarget.valueAsNumber);
-                  setDraft((current) => ({
+                  applyPreferencesChange((current) => ({
                     ...current,
                     defaultFocusMinutes: nextDefaultFocusMinutes
                   }));
-                  setSaveState({ status: "idle" });
                 }}
               />
               <div className="settings-range-labels">
@@ -323,10 +405,9 @@ function SettingsView({
                     className={draft.defaultFocusMinutes === preset ? "focus-preset is-active" : "focus-preset"}
                     type="button"
                     onClick={() => {
-                      setDraft((current) => ({ ...current, defaultFocusMinutes: preset }));
-                      setSaveState({ status: "idle" });
-                  }}
-                >
+                      applyPreferencesChange((current) => ({ ...current, defaultFocusMinutes: preset }));
+                    }}
+                  >
                     {preset} {t("common.minutesShort")}
                   </button>
                 ))}
@@ -368,44 +449,71 @@ function SettingsView({
                 <p className="popup-error-text" role="alert">{blockedHostError}</p>
               ) : null}
               <div className="blocked-host-list">
-                {blockedHosts.length === 0 ? (
+                {blockRules.length === 0 ? (
                   <p className="settings-empty">{t("popup.emptyList")}</p>
-                ) : blockedHosts.map((host) => (
-                  <div className="blocked-host-row" key={host}>
-                    <span>{host}</span>
+                ) : blockRules.map((rule) => (
+                  <div className="blocked-host-row" key={rule.id}>
+                    <span className="blocked-host-text">
+                      <span>{rule.pattern}</span>
+                      <span className="blocked-host-source">
+                        {rule.source === "default" ? t("popup.defaultRule") : t("popup.userRule")}
+                      </span>
+                    </span>
                     <button
                       type="button"
-                      onClick={() => handleRemoveBlockedHost(host)}
-                      aria-label={t("popup.removeHost", { host })}
+                      onClick={() => {
+                        if (rule.source === "default") {
+                          handleDisableDefaultRule(rule.id);
+                        } else {
+                          handleRemoveBlockedHost(rule.pattern);
+                        }
+                      }}
+                      aria-label={t("popup.removeHost", { host: rule.pattern })}
                     >
                       ×
                     </button>
                   </div>
                 ))}
               </div>
-              {blockedHosts.length > 0 ? (
-                <p className="settings-muted">{t("popup.blockedHostsCount", { count: blockedHosts.length })}</p>
+              {disabledDefaultRules.length > 0 ? (
+                <div className="blocked-host-list" aria-label={t("popup.disabledDefaults")}>
+                  {disabledDefaultRules.map((rule) => (
+                    <div className="blocked-host-row is-disabled" key={rule.id}>
+                      <span className="blocked-host-text">
+                        <span>{rule.pattern}</span>
+                        <span className="blocked-host-source">{t("popup.defaultRuleDisabled")}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreDefaultRule(rule.id)}
+                        aria-label={t("popup.restoreDefaultRule", { host: rule.pattern })}
+                      >
+                        ↻
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {blockRules.length > 0 ? (
+                <p className="settings-muted">{t("popup.blockedHostsCount", { count: blockRules.length })}</p>
               ) : null}
             </div>
           ) : null}
         </div>
 
-        <footer className="settings-footer">
-          {saveState.status === "error" ? (
-            <p className="popup-error-text" role="alert">{saveState.message}</p>
-          ) : null}
-          {saveState.status === "saved" ? (
-            <p className="popup-status-text" role="status">{t("popup.settingsSaved")}</p>
-          ) : null}
-          <button
-            className="popup-primary-button"
-            type="button"
-            onClick={() => void handleSaveSettings()}
-            disabled={saveState.status === "saving" || !bootstrap}
-          >
-            {saveState.status === "saving" ? t("popup.savingSettings") : t("popup.saveSettings")}
-          </button>
-        </footer>
+        {saveState.status !== "idle" ? (
+          <footer className="settings-footer">
+            {saveState.status === "error" ? (
+              <p className="popup-error-text" role="alert">{saveState.message}</p>
+            ) : null}
+            {saveState.status === "saved" ? (
+              <p className="popup-status-text" role="status">{t("popup.settingsSaved")}</p>
+            ) : null}
+            {saveState.status === "saving" ? (
+              <p className="popup-status-text" role="status">{t("popup.savingSettings")}</p>
+            ) : null}
+          </footer>
+        ) : null}
       </section>
     </main>
   );

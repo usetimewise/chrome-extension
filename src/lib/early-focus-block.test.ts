@@ -80,6 +80,28 @@ test("blocks seeded short video rules before cached lookup", async () => {
   assert.equal(decision.action === "block" && decision.reason, "seed_rule");
 });
 
+test("disabled seeded prefix rule does not block the whole domain", async () => {
+  assert.deepEqual(
+    await determineEarlyFocusBlock(
+      "https://www.youtube.com/shorts/abc",
+      [activeSession()],
+      null,
+      ["default:youtube-shorts"]
+    ),
+    { action: "allow", reason: "no_local_block_decision" }
+  );
+
+  assert.deepEqual(
+    await determineEarlyFocusBlock(
+      "https://www.youtube.com/watch?v=abc",
+      [activeSession()],
+      null,
+      ["default:youtube-shorts"]
+    ),
+    { action: "allow", reason: "no_local_block_decision" }
+  );
+});
+
 test("user work override wins over seeded block rules", async () => {
   assert.deepEqual(
     await determineEarlyFocusBlock(

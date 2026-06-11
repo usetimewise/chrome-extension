@@ -535,11 +535,30 @@ body::before {
   padding: 4px 6px 4px 12px;
 }
 
-.blocked-host-row span {
+.blocked-host-row.is-disabled {
+  background: #fafafa;
+}
+
+.blocked-host-text {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.blocked-host-text > span:first-child {
   overflow: hidden;
   color: #030213;
   font-size: 13px;
   line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blocked-host-source {
+  overflow: hidden;
+  color: #717182;
+  font-size: 11px;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -560,6 +579,10 @@ body::before {
 .blocked-host-row button:hover {
   background: #ececf0;
   color: #b42318;
+}
+
+.blocked-host-row.is-disabled button:hover {
+  color: #047857;
 }
 
 .settings-footer {
