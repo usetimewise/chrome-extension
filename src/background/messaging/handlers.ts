@@ -1,6 +1,7 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { getDeviceState } from "../../lib/storage/device-state.js";
 import { getFocusSessions, saveFocusSessions } from "../../lib/storage/focus-sessions.js";
+import { saveUserPreferences } from "../../lib/storage/preferences.js";
 import { getResolvedClassificationCategory, getSiteClassifications } from "../../lib/storage/site-classifications.js";
 import { getSettings, getSiteRules, saveSiteRule as saveLocalSiteRule } from "../../lib/storage/site-rules.js";
 import { isBackgroundRequest } from "../../lib/messaging/contracts.js";
@@ -119,6 +120,10 @@ export function createBackgroundMessageListener(
             void ensureClassificationForHost(context, message.host);
             void processSiteClassificationQueue(context);
           }
+          return { ok: true, payload, bootstrap: await buildBootstrap(context) };
+        }
+        case MESSAGE_TYPES.savePreferences: {
+          const payload = await saveUserPreferences(message.preferences);
           return { ok: true, payload, bootstrap: await buildBootstrap(context) };
         }
         case MESSAGE_TYPES.closeCurrentTab: {

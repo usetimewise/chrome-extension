@@ -3,6 +3,7 @@ import { getAppSettings } from "../app-settings.js";
 import type { Category, Settings, SiteRuleState } from "../types.js";
 import { hostMatchesRule } from "../utils.js";
 import { getFromStorage, setInStorage } from "./client.js";
+import { buildEffectiveSettings, getUserPreferences } from "./preferences.js";
 
 export async function getSiteRules(): Promise<SiteRuleState> {
   const rules = await getFromStorage<SiteRuleState | null>(STORAGE_KEYS.siteRules, null);
@@ -41,16 +42,6 @@ export async function saveSiteRule(host: string, category?: Category, excluded =
 
 export async function getSettings(): Promise<Settings> {
   const settings = getAppSettings();
-  const siteRules = await getSiteRules();
-  return {
-    ...settings,
-    excludedHosts: Array.from(new Set([
-      ...settings.excludedHosts,
-      ...siteRules.excludedHosts
-    ])),
-    categoryOverrides: {
-      ...settings.categoryOverrides,
-      ...siteRules.categoryOverrides
-    }
-  };
+  const [siteRules, preferences] = await Promise.all([getSiteRules(), getUserPreferences()]);
+  return buildEffectiveSettings(settings, preferences, siteRules);
 }

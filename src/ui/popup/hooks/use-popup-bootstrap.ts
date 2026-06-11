@@ -39,6 +39,7 @@ export function usePopupBootstrap() {
 
   return {
     bootstrap,
+    applyBootstrap: setBootstrap,
     refreshBootstrap: loadBootstrap
   };
 }

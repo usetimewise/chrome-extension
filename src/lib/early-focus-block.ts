@@ -1,4 +1,4 @@
-import { FOCUS_CATEGORIES } from "./constants.js";
+import { DISTRACTION_CATEGORIES, FOCUS_CATEGORIES } from "./constants.js";
 import type { Category, FocusSession, SiteRuleState } from "./types.js";
 import { lookupCachedUrlDecision } from "./urlDecision/match.js";
 import { normalizeUrl } from "./urlDecision/normalizeUrl.js";
@@ -11,7 +11,7 @@ export type EarlyFocusBlockDecision =
       sessionId: string;
       host: string;
       category: string;
-      reason: "seed_rule" | "cached_decision";
+      reason: "user_block_rule" | "seed_rule" | "cached_decision";
     }
   | {
       action: "allow";
@@ -65,6 +65,20 @@ function isUserAllowedHost(host: string, siteRules: SiteRuleState | null | undef
   ));
 }
 
+function findUserBlockedCategory(host: string, siteRules: SiteRuleState | null | undefined): Category | null {
+  if (!siteRules) {
+    return null;
+  }
+
+  for (const [ruleHost, category] of Object.entries(siteRules.categoryOverrides || {})) {
+    if (hostMatchesRule(host, ruleHost) && DISTRACTION_CATEGORIES.has(category as Category)) {
+      return category as Category;
+    }
+  }
+
+  return null;
+}
+
 function matchSeedRule(rawUrl: string): EarlyBlockRule | null {
   const normalized = normalizeUrl(rawUrl);
   if (!normalized) {
@@ -108,6 +122,17 @@ export async function determineEarlyFocusBlock(
 
   if (isUserAllowedHost(host, siteRules)) {
     return { action: "allow", reason: "user_override" };
+  }
+
+  const userBlockedCategory = findUserBlockedCategory(host, siteRules);
+  if (userBlockedCategory) {
+    return {
+      action: "block",
+      sessionId: session.id,
+      host,
+      category: userBlockedCategory,
+      reason: "user_block_rule"
+    };
   }
 
   const seedRule = matchSeedRule(rawUrl);

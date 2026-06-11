@@ -1,3 +1,7 @@
+import { STORAGE_KEYS } from "../lib/constants.js";
+import { getFocusCompanion, type FocusCompanion } from "../lib/focus-companions.js";
+import type { UserPreferences } from "../lib/types.js";
+
 type FocusOverlayMessage = {
   sessionId: string;
   message: string;
@@ -8,7 +12,10 @@ type FocusOverlayMessage = {
 
 {
 type OverlayCopyVariant = {
-  imageFileName: string;
+  imageFileName: string | null;
+  avatarText: string;
+  colorClass: string;
+  imageAlt: string;
   text: string;
 };
 
@@ -29,47 +36,17 @@ const FOCUS_MESSAGE_TYPES = {
 const OVERLAY_ID = "time-wise-focus-overlay";
 const FOCUS_BLOCKER_ENGAGE_EVENT = "time-wise-focus-blocker-engage";
 const FOCUS_BLOCKER_RELEASE_EVENT = "time-wise-focus-blocker-release";
-const OVERLAY_COPY_VARIANTS: readonly OverlayCopyVariant[] = [
-  {
-    imageFileName: "ceo-s02p01-kpi-frown.png",
-    text: "Distraction detected. ROI on YouTube: negative. Reallocate."
-  },
-  {
-    imageFileName: "ceo-s02p02-phone-no.png",
-    text: "Twelve minutes of TikTok. That's a $40 mistake. Course-correct."
-  },
-  {
-    imageFileName: "ceo-s02p03-watch-tap.png",
-    text: "Entertainment is not on the roadmap. Close the tab."
-  },
-  {
-    imageFileName: "ceo-s02p04-clipboard-flip.png",
-    text: "You're optimizing for dopamine, not impact. Switch."
-  },
-  {
-    imageFileName: "ceo-s02p05-pinch-bridge.png",
-    text: "Top performers don't scroll during sprint hours."
-  },
-  {
-    imageFileName: "ceo-s02p06-meeting-call.png",
-    text: "Quick audit: is this tab on your OKRs? No? Close it."
-  },
-  {
-    imageFileName: "ceo-s02p07-folded-arms.png",
-    text: "Reels won't appear in your performance review. Refocus."
-  },
-  {
-    imageFileName: "ceo-s02p08-redline-pen.png",
-    text: "Your competitors are shipping. You're watching. Adjust."
-  },
-  {
-    imageFileName: "ceo-s02p09-firm-stare.png",
-    text: "Calendar this for after-hours. Now back to the task."
-  },
-  {
-    imageFileName: "ceo-s02p10-tap-table.png",
-    text: "Execution gap detected. Close it now."
-  }
+const CEO_IMAGE_VARIANTS = [
+  "ceo-s02p01-kpi-frown.png",
+  "ceo-s02p02-phone-no.png",
+  "ceo-s02p03-watch-tap.png",
+  "ceo-s02p04-clipboard-flip.png",
+  "ceo-s02p05-pinch-bridge.png",
+  "ceo-s02p06-meeting-call.png",
+  "ceo-s02p07-folded-arms.png",
+  "ceo-s02p08-redline-pen.png",
+  "ceo-s02p09-firm-stare.png",
+  "ceo-s02p10-tap-table.png"
 ] as const;
 const stateHost = globalThis as typeof globalThis & {
   __timeWiseFocusNudgeState?: FocusNudgeState;
@@ -118,8 +95,29 @@ function overlayKey(message: FocusOverlayMessage): string {
   return `${message.sessionId}:${message.host}`;
 }
 
-function getRandomCopyVariant(): OverlayCopyVariant {
-  return OVERLAY_COPY_VARIANTS[Math.floor(Math.random() * OVERLAY_COPY_VARIANTS.length)];
+async function getSelectedCompanion(): Promise<FocusCompanion> {
+  try {
+    const values = await chrome.storage.local.get(STORAGE_KEYS.preferences);
+    const preferences = values[STORAGE_KEYS.preferences] as Partial<UserPreferences> | undefined;
+    return getFocusCompanion(preferences?.selectedCompanionId);
+  } catch {
+    return getFocusCompanion("ceo");
+  }
+}
+
+function getRandomCopyVariant(companion: FocusCompanion): OverlayCopyVariant {
+  const text = companion.copy[Math.floor(Math.random() * companion.copy.length)] || companion.copy[0];
+  const imageFileName = companion.id === "ceo"
+    ? CEO_IMAGE_VARIANTS[Math.floor(Math.random() * CEO_IMAGE_VARIANTS.length)]
+    : companion.imageFileName;
+
+  return {
+    imageFileName,
+    avatarText: companion.avatarText,
+    colorClass: companion.colorClass,
+    imageAlt: companion.name,
+    text
+  };
 }
 
 function getCeoImageUrl(imageFileName: string): string {
@@ -207,8 +205,8 @@ function startOverlayCountdown(shadow: ShadowRoot, message: FocusOverlayMessage)
   focusNudgeState.countdownTimerId = window.setInterval(tick, 1000);
 }
 
-function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
-  const copyVariant = getRandomCopyVariant();
+async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElement> {
+  const copyVariant = getRandomCopyVariant(await getSelectedCompanion());
   const host = document.createElement("div");
   host.id = OVERLAY_ID;
 
@@ -286,6 +284,29 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
       height: 160px;
       object-fit: contain;
     }
+
+    .avatar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 160px;
+      height: 160px;
+      border-radius: 16px;
+      font-size: 64px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .avatar-violet { background: #f1edff; color: #6d28d9; }
+    .avatar-blue { background: #eaf2ff; color: #1d4ed8; }
+    .avatar-emerald { background: #e7f8ef; color: #047857; }
+    .avatar-rose { background: #fff0f3; color: #be123c; }
+    .avatar-stone { background: #f1f1ef; color: #57534e; }
+    .avatar-cyan { background: #e8f8fb; color: #0e7490; }
+    .avatar-amber { background: #fff7df; color: #b45309; }
+    .avatar-green { background: #ebf8ed; color: #15803d; }
+    .avatar-indigo { background: #eef2ff; color: #4338ca; }
+    .avatar-gray { background: #f0f1f4; color: #4b5563; }
 
     .title {
       margin: 0 0 4px;
@@ -477,13 +498,21 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
   const imageWrap = document.createElement("div");
   imageWrap.className = "image-wrap";
 
-  const image = document.createElement("img");
-  image.className = "image";
-  image.src = getCeoImageUrl(copyVariant.imageFileName);
-  image.alt = "Focus reminder";
-  image.loading = "eager";
-  image.decoding = "async";
-  imageWrap.append(image);
+  if (copyVariant.imageFileName) {
+    const image = document.createElement("img");
+    image.className = "image";
+    image.src = getCeoImageUrl(copyVariant.imageFileName);
+    image.alt = copyVariant.imageAlt;
+    image.loading = "eager";
+    image.decoding = "async";
+    imageWrap.append(image);
+  } else {
+    const avatar = document.createElement("div");
+    avatar.className = `avatar avatar-${copyVariant.colorClass}`;
+    avatar.setAttribute("aria-label", copyVariant.imageAlt);
+    avatar.textContent = copyVariant.avatarText;
+    imageWrap.append(avatar);
+  }
 
   const title = document.createElement("h1");
   title.className = "title";
@@ -585,7 +614,7 @@ function buildOverlay(message: FocusOverlayMessage): HTMLDivElement {
   return host;
 }
 
-function showFocusOverlay(message: FocusOverlayMessage): void {
+async function showFocusOverlay(message: FocusOverlayMessage): Promise<void> {
   const key = overlayKey(message);
   if (focusNudgeState.suppressedHosts.has(key)) {
     removeExistingOverlay();
@@ -599,7 +628,7 @@ function showFocusOverlay(message: FocusOverlayMessage): void {
   removeExistingOverlay();
   focusNudgeState.activeOverlayKey = key;
   engageFocusBlocker();
-  document.documentElement.append(buildOverlay(message));
+  document.documentElement.append(await buildOverlay(message));
 }
 
 if (!focusNudgeState.listenerInstalled && !focusNudgeState.contextInvalidated) {
@@ -608,8 +637,9 @@ if (!focusNudgeState.listenerInstalled && !focusNudgeState.contextInvalidated) {
       return false;
     }
 
-    showFocusOverlay(message);
-    sendResponse({ ok: true });
+    void showFocusOverlay(message)
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false }));
     return true;
   });
   focusNudgeState.listenerInstalled = true;

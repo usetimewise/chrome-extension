@@ -1,5 +1,5 @@
 import type { Category, SiteClassificationState, SiteRuleState } from "./activity.js";
-import type { FocusSession } from "./focus.js";
+import type { FocusCompanionId, FocusSession } from "./focus.js";
 
 export type NudgeSensitivity = "direct" | "balanced" | "gentle";
 
@@ -18,6 +18,15 @@ export interface Settings {
   aiTone: string;
   excludedHosts: string[];
   categoryOverrides: Record<string, Category>;
+  selectedCompanionId: FocusCompanionId;
+  defaultFocusMinutes: number;
+  blockedHosts: string[];
+}
+
+export interface UserPreferences {
+  selectedCompanionId: FocusCompanionId;
+  defaultFocusMinutes: number;
+  blockedHosts: string[];
 }
 
 export interface DeviceState {

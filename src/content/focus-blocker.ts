@@ -1,6 +1,7 @@
 import { MESSAGE_TYPES, STORAGE_KEYS } from "../lib/constants.js";
 import { determineEarlyFocusBlock } from "../lib/early-focus-block.js";
-import type { FocusSession, SiteRuleState } from "../lib/types.js";
+import { buildEffectiveSiteRules } from "../lib/storage/preferences.js";
+import type { FocusSession, SiteRuleState, UserPreferences } from "../lib/types.js";
 
 const BLOCKER_ID = "time-wise-focus-blocker";
 const BLOCKER_STYLE_ID = "time-wise-focus-blocker-style";
@@ -148,12 +149,19 @@ function installMediaBlocker(): void {
 }
 
 async function readStorage(): Promise<{ sessions: FocusSession[]; siteRules: SiteRuleState | null }> {
-  const values = await chrome.storage.local.get([STORAGE_KEYS.focusSessions, STORAGE_KEYS.siteRules]);
+  const values = await chrome.storage.local.get([
+    STORAGE_KEYS.focusSessions,
+    STORAGE_KEYS.preferences,
+    STORAGE_KEYS.siteRules
+  ]);
+  const storedSiteRules = values[STORAGE_KEYS.siteRules] as SiteRuleState | null || null;
+  const preferences = values[STORAGE_KEYS.preferences] as UserPreferences | null || null;
+
   return {
     sessions: Array.isArray(values[STORAGE_KEYS.focusSessions])
       ? values[STORAGE_KEYS.focusSessions] as FocusSession[]
       : [],
-    siteRules: values[STORAGE_KEYS.siteRules] as SiteRuleState | null || null
+    siteRules: buildEffectiveSiteRules(storedSiteRules, preferences)
   };
 }
 

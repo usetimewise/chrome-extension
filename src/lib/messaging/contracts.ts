@@ -5,7 +5,8 @@ import type {
   Category,
   FocusSession,
   RetrySiteClassificationsResponse,
-  SiteRuleState
+  SiteRuleState,
+  UserPreferences
 } from "../types.js";
 
 export type BackgroundBootstrapRequest = {
@@ -37,6 +38,11 @@ export type BackgroundEndFocusSessionRequest = {
   sessionId: string;
 };
 
+export type BackgroundSavePreferencesRequest = {
+  type: typeof MESSAGE_TYPES.savePreferences;
+  preferences: UserPreferences;
+};
+
 export type BackgroundSaveSiteRuleRequest = {
   type: typeof MESSAGE_TYPES.saveSiteRule;
   host: string;
@@ -66,6 +72,7 @@ export type BackgroundRequest =
   | BackgroundPauseFocusSessionRequest
   | BackgroundResumeFocusSessionRequest
   | BackgroundEndFocusSessionRequest
+  | BackgroundSavePreferencesRequest
   | BackgroundSaveSiteRuleRequest
   | BackgroundCloseCurrentTabRequest
   | BackgroundForceFocusNudgeRequest
@@ -96,6 +103,12 @@ export interface BackgroundSaveSiteRuleResponse {
   bootstrap: BootstrapResponse;
 }
 
+export interface BackgroundSavePreferencesResponse {
+  ok: true;
+  payload: UserPreferences;
+  bootstrap: BootstrapResponse;
+}
+
 export interface BackgroundCloseCurrentTabResponse {
   ok: true;
 }
@@ -117,6 +130,7 @@ export type BackgroundSuccessResponseMap = {
   [MESSAGE_TYPES.pauseFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.resumeFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.endFocusSession]: BackgroundFocusSessionResponse;
+  [MESSAGE_TYPES.savePreferences]: BackgroundSavePreferencesResponse;
   [MESSAGE_TYPES.saveSiteRule]: BackgroundSaveSiteRuleResponse;
   [MESSAGE_TYPES.closeCurrentTab]: BackgroundCloseCurrentTabResponse;
   [MESSAGE_TYPES.forceFocusNudge]: BackgroundForceFocusNudgeResponse;
@@ -189,6 +203,18 @@ function isCategory(value: unknown): value is Category {
   ].includes(value);
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isUserPreferences(value: unknown): value is UserPreferences {
+  return isPlainObject(value) &&
+    typeof value.selectedCompanionId === "string" &&
+    typeof value.defaultFocusMinutes === "number" &&
+    Number.isFinite(value.defaultFocusMinutes) &&
+    isStringArray(value.blockedHosts);
+}
+
 export function isBackgroundRequest(value: unknown): value is BackgroundRequest {
   if (!isPlainObject(value) || !isValidMessageType(value.type)) {
     return false;
@@ -206,6 +232,8 @@ export function isBackgroundRequest(value: unknown): value is BackgroundRequest 
     case MESSAGE_TYPES.resumeFocusSession:
     case MESSAGE_TYPES.endFocusSession:
       return isRequiredString(value.sessionId);
+    case MESSAGE_TYPES.savePreferences:
+      return isUserPreferences(value.preferences);
     case MESSAGE_TYPES.saveSiteRule:
       return isRequiredString(value.host) && isCategory(value.category) && typeof value.excluded === "boolean";
     case MESSAGE_TYPES.focusBlockerBlocked:

@@ -14,7 +14,10 @@ export const APP_SETTINGS: Settings = {
   aiInsightsEnabled: true,
   aiTone: "balanced",
   excludedHosts: [],
-  categoryOverrides: {}
+  categoryOverrides: {},
+  selectedCompanionId: "ceo",
+  defaultFocusMinutes: 20,
+  blockedHosts: []
 };
 
 export function getAppSettings(): Settings {
@@ -23,6 +26,7 @@ export function getAppSettings(): Settings {
     workdays: [...APP_SETTINGS.workdays],
     deepWorkBlocks: APP_SETTINGS.deepWorkBlocks.map((block) => ({ ...block })),
     excludedHosts: [...APP_SETTINGS.excludedHosts],
-    categoryOverrides: { ...APP_SETTINGS.categoryOverrides }
+    categoryOverrides: { ...APP_SETTINGS.categoryOverrides },
+    blockedHosts: [...APP_SETTINGS.blockedHosts]
   };
 }

@@ -91,6 +91,41 @@ test("user work override wins over seeded block rules", async () => {
   );
 });
 
+test("user excluded host wins over forced distraction block", async () => {
+  assert.deepEqual(
+    await determineEarlyFocusBlock(
+      "https://reddit.com/r/typescript",
+      [activeSession()],
+      { excludedHosts: ["reddit.com"], categoryOverrides: { "reddit.com": "social" } }
+    ),
+    { action: "allow", reason: "user_override" }
+  );
+});
+
+test("user focus category override wins over forced distraction block", async () => {
+  assert.deepEqual(
+    await determineEarlyFocusBlock(
+      "https://docs.example.com/path",
+      [activeSession()],
+      { excludedHosts: [], categoryOverrides: { "example.com": "social", "docs.example.com": "work" } }
+    ),
+    { action: "allow", reason: "user_override" }
+  );
+});
+
+test("blocks user forced distraction rule before cached lookup", async () => {
+  const decision = await determineEarlyFocusBlock(
+    "https://www.example.com/feed",
+    [activeSession()],
+    { excludedHosts: [], categoryOverrides: { "example.com": "social" } }
+  );
+
+  assert.equal(decision.action, "block");
+  assert.equal(decision.action === "block" && decision.reason, "user_block_rule");
+  assert.equal(decision.action === "block" && decision.category, "social");
+  assert.equal(decision.action === "block" && decision.host, "example.com");
+});
+
 test("blocks from cached url decision buckets without network lookup", async () => {
   const domainHash = await hashedKey("d:example.com");
   await saveBuckets([{

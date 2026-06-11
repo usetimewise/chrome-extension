@@ -4,6 +4,7 @@ export const STORAGE_KEYS = {
   device: "twt_device_v2",
   runtimeState: "twt_runtime_state_v2",
   focusSessions: "twt_focus_sessions_v1",
+  preferences: "twt_preferences_v1",
   siteRules: "twt_site_rules_v1",
   siteClassifications: "twt_site_classifications_v1",
   siteDecisionCache: "twt_site_decision_cache_v1"
@@ -16,6 +17,7 @@ export const MESSAGE_TYPES = {
   pauseFocusSession: "PAUSE_FOCUS_SESSION",
   resumeFocusSession: "RESUME_FOCUS_SESSION",
   endFocusSession: "END_FOCUS_SESSION",
+  savePreferences: "SAVE_PREFERENCES",
   saveSiteRule: "SAVE_SITE_RULE",
   closeCurrentTab: "CLOSE_CURRENT_TAB",
   forceFocusNudge: "FORCE_FOCUS_NUDGE",
