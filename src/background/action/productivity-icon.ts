@@ -1,3 +1,5 @@
+import { createTranslator, type AppLanguage } from "../../lib/i18n/index.js";
+
 const ACTION_ICON_SIZES = [16, 32] as const;
 const INACTIVE_ICON_COLOR = "#7b8794";
 const ACTIVE_ICON_COLOR = "#2563eb";
@@ -13,18 +15,19 @@ export interface ActionVisualState {
 let lastActionStateKey: string | null = null;
 const iconImageCache = new Map<string, Record<number, ImageData>>();
 
-export function buildActionVisualState(focusActive: boolean): ActionVisualState {
+export function buildActionVisualState(focusActive: boolean, language: AppLanguage = "en"): ActionVisualState {
+  const t = createTranslator(language);
   return {
     badgeText: focusActive ? "ON" : "",
     focusActive,
     iconColor: focusActive ? ACTIVE_ICON_COLOR : INACTIVE_ICON_COLOR,
-    stateKey: focusActive ? "focus-active" : "focus-inactive",
-    title: focusActive ? "Time Wise: фокусировка включена" : "Time Wise: фокусировка выключена"
+    stateKey: `${focusActive ? "focus-active" : "focus-inactive"}:${language}`,
+    title: focusActive ? t("action.focusActive") : t("action.focusInactive")
   };
 }
 
-export async function updateProductivityActionIcon(focusActive: boolean): Promise<void> {
-  const visualState = buildActionVisualState(focusActive);
+export async function updateProductivityActionIcon(focusActive: boolean, language: AppLanguage = "en"): Promise<void> {
+  const visualState = buildActionVisualState(focusActive, language);
   if (visualState.stateKey === lastActionStateKey) {
     return;
   }

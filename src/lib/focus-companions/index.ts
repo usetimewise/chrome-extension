@@ -13,5 +13,6 @@ export type {
   FocusCompanionId,
   FocusCompanionOverlayVariant,
   FocusCompanionPreview,
+  FocusCompanionReplica,
   FocusCompanionVisual
 } from "./types.js";

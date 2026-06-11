@@ -6,6 +6,12 @@ import {
   listFocusCompanions
 } from "../../lib/focus-companions/index.js";
 import {
+  createTranslator,
+  detectSystemLanguage,
+  type AppLanguage,
+  type Translator
+} from "../../lib/i18n/index.js";
+import {
   DEFAULT_FOCUS_SESSION_MINUTES,
   MAX_FOCUS_SESSION_MINUTES,
   MIN_FOCUS_SESSION_MINUTES
@@ -33,13 +39,17 @@ type SettingsSaveState =
   | { status: "saved" }
   | { status: "error"; message: string };
 
-const SETTINGS_TABS: Array<{ id: SettingsTab; label: string; icon: string }> = [
-  { id: "companion", label: "Персонаж", icon: "●" },
-  { id: "focus", label: "Фокус", icon: "◷" },
-  { id: "blocking", label: "Блокировка", icon: "◆" }
+const SETTINGS_TABS: Array<{ id: SettingsTab; labelKey: "popup.tabCompanion" | "popup.tabFocus" | "popup.tabBlocking"; icon: string }> = [
+  { id: "companion", labelKey: "popup.tabCompanion", icon: "●" },
+  { id: "focus", labelKey: "popup.tabFocus", icon: "◷" },
+  { id: "blocking", labelKey: "popup.tabBlocking", icon: "◆" }
 ];
 
 const FOCUS_PRESETS = [15, 25, 30, 45, 60, 90];
+const LANGUAGE_OPTIONS: Array<{ language: AppLanguage; labelKey: "language.english" | "language.russian"; shortLabel: string }> = [
+  { language: "en", labelKey: "language.english", shortLabel: "EN" },
+  { language: "ru", labelKey: "language.russian", shortLabel: "RU" }
+];
 
 function clampFocusMinutes(value: number): number {
   return normalizeDefaultFocusMinutes(value);
@@ -49,11 +59,16 @@ function getDefaultFocusMinutes(bootstrap: BootstrapResponse | null): number {
   return clampFocusMinutes(bootstrap?.settings?.defaultFocusMinutes ?? DEFAULT_FOCUS_SESSION_MINUTES);
 }
 
+function getBootstrapLanguage(bootstrap: BootstrapResponse | null): AppLanguage {
+  return bootstrap?.settings?.language || detectSystemLanguage();
+}
+
 function buildPreferencesDraft(bootstrap: BootstrapResponse | null): UserPreferences {
   return {
     selectedCompanionId: bootstrap?.settings?.selectedCompanionId || "ceo",
     defaultFocusMinutes: getDefaultFocusMinutes(bootstrap),
-    blockedHosts: [...(bootstrap?.settings?.blockedHosts || [])]
+    blockedHosts: [...(bootstrap?.settings?.blockedHosts || [])],
+    language: getBootstrapLanguage(bootstrap)
   };
 }
 
@@ -65,12 +80,69 @@ function formatRemainingTime(value: number | undefined): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function LanguagePicker({
+  language,
+  disabled,
+  saveState,
+  t,
+  onChange
+}: {
+  language: AppLanguage;
+  disabled: boolean;
+  saveState: "idle" | "saving";
+  t: Translator;
+  onChange: (language: AppLanguage) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const currentOption = LANGUAGE_OPTIONS.find((option) => option.language === language) || LANGUAGE_OPTIONS[0];
+
+  return (
+    <div className="language-picker">
+      <button
+        className="settings-icon-button language-picker-button"
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        disabled={disabled}
+        aria-label={t("popup.openLanguageMenu")}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+      >
+        {saveState === "saving" ? "..." : currentOption.shortLabel}
+      </button>
+      {isOpen ? (
+        <div className="language-menu" role="menu" aria-label={t("popup.languageMenu")}>
+          {LANGUAGE_OPTIONS.map((option) => (
+            <button
+              key={option.language}
+              className={option.language === language ? "language-menu-item is-active" : "language-menu-item"}
+              type="button"
+              role="menuitemradio"
+              aria-checked={option.language === language}
+              onClick={() => {
+                setIsOpen(false);
+                onChange(option.language);
+              }}
+            >
+              <span>{option.shortLabel}</span>
+              <span>{t(option.labelKey)}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function SettingsView({
   bootstrap,
+  language,
+  t,
   onBack,
   onSaved
 }: {
   bootstrap: BootstrapResponse | null;
+  language: AppLanguage;
+  t: Translator;
   onBack: () => void;
   onSaved: (bootstrap: BootstrapResponse) => void;
 }) {
@@ -83,9 +155,10 @@ function SettingsView({
   const blockedHosts = useMemo(() => [...draft.blockedHosts].sort(), [draft.blockedHosts]);
   const companionPreviews = useMemo(() => listFocusCompanions().map((companion) => (
     createFocusCompanionPreview(companion.id, {
+      language,
       resolveAssetUrl: (path) => chrome.runtime.getURL(path)
     })
-  )), []);
+  )), [language]);
 
   useEffect(() => {
     if (!bootstrap || initializedFromBootstrapRef.current) {
@@ -99,12 +172,12 @@ function SettingsView({
   function handleAddBlockedHost() {
     const host = normalizePreferenceHost(newBlockedHost);
     if (!host) {
-      setBlockedHostError("Введите корректный домен, например example.com");
+      setBlockedHostError(t("popup.blockedHostInvalid"));
       return;
     }
 
     if (draft.blockedHosts.includes(host)) {
-      setBlockedHostError("Этот сайт уже есть в списке");
+      setBlockedHostError(t("popup.blockedHostDuplicate"));
       return;
     }
 
@@ -145,7 +218,7 @@ function SettingsView({
     } catch (error) {
       setSaveState({
         status: "error",
-        message: getErrorMessage(error, "Не удалось сохранить настройки")
+        message: getErrorMessage(error, t("popup.saveSettingsError"))
       });
     }
   }
@@ -154,16 +227,16 @@ function SettingsView({
     <main className="popup-shell popup-shell-settings" aria-label="Settings">
       <section className="settings-panel">
         <header className="settings-header">
-          <button className="settings-icon-button" type="button" onClick={onBack} aria-label="Вернуться к фокусировке">
+          <button className="settings-icon-button" type="button" onClick={onBack} aria-label={t("popup.backToFocus")}>
             ←
           </button>
           <div>
             <p className="popup-kicker">Time Wise</p>
-            <h1 className="settings-title">Настройки</h1>
+            <h1 className="settings-title">{t("popup.settingsTitle")}</h1>
           </div>
         </header>
 
-        <nav className="settings-tabs" aria-label="Разделы настроек">
+        <nav className="settings-tabs" aria-label={t("popup.settingsSections")}>
           {SETTINGS_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -172,7 +245,7 @@ function SettingsView({
               onClick={() => setActiveTab(tab.id)}
             >
               <span aria-hidden="true">{tab.icon}</span>
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </nav>
@@ -180,7 +253,7 @@ function SettingsView({
         <div className="settings-content">
           {activeTab === "companion" ? (
             <div className="settings-section">
-              <p className="settings-copy">Выберите компаньона, который будет появляться в блокировщике.</p>
+              <p className="settings-copy">{t("popup.companionCopy")}</p>
               <div className="companion-grid">
                 {companionPreviews.map((companion) => (
                   <button
@@ -208,7 +281,7 @@ function SettingsView({
                     <span className="companion-role">{companion.role}</span>
                     <span className="companion-description">{companion.description}</span>
                     {draft.selectedCompanionId === companion.id ? (
-                      <span className="companion-check" aria-label="Выбран">✓</span>
+                      <span className="companion-check" aria-label={t("popup.selected")}>✓</span>
                     ) : null}
                   </button>
                 ))}
@@ -218,10 +291,10 @@ function SettingsView({
 
           {activeTab === "focus" ? (
             <div className="settings-section">
-              <p className="settings-copy">Длительность фокусировки по умолчанию.</p>
+              <p className="settings-copy">{t("popup.focusDurationCopy")}</p>
               <div className="focus-duration-readout">
                 <strong>{draft.defaultFocusMinutes}</strong>
-                <span>мин</span>
+                <span>{t("common.minutesShort")}</span>
               </div>
               <input
                 className="settings-range"
@@ -240,10 +313,10 @@ function SettingsView({
                 }}
               />
               <div className="settings-range-labels">
-                <span>{MIN_FOCUS_SESSION_MINUTES} мин</span>
-                <span>{MAX_FOCUS_SESSION_MINUTES} мин</span>
+                <span>{MIN_FOCUS_SESSION_MINUTES} {t("common.minutesShort")}</span>
+                <span>{MAX_FOCUS_SESSION_MINUTES} {t("common.minutesShort")}</span>
               </div>
-              <div className="focus-presets" aria-label="Быстрый выбор времени">
+              <div className="focus-presets" aria-label={t("popup.quickTime")}>
                 {FOCUS_PRESETS.map((preset) => (
                   <button
                     key={preset}
@@ -252,9 +325,9 @@ function SettingsView({
                     onClick={() => {
                       setDraft((current) => ({ ...current, defaultFocusMinutes: preset }));
                       setSaveState({ status: "idle" });
-                    }}
-                  >
-                    {preset} мин
+                  }}
+                >
+                    {preset} {t("common.minutesShort")}
                   </button>
                 ))}
               </div>
@@ -263,13 +336,13 @@ function SettingsView({
 
           {activeTab === "blocking" ? (
             <div className="settings-section">
-              <p className="settings-copy">Эти сайты будут блокироваться во время активной фокусировки.</p>
+              <p className="settings-copy">{t("popup.blockingCopy")}</p>
               <div className="blocked-host-form">
                 <input
                   className="blocked-host-input"
                   type="text"
                   value={newBlockedHost}
-                  placeholder="example.com или https://example.com/path"
+                  placeholder={t("popup.blockedHostPlaceholder")}
                   onChange={(event) => {
                     setNewBlockedHost(event.currentTarget.value);
                     setBlockedHostError(null);
@@ -286,7 +359,7 @@ function SettingsView({
                   type="button"
                   onClick={handleAddBlockedHost}
                   disabled={!newBlockedHost.trim()}
-                  aria-label="Добавить сайт"
+                  aria-label={t("popup.addSite")}
                 >
                   +
                 </button>
@@ -296,14 +369,14 @@ function SettingsView({
               ) : null}
               <div className="blocked-host-list">
                 {blockedHosts.length === 0 ? (
-                  <p className="settings-empty">Список пуст.</p>
+                  <p className="settings-empty">{t("popup.emptyList")}</p>
                 ) : blockedHosts.map((host) => (
                   <div className="blocked-host-row" key={host}>
                     <span>{host}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveBlockedHost(host)}
-                      aria-label={`Удалить ${host}`}
+                      aria-label={t("popup.removeHost", { host })}
                     >
                       ×
                     </button>
@@ -311,7 +384,7 @@ function SettingsView({
                 ))}
               </div>
               {blockedHosts.length > 0 ? (
-                <p className="settings-muted">{blockedHosts.length} сайтов в списке</p>
+                <p className="settings-muted">{t("popup.blockedHostsCount", { count: blockedHosts.length })}</p>
               ) : null}
             </div>
           ) : null}
@@ -322,7 +395,7 @@ function SettingsView({
             <p className="popup-error-text" role="alert">{saveState.message}</p>
           ) : null}
           {saveState.status === "saved" ? (
-            <p className="popup-status-text" role="status">Настройки сохранены</p>
+            <p className="popup-status-text" role="status">{t("popup.settingsSaved")}</p>
           ) : null}
           <button
             className="popup-primary-button"
@@ -330,7 +403,7 @@ function SettingsView({
             onClick={() => void handleSaveSettings()}
             disabled={saveState.status === "saving" || !bootstrap}
           >
-            {saveState.status === "saving" ? "Сохраняем..." : "Сохранить настройки"}
+            {saveState.status === "saving" ? t("popup.savingSettings") : t("popup.saveSettings")}
           </button>
         </footer>
       </section>
@@ -342,14 +415,17 @@ function PopupApp() {
   const { bootstrap, applyBootstrap, refreshBootstrap } = usePopupBootstrap();
   const [view, setView] = useState<PopupView>("focus");
   const [actionState, setActionState] = useState<FocusActionState>({ status: "idle" });
+  const [languageSaveState, setLanguageSaveState] = useState<"idle" | "saving">("idle");
   const [selectedMinutes, setSelectedMinutes] = useState(() => getDefaultFocusMinutes(null));
   const didInitializeMinutesRef = useRef(false);
+  const language = getBootstrapLanguage(bootstrap);
+  const t = useMemo(() => createTranslator(language), [language]);
   const activeSession = bootstrap?.popupModel?.focusSession?.status === "active"
     ? bootstrap.popupModel.focusSession
     : null;
   const isFocusActive = Boolean(activeSession);
   const isLoading = !bootstrap || actionState.status === "loading";
-  const buttonLabel = isFocusActive ? "Остановить фокусировку" : "Запустить фокусировку";
+  const buttonLabel = isFocusActive ? t("popup.buttonStop") : t("popup.buttonStart");
 
   useEffect(() => {
     if (!bootstrap || didInitializeMinutesRef.current) {
@@ -383,8 +459,34 @@ function PopupApp() {
     } catch (error) {
       setActionState({
         status: "error",
-        message: getErrorMessage(error, "Не удалось изменить режим фокусировки")
+        message: getErrorMessage(error, t("popup.focusChangeError"))
       });
+    }
+  }
+
+  async function handleLanguageChange(nextLanguage: AppLanguage) {
+    if (languageSaveState === "saving" || nextLanguage === language || !bootstrap) {
+      return;
+    }
+
+    setLanguageSaveState("saving");
+    setActionState({ status: "idle" });
+    try {
+      const response = await sendBackgroundMessage({
+        type: MESSAGE_TYPES.savePreferences,
+        preferences: {
+          ...buildPreferencesDraft(bootstrap),
+          language: nextLanguage
+        }
+      });
+      applyBootstrap(response.bootstrap);
+    } catch (error) {
+      setActionState({
+        status: "error",
+        message: getErrorMessage(error, t("popup.languageSaveError"))
+      });
+    } finally {
+      setLanguageSaveState("idle");
     }
   }
 
@@ -392,6 +494,8 @@ function PopupApp() {
     return (
       <SettingsView
         bootstrap={bootstrap}
+        language={language}
+        t={t}
         onBack={() => setView("focus")}
         onSaved={(nextBootstrap) => {
           applyBootstrap(nextBootstrap);
@@ -406,32 +510,41 @@ function PopupApp() {
       <section className="popup-focus-panel" aria-busy={isLoading}>
         <header className="popup-focus-header">
           <p className="popup-kicker">Time Wise</p>
-          <button
-            className="settings-icon-button"
-            type="button"
-            onClick={() => setView("settings")}
-            aria-label="Открыть настройки"
-          >
-            ⚙
-          </button>
+          <div className="popup-header-actions">
+            <LanguagePicker
+              language={language}
+              disabled={!bootstrap || languageSaveState === "saving"}
+              saveState={languageSaveState}
+              t={t}
+              onChange={(nextLanguage) => void handleLanguageChange(nextLanguage)}
+            />
+            <button
+              className="settings-icon-button"
+              type="button"
+              onClick={() => setView("settings")}
+              aria-label={t("popup.openSettings")}
+            >
+              ⚙
+            </button>
+          </div>
         </header>
         <h1 className="popup-focus-title">
-          {isFocusActive ? "Фокусировка включена" : "Фокусировка выключена"}
+          {isFocusActive ? t("popup.focusActiveTitle") : t("popup.focusInactiveTitle")}
         </h1>
         <p className="popup-focus-copy">
           {isFocusActive
-            ? "Режим фокусировки активен. Отвлекающие сайты будут перекрыты предупреждением."
-            : "Включите режим фокусировки, когда хотите убрать отвлекающие сайты из текущей сессии."}
+            ? t("popup.focusActiveCopy")
+            : t("popup.focusInactiveCopy")}
         </p>
 
         {activeSession ? (
           <div className="popup-countdown" aria-live="polite">
-            <span className="popup-countdown-label">Осталось</span>
+            <span className="popup-countdown-label">{t("popup.countdownLabel")}</span>
             <strong className="popup-countdown-value">{formatRemainingTime(activeSession.remaining_ms)}</strong>
           </div>
         ) : (
           <label className="popup-timepicker">
-            <span className="popup-timepicker-label">Время фокусировки, минут</span>
+            <span className="popup-timepicker-label">{t("popup.focusMinutesLabel")}</span>
             <input
               className="popup-timepicker-input"
               type="number"
@@ -456,7 +569,7 @@ function PopupApp() {
         </button>
 
         {!bootstrap ? (
-          <p className="popup-status-text" role="status">Загружаем состояние...</p>
+          <p className="popup-status-text" role="status">{t("popup.loadingState")}</p>
         ) : null}
 
         {actionState.status === "error" ? (

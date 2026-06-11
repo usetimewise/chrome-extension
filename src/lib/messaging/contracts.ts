@@ -1,4 +1,5 @@
 import { MESSAGE_TYPES } from "../constants.js";
+import { normalizeLanguage } from "../i18n/index.js";
 import { isPlainObject } from "../utils.js";
 import type {
   BootstrapResponse,
@@ -212,7 +213,8 @@ function isUserPreferences(value: unknown): value is UserPreferences {
     typeof value.selectedCompanionId === "string" &&
     typeof value.defaultFocusMinutes === "number" &&
     Number.isFinite(value.defaultFocusMinutes) &&
-    isStringArray(value.blockedHosts);
+    isStringArray(value.blockedHosts) &&
+    normalizeLanguage(value.language) !== null;
 }
 
 export function isBackgroundRequest(value: unknown): value is BackgroundRequest {

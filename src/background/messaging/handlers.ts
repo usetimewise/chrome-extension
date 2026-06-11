@@ -1,4 +1,5 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
+import { createTranslator } from "../../lib/i18n/index.js";
 import { getDeviceState } from "../../lib/storage/device-state.js";
 import { getFocusSessions, saveFocusSessions } from "../../lib/storage/focus-sessions.js";
 import { saveUserPreferences } from "../../lib/storage/preferences.js";
@@ -51,7 +52,7 @@ async function buildBootstrap(context: BackgroundRuntimeContext): Promise<Bootst
     focusSessions,
     siteRules,
     siteClassifications,
-    popupModel: buildPopupModel(context, activeSession, currentHostCategory)
+    popupModel: buildPopupModel(context, activeSession, currentHostCategory, settings)
   };
 }
 
@@ -145,9 +146,11 @@ export function createBackgroundMessageListener(
 
           const focusSessionsView = buildFocusSessionsView(await syncFocusSessionTimer());
           const activeSession = focusSessionsView.active_session;
+          const settings = await getSettings();
+          const t = createTranslator(settings.language);
           return showFocusNudgeInTab(
             tabId,
-            "Ты отвлекся. Этот сайт выглядит как отвлечение во время фокусировки.",
+            t("nudge.message"),
             {
               sessionId: message.sessionId,
               host: message.host,

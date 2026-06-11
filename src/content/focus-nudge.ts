@@ -1,5 +1,11 @@
 import { STORAGE_KEYS } from "../lib/constants.js";
 import { createFocusCompanionOverlayVariant } from "../lib/focus-companions/index.js";
+import {
+  createTranslator,
+  resolveLanguage,
+  type AppLanguage,
+  type Translator
+} from "../lib/i18n/index.js";
 import type { UserPreferences } from "../lib/types.js";
 
 type FocusOverlayMessage = {
@@ -75,11 +81,10 @@ function overlayKey(message: FocusOverlayMessage): string {
   return `${message.sessionId}:${message.host}`;
 }
 
-async function getSelectedCompanionId(): Promise<string | undefined> {
+async function getStoredPreferences(): Promise<Partial<UserPreferences> | undefined> {
   try {
     const values = await chrome.storage.local.get(STORAGE_KEYS.preferences);
-    const preferences = values[STORAGE_KEYS.preferences] as Partial<UserPreferences> | undefined;
-    return preferences?.selectedCompanionId;
+    return values[STORAGE_KEYS.preferences] as Partial<UserPreferences> | undefined;
   } catch {
     return undefined;
   }
@@ -134,7 +139,7 @@ function setCountdownText(shadow: ShadowRoot, remainingMs: number): void {
   }
 }
 
-function startOverlayCountdown(shadow: ShadowRoot, message: FocusOverlayMessage): void {
+function startOverlayCountdown(shadow: ShadowRoot, message: FocusOverlayMessage, t: Translator): void {
   const endsAt = Date.now() + Math.max(0, message.remainingMs);
   let hasSentEnd = false;
 
@@ -158,7 +163,7 @@ function startOverlayCountdown(shadow: ShadowRoot, message: FocusOverlayMessage)
       })
       .catch((error: unknown) => {
         setButtonsDisabled(shadow, false);
-        setStatus(shadow, error instanceof Error ? error.message : "Не удалось завершить фокусировку");
+        setStatus(shadow, error instanceof Error ? error.message : t("nudge.endFocusError"));
       });
   };
 
@@ -167,7 +172,11 @@ function startOverlayCountdown(shadow: ShadowRoot, message: FocusOverlayMessage)
 }
 
 async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElement> {
-  const copyVariant = createFocusCompanionOverlayVariant(await getSelectedCompanionId(), {
+  const preferences = await getStoredPreferences();
+  const language: AppLanguage = resolveLanguage(preferences?.language);
+  const t = createTranslator(language);
+  const copyVariant = createFocusCompanionOverlayVariant(preferences?.selectedCompanionId, {
+    language,
     resolveAssetUrl: (path) => chrome.runtime.getURL(path)
   });
   const host = document.createElement("div");
@@ -448,13 +457,13 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   closeButton.className = "close";
   closeButton.type = "button";
   closeButton.textContent = "×";
-  closeButton.setAttribute("aria-label", "Закрыть вкладку");
+  closeButton.setAttribute("aria-label", t("nudge.closeTab"));
   closeButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
     void sendBackgroundMessage({ type: FOCUS_MESSAGE_TYPES.closeCurrentTab })
       .catch((error: unknown) => {
         setButtonsDisabled(shadow, false);
-        setStatus(shadow, error instanceof Error ? error.message : "Не удалось закрыть вкладку");
+        setStatus(shadow, error instanceof Error ? error.message : t("nudge.closeTabError"));
       });
   });
 
@@ -500,20 +509,20 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   const leaveButton = document.createElement("button");
   leaveButton.className = "button primary";
   leaveButton.type = "button";
-  leaveButton.textContent = "Уже ухожу";
+  leaveButton.textContent = t("nudge.leave");
   leaveButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
     void sendBackgroundMessage({ type: FOCUS_MESSAGE_TYPES.closeCurrentTab })
       .catch((error: unknown) => {
         setButtonsDisabled(shadow, false);
-        setStatus(shadow, error instanceof Error ? error.message : "Не удалось закрыть вкладку");
+        setStatus(shadow, error instanceof Error ? error.message : t("nudge.closeTabError"));
       });
   });
 
   const workButton = document.createElement("button");
   workButton.className = "button secondary";
   workButton.type = "button";
-  workButton.textContent = "Мне нужен этот сайт";
+  workButton.textContent = t("nudge.workSite");
   workButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
     void sendBackgroundMessage({
@@ -528,14 +537,14 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
       })
       .catch((error: unknown) => {
         setButtonsDisabled(shadow, false);
-        setStatus(shadow, error instanceof Error ? error.message : "Не удалось сохранить правило для сайта");
+        setStatus(shadow, error instanceof Error ? error.message : t("nudge.saveRuleError"));
       });
   });
 
   const disableFocusButton = document.createElement("button");
   disableFocusButton.className = "button tertiary";
   disableFocusButton.type = "button";
-  disableFocusButton.textContent = "Отключить фокусировку";
+  disableFocusButton.textContent = t("nudge.disableFocus");
   disableFocusButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
     void sendBackgroundMessage({
@@ -549,7 +558,7 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
       })
       .catch((error: unknown) => {
         setButtonsDisabled(shadow, false);
-        setStatus(shadow, error instanceof Error ? error.message : "Не удалось отключить фокусировку");
+        setStatus(shadow, error instanceof Error ? error.message : t("nudge.endFocusError"));
       });
   });
 
@@ -562,7 +571,7 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   countdown.setAttribute("aria-live", "polite");
 
   const countdownLabel = document.createElement("span");
-  countdownLabel.textContent = "Осталось";
+  countdownLabel.textContent = t("nudge.countdownLabel");
 
   const countdownValue = document.createElement("strong");
   countdownValue.className = "countdown-value";
@@ -572,7 +581,7 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   actions.append(leaveButton, workButton, disableFocusButton);
   panel.append(closeButton, imageWrap, title, site, actions, countdown, status);
   shadow.append(style, panel);
-  startOverlayCountdown(shadow, message);
+  startOverlayCountdown(shadow, message, t);
 
   return host;
 }

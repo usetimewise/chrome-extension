@@ -17,7 +17,8 @@ export const APP_SETTINGS: Settings = {
   categoryOverrides: {},
   selectedCompanionId: "ceo",
   defaultFocusMinutes: 20,
-  blockedHosts: []
+  blockedHosts: [],
+  language: "en"
 };
 
 export function getAppSettings(): Settings {

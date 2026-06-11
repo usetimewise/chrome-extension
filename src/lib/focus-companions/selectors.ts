@@ -3,24 +3,31 @@ import {
   FOCUS_COMPANION_CATALOG
 } from "./catalog.js";
 import {
-  getDefaultCompanionImagePath,
-  getRandomCompanionImagePath
-} from "./assets.js";
+  DEFAULT_LANGUAGE,
+  type AppLanguage
+} from "../i18n/index.js";
+import {
+  getFocusCompanionReplicaText,
+  getFocusCompanionText
+} from "../i18n/focus-companions.js";
 import type {
   FocusCompanion,
   FocusCompanionAssetUrlResolver,
   FocusCompanionId,
   FocusCompanionOverlayVariant,
   FocusCompanionPreview,
+  FocusCompanionReplica,
   FocusCompanionVisual
 } from "./types.js";
 
 type OverlayVariantOptions = {
+  language?: AppLanguage;
   resolveAssetUrl?: FocusCompanionAssetUrlResolver;
   randomInt?: (maxExclusive: number) => number;
 };
 
 type PreviewOptions = {
+  language?: AppLanguage;
   resolveAssetUrl?: FocusCompanionAssetUrlResolver;
 };
 
@@ -41,28 +48,42 @@ function resolvePath(path: string, resolveAssetUrl?: FocusCompanionAssetUrlResol
   return resolveAssetUrl ? resolveAssetUrl(path) : path;
 }
 
-function createAvatarVisual(companion: FocusCompanion): FocusCompanionVisual {
+function createAvatarVisual(companion: FocusCompanion, language: AppLanguage): FocusCompanionVisual {
   return {
     kind: "avatar",
-    text: companion.avatarText,
+    text: getFocusCompanionText(companion.id, "avatarText", language),
     colorClass: companion.colorClass,
-    label: companion.name
+    label: getFocusCompanionText(companion.id, "name", language)
   };
 }
 
-function createDefaultVisual(
+function createReplicaVisual(
   companion: FocusCompanion,
+  replica: FocusCompanionReplica,
+  language: AppLanguage,
   resolveAssetUrl?: FocusCompanionAssetUrlResolver
 ): FocusCompanionVisual {
-  if (!companion.imageSetId) {
-    return createAvatarVisual(companion);
+  if (!("imagePath" in replica)) {
+    return createAvatarVisual(companion, language);
   }
 
   return {
     kind: "image",
-    src: resolvePath(getDefaultCompanionImagePath(companion.imageSetId), resolveAssetUrl),
-    alt: companion.name
+    src: resolvePath(replica.imagePath, resolveAssetUrl),
+    alt: getFocusCompanionText(companion.id, "name", language)
   };
+}
+
+function getDefaultReplica(companion: FocusCompanion): FocusCompanionReplica {
+  return companion.replicas[companion.defaultReplicaIndex] || companion.replicas[0];
+}
+
+function createDefaultVisual(
+  companion: FocusCompanion,
+  language: AppLanguage,
+  resolveAssetUrl?: FocusCompanionAssetUrlResolver
+): FocusCompanionVisual {
+  return createReplicaVisual(companion, getDefaultReplica(companion), language, resolveAssetUrl);
 }
 
 export function listFocusCompanions(): readonly FocusCompanion[] {
@@ -84,13 +105,14 @@ export function createFocusCompanionPreview(
   options: PreviewOptions = {}
 ): FocusCompanionPreview {
   const companion = getFocusCompanion(id);
+  const language = options.language || DEFAULT_LANGUAGE;
   return {
     id: companion.id,
-    name: companion.name,
-    role: companion.role,
-    description: companion.description,
+    name: getFocusCompanionText(companion.id, "name", language),
+    role: getFocusCompanionText(companion.id, "role", language),
+    description: getFocusCompanionText(companion.id, "description", language),
     availability: companion.availability,
-    visual: createDefaultVisual(companion, options.resolveAssetUrl)
+    visual: createDefaultVisual(companion, language, options.resolveAssetUrl)
   };
 }
 
@@ -100,23 +122,13 @@ export function createFocusCompanionOverlayVariant(
 ): FocusCompanionOverlayVariant {
   const randomInt = options.randomInt || defaultRandomInt;
   const companion = getFocusCompanion(id);
-  const text = companion.copy[randomInt(companion.copy.length)] || companion.copy[0];
-
-  if (!companion.imageSetId) {
-    return {
-      companionId: companion.id,
-      text,
-      visual: createAvatarVisual(companion)
-    };
-  }
+  const replicaIndex = randomInt(companion.replicas.length);
+  const replica = companion.replicas[replicaIndex] || getDefaultReplica(companion);
+  const language = options.language || DEFAULT_LANGUAGE;
 
   return {
     companionId: companion.id,
-    text,
-    visual: {
-      kind: "image",
-      src: resolvePath(getRandomCompanionImagePath(companion.imageSetId, randomInt), options.resolveAssetUrl),
-      alt: companion.name
-    }
+    text: getFocusCompanionReplicaText(companion.id, replicaIndex, language),
+    visual: createReplicaVisual(companion, replica, language, options.resolveAssetUrl)
   };
 }

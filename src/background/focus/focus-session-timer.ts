@@ -1,4 +1,5 @@
 import { getFocusSessions, saveFocusSessions } from "../../lib/storage/focus-sessions.js";
+import { getSettings } from "../../lib/storage/site-rules.js";
 import { isFocusSessionExpired, sessionRemainingMs, transitionFocusSession } from "../../lib/local-focus-sessions.js";
 import type { FocusSession } from "../../lib/types.js";
 import { updateProductivityActionIcon } from "../action/productivity-icon.js";
@@ -28,11 +29,12 @@ async function scheduleFocusSessionTimer(activeSession: FocusSession | null, now
 
 export async function syncFocusSessionTimer(now = new Date()): Promise<FocusSession[]> {
   const sessions = await getFocusSessions();
+  const settings = await getSettings();
   const activeSession = sessions.find((session) => session.status === "active") || null;
 
   if (!activeSession) {
     await clearFocusSessionTimer();
-    await updateProductivityActionIcon(false);
+    await updateProductivityActionIcon(false, settings.language);
     return sessions;
   }
 
@@ -40,11 +42,11 @@ export async function syncFocusSessionTimer(now = new Date()): Promise<FocusSess
     const result = transitionFocusSession(sessions, activeSession.id, "end", now);
     await saveFocusSessions(result.sessions);
     await clearFocusSessionTimer();
-    await updateProductivityActionIcon(false);
+    await updateProductivityActionIcon(false, settings.language);
     return result.sessions;
   }
 
   await scheduleFocusSessionTimer(activeSession, now);
-  await updateProductivityActionIcon(true);
+  await updateProductivityActionIcon(true, settings.language);
   return sessions;
 }

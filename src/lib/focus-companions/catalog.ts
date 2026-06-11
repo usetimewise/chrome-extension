@@ -1,3 +1,8 @@
+type FocusCompanionCatalogReplica = {
+  text: string;
+  imagePath?: string;
+};
+
 type FocusCompanionCatalogItem = {
   name: string;
   role: string;
@@ -6,161 +11,196 @@ type FocusCompanionCatalogItem = {
   availability: "free" | "paid";
   avatarText: string;
   colorClass: string;
-  imageSetId: "ceo" | null;
-  copy: readonly string[];
+  defaultReplicaIndex: number;
+  replicas: readonly [FocusCompanionCatalogReplica, ...FocusCompanionCatalogReplica[]];
 };
-
-const NO_IMAGE_SET: null = null;
 
 export const FOCUS_COMPANION_CATALOG = {
   ceo: {
-    name: "Алекс",
-    role: "Основатель",
-    description: "Жесткий и прямой. Не терпит прокрастинации.",
+    name: "Alex",
+    role: "Founder",
+    description: "Tough and direct. Has no patience for procrastination.",
     tone: "Direct",
     availability: "free",
     avatarText: "A",
     colorClass: "violet",
-    imageSetId: "ceo",
-    copy: [
-      "Distraction detected. ROI on this tab: negative. Reallocate.",
-      "Entertainment is not on the roadmap. Close the tab.",
-      "You're optimizing for dopamine, not impact. Switch."
+    defaultReplicaIndex: 2,
+    replicas: [
+      {
+        text: "Distraction detected. ROI on YouTube: negative. Reallocate.",
+        imagePath: "images/ceo/ceo-s02p01-kpi-frown.png"
+      },
+      {
+        text: "Twelve minutes of TikTok. That's a $40 mistake. Course-correct.",
+        imagePath: "images/ceo/ceo-s02p02-phone-no.png"
+      },
+      {
+        text: "Entertainment is not on the roadmap. Close the tab.",
+        imagePath: "images/ceo/ceo-s02p03-watch-tap.png"
+      },
+      {
+        text: "You're optimizing for dopamine, not impact. Switch.",
+        imagePath: "images/ceo/ceo-s02p04-clipboard-flip.png"
+      },
+      {
+        text: "Top performers don't scroll during sprint hours.",
+        imagePath: "images/ceo/ceo-s02p05-pinch-bridge.png"
+      },
+      {
+        text: "Quick audit: is this tab on your OKRs? No? Close it.",
+        imagePath: "images/ceo/ceo-s02p06-meeting-call.png"
+      },
+      {
+        text: "Reels won't appear in your performance review. Refocus.",
+        imagePath: "images/ceo/ceo-s02p07-folded-arms.png"
+      },
+      {
+        text: "Your competitors are shipping. You're watching. Adjust.",
+        imagePath: "images/ceo/ceo-s02p08-redline-pen.png"
+      },
+      {
+        text: "Calendar this for after-hours. Now back to the task.",
+        imagePath: "images/ceo/ceo-s02p09-firm-stare.png"
+      },
+      {
+        text: "Execution gap detected. Close it now.",
+        imagePath: "images/ceo/ceo-s02p10-tap-table.png"
+      }
     ]
   },
   cto: {
-    name: "Макс",
+    name: "Max",
     role: "CTO",
-    description: "Методичный инженер. Напомнит, что фокус - это часть delivery.",
+    description: "Methodical engineer. Reminds you that focus is part of delivery.",
     tone: "Precise",
     availability: "paid",
     avatarText: "M",
     colorClass: "blue",
-    imageSetId: NO_IMAGE_SET,
-    copy: [
-      "Context switch detected. Return to the critical path.",
-      "This tab is outside the sprint scope. Close it.",
-      "Reduce noise, keep the system stable, ship the next step."
+    defaultReplicaIndex: 0,
+    replicas: [
+      { text: "Context switch detected. Return to the critical path." },
+      { text: "This tab is outside the sprint scope. Close it." },
+      { text: "Reduce noise, keep the system stable, ship the next step." }
     ]
   },
   mentor: {
-    name: "Нина",
-    role: "Ментор",
-    description: "Мягко, но настойчиво возвращает к выбранной задаче.",
+    name: "Nina",
+    role: "Mentor",
+    description: "Calm but persistent. Brings you back to the chosen task.",
     tone: "Calm",
     availability: "paid",
-    avatarText: "Н",
+    avatarText: "N",
     colorClass: "emerald",
-    imageSetId: NO_IMAGE_SET,
-    copy: [
-      "You chose focus for a reason. Come back to the task.",
-      "Pause the distraction. Your next small step is still waiting.",
-      "Close this tab gently and keep the promise you made to yourself."
+    defaultReplicaIndex: 0,
+    replicas: [
+      { text: "You chose focus for a reason. Come back to the task." },
+      { text: "Pause the distraction. Your next small step is still waiting." },
+      { text: "Close this tab gently and keep the promise you made to yourself." }
     ]
   },
   coach: {
-    name: "Рита",
-    role: "Коуч",
-    description: "Энергично превращает рабочий блок в короткую победу.",
+    name: "Rita",
+    role: "Coach",
+    description: "Turns a work block into a short win with energy.",
     tone: "Energetic",
     availability: "paid",
-    avatarText: "Р",
+    avatarText: "R",
     colorClass: "rose",
-    imageSetId: NO_IMAGE_SET,
-    copy: [
-      "One focused move now beats ten distracted plans.",
-      "Close this and win the next five minutes.",
-      "Momentum is fragile. Protect it."
+    defaultReplicaIndex: 0,
+    replicas: [
+      { text: "One focused move now beats ten distracted plans." },
+      { text: "Close this and win the next five minutes." },
+      { text: "Momentum is fragile. Protect it." }
     ]
   },
   stoic: {
-    name: "Марк",
-    role: "Стоик",
-    description: "Спокойный и невозмутимый. Убирает лишнее без драмы.",
+    name: "Mark",
+    role: "Stoic",
+    description: "Calm and steady. Removes the extra without drama.",
     tone: "Stoic",
     availability: "paid",
-    avatarText: "М",
+    avatarText: "M",
     colorClass: "stone",
-    imageSetId: NO_IMAGE_SET,
-    copy: [
-      "This is not within your control or your current work.",
-      "Attention is a choice. Choose the task.",
-      "Leave the distraction. Return to what matters."
+    defaultReplicaIndex: 0,
+    replicas: [
+      { text: "This is not within your control or your current work." },
+      { text: "Attention is a choice. Choose the task." },
+      { text: "Leave the distraction. Return to what matters." }
     ]
   },
   scientist: {
-    name: "Ира",
-    role: "Исследователь",
-    description: "Апеллирует к данным и снижает импульсивные переключения.",
+    name: "Ira",
+    role: "Researcher",
+    description: "Uses data to reduce impulsive switching.",
     tone: "Analytical",
     availability: "paid",
-    avatarText: "И",
+    avatarText: "I",
     colorClass: "cyan",
-    imageSetId: NO_IMAGE_SET,
-    copy: [
-      "The data says this tab weakens the session. Close it.",
-      "Attention drift observed. Restore the experiment conditions.",
-      "Your focus sample is contaminated. Remove this variable."
+    defaultReplicaIndex: 0,
+    replicas: [
+      { text: "The data says this tab weakens the session. Close it." },
+      { text: "Attention drift observed. Restore the experiment conditions." },
+      { text: "Your focus sample is contaminated. Remove this variable." }
     ]
   },
   philosopher: {
-    name: "Лев",
-    role: "Философ",
-    description: "Напоминает о смысле работы без лишнего шума.",
+    name: "Leo",
+    role: "Philosopher",
+    description: "Reminds you of the meaning of work without extra noise.",
     tone: "Reflective",
     availability: "paid",
-    avatarText: "Л",
+    avatarText: "L",
     colorClass: "amber",
-    imageSetId: NO_IMAGE_SET,
-    copy: [
-      "The life you want is built in moments like this.",
-      "A scattered mind cannot do deliberate work.",
-      "Close what is easy. Continue what is important."
+    defaultReplicaIndex: 0,
+    replicas: [
+      { text: "The life you want is built in moments like this." },
+      { text: "A scattered mind cannot do deliberate work." },
+      { text: "Close what is easy. Continue what is important." }
     ]
   },
   hacker: {
-    name: "Кол",
-    role: "Хакер",
-    description: "Говорит коротко: distraction найден, надо исправить.",
+    name: "Cole",
+    role: "Hacker",
+    description: "Keeps it short: distraction found, needs a fix.",
     tone: "Terse",
     availability: "paid",
     avatarText: "K",
     colorClass: "green",
-    imageSetId: NO_IMAGE_SET,
-    copy: [
-      "Bug found: distraction loop. Patch it by closing this tab.",
-      "Focus process interrupted. Kill this branch.",
-      "Noise source detected. Remove and resume."
+    defaultReplicaIndex: 0,
+    replicas: [
+      { text: "Bug found: distraction loop. Patch it by closing this tab." },
+      { text: "Focus process interrupted. Kill this branch." },
+      { text: "Noise source detected. Remove and resume." }
     ]
   },
   monk: {
-    name: "Тихон",
-    role: "Монах",
-    description: "Спокойно возвращает внимание к настоящему моменту.",
+    name: "Tikhon",
+    role: "Monk",
+    description: "Quietly brings attention back to the present moment.",
     tone: "Quiet",
     availability: "paid",
-    avatarText: "Т",
+    avatarText: "T",
     colorClass: "indigo",
-    imageSetId: NO_IMAGE_SET,
-    copy: [
-      "Breathe once. Then return to the work.",
-      "Let this tab pass without following it.",
-      "Stillness first. Then the next focused action."
+    defaultReplicaIndex: 0,
+    replicas: [
+      { text: "Breathe once. Then return to the work." },
+      { text: "Let this tab pass without following it." },
+      { text: "Stillness first. Then the next focused action." }
     ]
   },
   detective: {
-    name: "Вера",
-    role: "Детектив",
-    description: "Замечает паттерны отвлечения и возвращает к фактам.",
+    name: "Vera",
+    role: "Detective",
+    description: "Notices distraction patterns and returns you to the facts.",
     tone: "Observant",
     availability: "paid",
-    avatarText: "В",
+    avatarText: "V",
     colorClass: "gray",
-    imageSetId: NO_IMAGE_SET,
-    copy: [
-      "Pattern matched: this tab usually steals the session.",
-      "The evidence points back to your task.",
-      "Case note: close the distraction before it escalates."
+    defaultReplicaIndex: 0,
+    replicas: [
+      { text: "Pattern matched: this tab usually steals the session." },
+      { text: "The evidence points back to your task." },
+      { text: "Case note: close the distraction before it escalates." }
     ]
   }
 } as const satisfies Record<string, FocusCompanionCatalogItem>;

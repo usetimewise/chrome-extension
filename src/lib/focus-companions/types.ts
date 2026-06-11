@@ -2,10 +2,11 @@ import type { FOCUS_COMPANION_CATALOG } from "./catalog.js";
 
 export type FocusCompanionId = keyof typeof FOCUS_COMPANION_CATALOG;
 export type FocusCompanionAvailability = "free" | "paid";
-export type FocusCompanionImageSetId = NonNullable<FocusCompanionCatalogEntry["imageSetId"]>;
 
 export type FocusCompanionCatalogEntry =
   typeof FOCUS_COMPANION_CATALOG[keyof typeof FOCUS_COMPANION_CATALOG];
+
+export type FocusCompanionReplica = FocusCompanionCatalogEntry["replicas"][number];
 
 export type FocusCompanion = {
   id: FocusCompanionId;
@@ -16,8 +17,8 @@ export type FocusCompanion = {
   availability: FocusCompanionAvailability;
   avatarText: string;
   colorClass: string;
-  imageSetId: FocusCompanionImageSetId | null;
-  copy: readonly string[];
+  defaultReplicaIndex: number;
+  replicas: readonly [FocusCompanionReplica, ...FocusCompanionReplica[]];
 };
 
 export type FocusCompanionVisual =

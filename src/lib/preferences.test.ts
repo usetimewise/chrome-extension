@@ -61,13 +61,15 @@ test("saves normalized preferences and removes duplicate blocked hosts", async (
   const preferences = await saveUserPreferences({
     selectedCompanionId: "mentor",
     defaultFocusMinutes: 26.4,
-    blockedHosts: ["https://www.example.com/path", "example.com", "reddit.com/"]
+    blockedHosts: ["https://www.example.com/path", "example.com", "reddit.com/"],
+    language: "ru"
   });
 
   assert.deepEqual(preferences, {
     selectedCompanionId: "mentor",
     defaultFocusMinutes: 26,
-    blockedHosts: ["example.com", "reddit.com"]
+    blockedHosts: ["example.com", "reddit.com"],
+    language: "ru"
   });
   assert.deepEqual(await getUserPreferences(), preferences);
   assert.deepEqual(storage[STORAGE_KEYS.preferences], preferences);
@@ -84,13 +86,33 @@ test("normalizes invalid companion id to default companion", async () => {
   assert.equal(preferences.selectedCompanionId, "ceo");
 });
 
+test("normalizes missing and invalid language to default language", async () => {
+  storage[STORAGE_KEYS.preferences] = {
+    selectedCompanionId: "ceo",
+    defaultFocusMinutes: 20,
+    blockedHosts: [],
+    language: "de"
+  };
+
+  assert.equal((await getUserPreferences()).language, "en");
+
+  storage[STORAGE_KEYS.preferences] = {
+    selectedCompanionId: "ceo",
+    defaultFocusMinutes: 20,
+    blockedHosts: []
+  };
+
+  assert.equal((await getUserPreferences()).language, "en");
+});
+
 test("builds effective settings from app settings, preferences, and site rules", () => {
   const effective = buildEffectiveSettings(
     APP_SETTINGS,
     {
       selectedCompanionId: "coach",
       defaultFocusMinutes: 45,
-      blockedHosts: normalizeBlockedHosts(["reddit.com", "https://www.youtube.com/watch"])
+      blockedHosts: normalizeBlockedHosts(["reddit.com", "https://www.youtube.com/watch"]),
+      language: "ru"
     },
     {
       excludedHosts: ["docs.example.com"],
@@ -100,6 +122,7 @@ test("builds effective settings from app settings, preferences, and site rules",
 
   assert.equal(effective.selectedCompanionId, "coach");
   assert.equal(effective.defaultFocusMinutes, 45);
+  assert.equal(effective.language, "ru");
   assert.deepEqual(effective.blockedHosts, ["reddit.com", "youtube.com"]);
   assert.deepEqual(effective.excludedHosts, ["docs.example.com"]);
   assert.equal(effective.categoryOverrides["reddit.com"], "social");

@@ -36,10 +36,22 @@ test("lists companions with availability metadata and preview data", () => {
   });
 
   assert.equal(preview.id, "ceo");
+  assert.equal(preview.name, "Alex");
+  assert.equal(preview.role, "Founder");
   assert.equal(preview.visual.kind, "image");
   if (preview.visual.kind === "image") {
     assert.equal(preview.visual.src, "chrome-extension://images/ceo/ceo-s02p03-watch-tap.png");
   }
+});
+
+test("creates localized companion preview", () => {
+  const preview = createFocusCompanionPreview("mentor", {
+    language: "ru"
+  });
+
+  assert.equal(preview.name, "Нина");
+  assert.equal(preview.role, "Ментор");
+  assert.equal(preview.description, "Мягко, но настойчиво возвращает к выбранной задаче.");
 });
 
 test("creates deterministic overlay variant with image visual for ceo", () => {
@@ -49,10 +61,28 @@ test("creates deterministic overlay variant with image visual for ceo", () => {
   });
 
   assert.equal(variant.companionId, "ceo");
-  assert.equal(variant.text, "Entertainment is not on the roadmap. Close the tab.");
+  assert.equal(variant.text, "Twelve minutes of TikTok. That's a $40 mistake. Course-correct.");
   assert.equal(variant.visual.kind, "image");
   if (variant.visual.kind === "image") {
     assert.equal(variant.visual.src, "chrome-extension://images/ceo/ceo-s02p02-phone-no.png");
+  }
+});
+
+test("selects one replica per overlay variant", () => {
+  let calls = 0;
+  const variant = createFocusCompanionOverlayVariant("ceo", {
+    randomInt: () => {
+      calls += 1;
+      return 3;
+    },
+    resolveAssetUrl: (path) => `chrome-extension://${path}`
+  });
+
+  assert.equal(calls, 1);
+  assert.equal(variant.text, "You're optimizing for dopamine, not impact. Switch.");
+  assert.equal(variant.visual.kind, "image");
+  if (variant.visual.kind === "image") {
+    assert.equal(variant.visual.src, "chrome-extension://images/ceo/ceo-s02p04-clipboard-flip.png");
   }
 });
 
@@ -65,7 +95,21 @@ test("creates overlay variant with avatar visual for companions without image as
   assert.equal(variant.text, "You chose focus for a reason. Come back to the task.");
   assert.equal(variant.visual.kind, "avatar");
   if (variant.visual.kind === "avatar") {
-    assert.equal(variant.visual.text, "Н");
+    assert.equal(variant.visual.text, "N");
     assert.equal(variant.visual.colorClass, "emerald");
+  }
+});
+
+test("creates localized overlay variant", () => {
+  const variant = createFocusCompanionOverlayVariant("mentor", {
+    language: "ru",
+    randomInt: () => 0
+  });
+
+  assert.equal(variant.text, "Ты выбрал фокус не случайно. Вернись к задаче.");
+  assert.equal(variant.visual.kind, "avatar");
+  if (variant.visual.kind === "avatar") {
+    assert.equal(variant.visual.text, "Н");
+    assert.equal(variant.visual.label, "Нина");
   }
 });

@@ -1,6 +1,7 @@
 import type { Category, SiteClassificationState, SiteRuleState } from "./activity.js";
 import type { FocusSession } from "./focus.js";
 import type { FocusCompanionId } from "../focus-companions/index.js";
+import type { AppLanguage } from "../i18n/index.js";
 
 export type NudgeSensitivity = "direct" | "balanced" | "gentle";
 
@@ -22,12 +23,14 @@ export interface Settings {
   selectedCompanionId: FocusCompanionId;
   defaultFocusMinutes: number;
   blockedHosts: string[];
+  language: AppLanguage;
 }
 
 export interface UserPreferences {
   selectedCompanionId: FocusCompanionId;
   defaultFocusMinutes: number;
   blockedHosts: string[];
+  language: AppLanguage;
 }
 
 export interface DeviceState {

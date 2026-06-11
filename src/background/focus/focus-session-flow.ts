@@ -1,6 +1,8 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
+import { createTranslator } from "../../lib/i18n/index.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
+import { getSettings } from "../../lib/storage/site-rules.js";
 import { sessionRemainingMs } from "../../lib/local-focus-sessions.js";
 import { lookupUrlDecision } from "../../lib/urlDecision/match.js";
 import type { BootstrapResponse, Category, FocusSession, Settings } from "../../lib/types.js";
@@ -82,10 +84,11 @@ export async function evaluateFocusNudgeNotification(
     return;
   }
 
+  const t = createTranslator(settings.language);
   try {
     await showFocusNudge(
       context,
-      "Ты отвлекся. Этот сайт выглядит как отвлечение во время фокусировки.",
+      t("nudge.message"),
       {
         sessionId: activeSession.id,
         host: currentHost,
@@ -101,8 +104,10 @@ export async function evaluateFocusNudgeNotification(
 export function buildPopupModel(
   context: BackgroundRuntimeContext,
   activeSession: FocusSession | null,
-  currentHostCategory: Category | null
+  currentHostCategory: Category | null,
+  settings: Settings
 ): BootstrapResponse["popupModel"] {
+  const t = createTranslator(settings.language);
   const focusSession = activeSession
     ? {
         ...activeSession,
@@ -112,10 +117,10 @@ export function buildPopupModel(
 
   return {
     state: activeSession?.status === "active" ? "focus_active" : "empty",
-    statusLabel: activeSession?.status === "active" ? "Focus mode active" : "Focus mode off",
+    statusLabel: activeSession?.status === "active" ? t("popup.focusActiveTitle") : t("popup.focusInactiveTitle"),
     statusMessage: activeSession?.status === "active"
-      ? "Distracting URLs are blocked for this focus session."
-      : "Start focus mode to block distracting URLs.",
+      ? t("popup.focusActiveCopy")
+      : t("popup.focusInactiveCopy"),
     currentSite: context.runtimeState.currentHost
       ? {
           host: context.runtimeState.currentHost,
@@ -124,20 +129,22 @@ export function buildPopupModel(
       : null,
     focusSession,
     primaryAction: activeSession?.status === "active"
-      ? { type: MESSAGE_TYPES.pauseFocusSession, label: "Pause focus" }
-      : { type: MESSAGE_TYPES.startFocusSession, label: "Start focus mode" },
+      ? { type: MESSAGE_TYPES.pauseFocusSession, label: t("popup.buttonStop") }
+      : { type: MESSAGE_TYPES.startFocusSession, label: t("popup.buttonStart") },
     secondaryActions: activeSession?.status === "active"
-      ? [{ type: MESSAGE_TYPES.endFocusSession, label: "End session" }]
+      ? [{ type: MESSAGE_TYPES.endFocusSession, label: t("popup.buttonStop") }]
       : [],
     canReclassify: Boolean(context.runtimeState.currentHost)
   };
 }
 
 export async function forceFocusNudge(context: BackgroundRuntimeContext): Promise<{ ok: boolean; response: unknown }> {
-  const host = context.runtimeState.currentHost || "current site";
+  const settings = await getSettings();
+  const t = createTranslator(settings.language);
+  const host = context.runtimeState.currentHost || t("nudge.currentSite");
   return showFocusNudge(
     context,
-    "Ты отвлекся. Этот сайт выглядит как отвлечение во время фокусировки.",
+    t("nudge.message"),
     { sessionId: "manual", host, category: "other" }
   );
 }
