@@ -8,9 +8,7 @@ import {
   SITE_CLASSIFICATION_RETRY_ALARM
 } from "./tracking/site-classification-worker.js";
 import { ensureDeviceRegistration } from "./device/registration.js";
-import { getFocusSessions } from "../lib/storage/focus-sessions.js";
-import { buildFocusSessionsView } from "../lib/local-focus-sessions.js";
-import { updateProductivityActionIcon } from "./action/productivity-icon.js";
+import { FOCUS_SESSION_TIMER_ALARM, syncFocusSessionTimer } from "./focus/focus-session-timer.js";
 
 const runtimeContext = createBackgroundRuntimeContext();
 
@@ -20,8 +18,7 @@ async function boot(): Promise<void> {
   await refreshActiveTab(runtimeContext);
   await scheduleSiteClassificationAlarm();
   void processSiteClassificationQueue(runtimeContext);
-  const focusSessionsView = buildFocusSessionsView(await getFocusSessions());
-  await updateProductivityActionIcon(focusSessionsView.active_session?.status === "active");
+  await syncFocusSessionTimer();
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -35,6 +32,10 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === SITE_CLASSIFICATION_RETRY_ALARM) {
     await processSiteClassificationQueue(runtimeContext);
+  }
+
+  if (alarm.name === FOCUS_SESSION_TIMER_ALARM) {
+    await syncFocusSessionTimer();
   }
 });
 

@@ -135,6 +135,7 @@ export type ContentShowFocusNudgeRequest = {
   message: string;
   host: string;
   category: string;
+  remainingMs: number;
 };
 
 export type ContentRequest = ContentShowFocusNudgeRequest;
@@ -163,6 +164,10 @@ function isOptionalString(value: unknown): value is string | undefined {
 
 function isOptionalNumber(value: unknown): value is number | undefined {
   return value === undefined || typeof value === "number";
+}
+
+function isRequiredNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 function isRequiredString(value: unknown): value is string {
@@ -222,7 +227,8 @@ export function isContentRequest(value: unknown): value is ContentRequest {
       return isRequiredString(value.sessionId) &&
         isRequiredString(value.message) &&
         isRequiredString(value.host) &&
-        isRequiredString(value.category);
+        isRequiredString(value.category) &&
+        isRequiredNumber(value.remainingMs);
     default:
       return false;
   }

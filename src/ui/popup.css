@@ -57,6 +57,57 @@ body::before {
   line-height: 1.55;
 }
 
+.popup-timepicker {
+  display: grid;
+  gap: 8px;
+}
+
+.popup-timepicker-label,
+.popup-countdown-label {
+  color: #717182;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.popup-timepicker-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #030213;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.2;
+  padding: 10px 12px;
+}
+
+.popup-timepicker-input:focus {
+  border-color: #030213;
+  outline: none;
+}
+
+.popup-timepicker-input:disabled {
+  opacity: 0.62;
+}
+
+.popup-countdown {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.popup-countdown-value {
+  color: #030213;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
 .popup-primary-button {
   width: 100%;
   min-height: 44px;

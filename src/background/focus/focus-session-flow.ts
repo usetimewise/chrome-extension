@@ -1,6 +1,7 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
+import { sessionRemainingMs } from "../../lib/local-focus-sessions.js";
 import { lookupUrlDecision } from "../../lib/urlDecision/match.js";
 import type { BootstrapResponse, Category, FocusSession, Settings } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
@@ -10,14 +11,15 @@ const FOCUS_DECISION_MODE = "normal" as const;
 export async function showFocusNudgeInTab(
   tabId: number,
   message: string,
-  details: { sessionId: string; host: string; category: string }
+  details: { sessionId: string; host: string; category: string; remainingMs?: number }
 ): Promise<{ ok: boolean; response: unknown }> {
   const payload = {
     type: MESSAGE_TYPES.showFocusNudge,
     sessionId: details.sessionId,
     message,
     host: details.host,
-    category: details.category
+    category: details.category,
+    remainingMs: Math.max(0, Number(details.remainingMs || 0))
   } as const;
 
   try {
@@ -36,7 +38,7 @@ export async function showFocusNudgeInTab(
 export async function showFocusNudge(
   context: BackgroundRuntimeContext,
   message: string,
-  details: { sessionId: string; host: string; category: string }
+  details: { sessionId: string; host: string; category: string; remainingMs?: number }
 ): Promise<{ ok: boolean; response: unknown }> {
   const tabId = context.runtimeState.currentTabId;
   if (!tabId) {
@@ -87,7 +89,8 @@ export async function evaluateFocusNudgeNotification(
       {
         sessionId: activeSession.id,
         host: currentHost,
-        category: decision.category || "other"
+        category: decision.category || "other",
+        remainingMs: activeSession.remaining_ms ?? sessionRemainingMs(activeSession)
       }
     );
   } catch {
@@ -103,10 +106,7 @@ export function buildPopupModel(
   const focusSession = activeSession
     ? {
         ...activeSession,
-        remaining_ms: Math.max(
-          0,
-          (activeSession.planned_minutes * 60 * 1000) - (activeSession.active_duration_ms || 0)
-        )
+        remaining_ms: activeSession.remaining_ms ?? sessionRemainingMs(activeSession)
       }
     : null;
 

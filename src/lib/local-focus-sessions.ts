@@ -1,6 +1,10 @@
 import { generateId } from "./utils.js";
 import type { FocusSession, FocusSessionRequest, FocusSessionsView } from "./types.js";
 
+export const DEFAULT_FOCUS_SESSION_MINUTES = 20;
+export const MIN_FOCUS_SESSION_MINUTES = 1;
+export const MAX_FOCUS_SESSION_MINUTES = 180;
+
 function nowISO(now = new Date()): string {
   return now.toISOString();
 }
@@ -14,6 +18,30 @@ export function sessionDuration(session: FocusSession | null | undefined, now = 
     }
   }
   return duration;
+}
+
+export function sessionRemainingMs(session: FocusSession | null | undefined, now = new Date()): number {
+  if (!session) {
+    return 0;
+  }
+
+  const plannedMs = Math.max(0, Number(session.planned_minutes || 0)) * 60 * 1000;
+  return Math.max(0, plannedMs - sessionDuration(session, now));
+}
+
+export function isFocusSessionExpired(session: FocusSession | null | undefined, now = new Date()): boolean {
+  return Boolean(session?.status === "active" && sessionRemainingMs(session, now) <= 0);
+}
+
+export function normalizeFocusSessionMinutes(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return DEFAULT_FOCUS_SESSION_MINUTES;
+  }
+
+  return Math.min(
+    MAX_FOCUS_SESSION_MINUTES,
+    Math.max(MIN_FOCUS_SESSION_MINUTES, Math.round(value))
+  );
 }
 
 function sortSessions(sessions: FocusSession[]): FocusSession[] {
@@ -35,7 +63,7 @@ export function startFocusSession(
     id: generateId(),
     intent: request.intent || "Focus block",
     status: "active",
-    planned_minutes: Number(request.duration_minutes || request.minutes || 45),
+    planned_minutes: normalizeFocusSessionMinutes(request.duration_minutes ?? request.minutes),
     started_at: timestamp,
     last_resumed_at: timestamp,
     active_duration_ms: 0,
@@ -93,7 +121,8 @@ export function transitionFocusSession(
 export function buildFocusSessionsView(sessions: FocusSession[] = [], now = new Date()): FocusSessionsView {
   const sorted = sortSessions(sessions).map((session) => ({
     ...session,
-    active_duration_ms: sessionDuration(session, now)
+    active_duration_ms: sessionDuration(session, now),
+    remaining_ms: sessionRemainingMs(session, now)
   }));
   const activeSession = sorted.find((session) => session.status === "active") || null;
   const completed = sorted.filter((session) => session.status === "completed");
@@ -114,7 +143,7 @@ export function buildFocusSessionsView(sessions: FocusSession[] = [], now = new 
       priority: "low",
       title: "Keep the next block realistic",
       body: "The best session length is the one you finish. Use your recent average as the default, then stretch later.",
-      action: { type: "start_focus_session", label: "Start another session", payload: { minutes: 45 } }
+      action: { type: "start_focus_session", label: "Start another session", payload: { minutes: DEFAULT_FOCUS_SESSION_MINUTES } }
     }]
   };
 }

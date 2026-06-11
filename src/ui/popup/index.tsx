@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MESSAGE_TYPES } from "../../lib/constants.js";
+import {
+  DEFAULT_FOCUS_SESSION_MINUTES,
+  MAX_FOCUS_SESSION_MINUTES,
+  MIN_FOCUS_SESSION_MINUTES
+} from "../../lib/local-focus-sessions.js";
 import { sendBackgroundMessage } from "../../lib/messaging/client.js";
 import { getErrorMessage } from "../../lib/utils.js";
 import { usePopupBootstrap } from "./hooks/use-popup-bootstrap.js";
@@ -10,9 +15,26 @@ type FocusActionState =
   | { status: "loading"; label: string }
   | { status: "error"; message: string };
 
+function clampFocusMinutes(value: number): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_FOCUS_SESSION_MINUTES;
+  }
+
+  return Math.min(MAX_FOCUS_SESSION_MINUTES, Math.max(MIN_FOCUS_SESSION_MINUTES, Math.round(value)));
+}
+
+function formatRemainingTime(value: number | undefined): string {
+  const totalSeconds = Math.max(0, Math.ceil(Number(value || 0) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 function PopupApp() {
   const { bootstrap, refreshBootstrap } = usePopupBootstrap();
   const [actionState, setActionState] = useState<FocusActionState>({ status: "idle" });
+  const [selectedMinutes, setSelectedMinutes] = useState(DEFAULT_FOCUS_SESSION_MINUTES);
   const activeSession = bootstrap?.popupModel?.focusSession?.status === "active"
     ? bootstrap.popupModel.focusSession
     : null;
@@ -34,7 +56,8 @@ function PopupApp() {
         });
       } else {
         await sendBackgroundMessage({
-          type: MESSAGE_TYPES.startFocusSession
+          type: MESSAGE_TYPES.startFocusSession,
+          minutes: clampFocusMinutes(selectedMinutes)
         });
       }
       await refreshBootstrap();
@@ -59,6 +82,28 @@ function PopupApp() {
             ? "Режим фокусировки активен. Отвлекающие сайты будут перекрыты предупреждением."
             : "Включите режим фокусировки, когда хотите убрать отвлекающие сайты из текущей сессии."}
         </p>
+
+        {activeSession ? (
+          <div className="popup-countdown" aria-live="polite">
+            <span className="popup-countdown-label">Осталось</span>
+            <strong className="popup-countdown-value">{formatRemainingTime(activeSession.remaining_ms)}</strong>
+          </div>
+        ) : (
+          <label className="popup-timepicker">
+            <span className="popup-timepicker-label">Время фокусировки, минут</span>
+            <input
+              className="popup-timepicker-input"
+              type="number"
+              min={MIN_FOCUS_SESSION_MINUTES}
+              max={MAX_FOCUS_SESSION_MINUTES}
+              step={5}
+              value={selectedMinutes}
+              onChange={(event) => setSelectedMinutes(clampFocusMinutes(event.currentTarget.valueAsNumber))}
+              onBlur={() => setSelectedMinutes((value) => clampFocusMinutes(value))}
+              disabled={isLoading}
+            />
+          </label>
+        )}
 
         <button
           className={isFocusActive ? "popup-primary-button is-danger" : "popup-primary-button"}

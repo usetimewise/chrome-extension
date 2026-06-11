@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   buildFocusSessionsView,
+  isFocusSessionExpired,
+  sessionRemainingMs,
   startFocusSession,
   transitionFocusSession
 } from "./local-focus-sessions.js";
@@ -20,6 +22,12 @@ test("startFocusSession creates a new active session", () => {
   assert.equal(started.session.started_at, "2026-04-20T09:00:00.000Z");
   assert.equal(started.session.last_resumed_at, "2026-04-20T09:00:00.000Z");
   assert.equal(started.session.active_duration_ms, 0);
+});
+
+test("startFocusSession defaults to 20 planned minutes", () => {
+  const started = startFocusSession([], {}, new Date("2026-04-20T09:00:00.000Z"));
+
+  assert.equal(started.session.planned_minutes, 20);
 });
 
 test("startFocusSession reuses an existing active session", () => {
@@ -117,4 +125,25 @@ test("local focus session lifecycle tracks active duration", () => {
   assert.equal(view.summary.sessions_completed, 1);
   assert.equal(view.active_session, null);
   assert.equal(view.items[0].status, "completed");
+});
+
+test("sessionRemainingMs tracks active countdown", () => {
+  const started = startFocusSession([], {
+    intent: "Timed focus",
+    duration_minutes: 20
+  }, new Date("2026-04-20T09:00:00.000Z"));
+
+  const remaining = sessionRemainingMs(started.session, new Date("2026-04-20T09:12:30.000Z"));
+
+  assert.equal(remaining, 7.5 * 60 * 1000);
+});
+
+test("isFocusSessionExpired only returns true after planned active time", () => {
+  const started = startFocusSession([], {
+    intent: "Timed focus",
+    duration_minutes: 20
+  }, new Date("2026-04-20T09:00:00.000Z"));
+
+  assert.equal(isFocusSessionExpired(started.session, new Date("2026-04-20T09:19:59.000Z")), false);
+  assert.equal(isFocusSessionExpired(started.session, new Date("2026-04-20T09:20:00.000Z")), true);
 });
