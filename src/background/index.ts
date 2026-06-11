@@ -1,4 +1,6 @@
 import { getRuntimeState } from "../lib/storage/runtime-state.js";
+import { getFocusSessions, saveFocusSessions } from "../lib/storage/focus-sessions.js";
+import { startFocusSession } from "../lib/local-focus-sessions.js";
 import { createBackgroundMessageListener } from "./messaging/handlers.js";
 import { createBackgroundRuntimeContext, setRuntimeState } from "./runtime/runtime-state.js";
 import { refreshActiveTab, setActiveFromTab } from "./tracking/refresh-active-tab.js";
@@ -21,8 +23,27 @@ async function boot(): Promise<void> {
   await syncFocusSessionTimer();
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  void boot();
+async function enableFocusModeAfterInstall(): Promise<void> {
+  const sessions = await getFocusSessions();
+  const result = startFocusSession(sessions, {
+    intent: "Extension installed"
+  });
+
+  if (result.sessions !== sessions) {
+    await saveFocusSessions(result.sessions);
+  }
+
+  await syncFocusSessionTimer();
+}
+
+chrome.runtime.onInstalled.addListener((details) => {
+  void (async () => {
+    if (details.reason === "install") {
+      await enableFocusModeAfterInstall();
+    }
+
+    await boot();
+  })();
 });
 
 chrome.runtime.onStartup.addListener(() => {
