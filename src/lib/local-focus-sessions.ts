@@ -21,16 +21,18 @@ export function sessionDuration(session: FocusSession | null | undefined, now = 
 }
 
 export function sessionRemainingMs(session: FocusSession | null | undefined, now = new Date()): number {
+  void now;
   if (!session) {
     return 0;
   }
 
-  const plannedMs = Math.max(0, Number(session.planned_minutes || 0)) * 60 * 1000;
-  return Math.max(0, plannedMs - sessionDuration(session, now));
+  return 0;
 }
 
 export function isFocusSessionExpired(session: FocusSession | null | undefined, now = new Date()): boolean {
-  return Boolean(session?.status === "active" && sessionRemainingMs(session, now) <= 0);
+  void session;
+  void now;
+  return false;
 }
 
 export function normalizeFocusSessionMinutes(value: number | undefined): number {
@@ -63,7 +65,7 @@ export function startFocusSession(
     id: generateId(),
     intent: request.intent || "Focus block",
     status: "active",
-    planned_minutes: normalizeFocusSessionMinutes(request.duration_minutes ?? request.minutes),
+    planned_minutes: 0,
     started_at: timestamp,
     last_resumed_at: timestamp,
     active_duration_ms: 0,
@@ -143,7 +145,7 @@ export function buildFocusSessionsView(sessions: FocusSession[] = [], now = new 
       priority: "low",
       title: "Keep the next block realistic",
       body: "The best session length is the one you finish. Use your recent average as the default, then stretch later.",
-      action: { type: "start_focus_session", label: "Start another session", payload: { minutes: DEFAULT_FOCUS_SESSION_MINUTES } }
+      action: { type: "start_focus_session", label: "Start another session" }
     }]
   };
 }

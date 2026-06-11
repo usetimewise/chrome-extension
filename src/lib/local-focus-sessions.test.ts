@@ -11,23 +11,22 @@ import {
 
 test("startFocusSession creates a new active session", () => {
   const started = startFocusSession([], {
-    intent: "Write proposal",
-    duration_minutes: 30
+    intent: "Write proposal"
   }, new Date("2026-04-20T09:00:00.000Z"));
 
   assert.equal(started.sessions.length, 1);
   assert.equal(started.session.status, "active");
   assert.equal(started.session.intent, "Write proposal");
-  assert.equal(started.session.planned_minutes, 30);
+  assert.equal(started.session.planned_minutes, 0);
   assert.equal(started.session.started_at, "2026-04-20T09:00:00.000Z");
   assert.equal(started.session.last_resumed_at, "2026-04-20T09:00:00.000Z");
   assert.equal(started.session.active_duration_ms, 0);
 });
 
-test("startFocusSession defaults to 20 planned minutes", () => {
+test("startFocusSession starts a manual session without planned duration", () => {
   const started = startFocusSession([], {}, new Date("2026-04-20T09:00:00.000Z"));
 
-  assert.equal(started.session.planned_minutes, 20);
+  assert.equal(started.session.planned_minutes, 0);
 });
 
 test("startFocusSession reuses an existing active session", () => {
@@ -94,7 +93,7 @@ test("local focus session lifecycle tracks active duration", () => {
   }, new Date("2026-04-20T10:00:00.000Z"));
 
   assert.equal(started.session.status, "active");
-  assert.equal(started.session.planned_minutes, 45);
+  assert.equal(started.session.planned_minutes, 0);
 
   const paused = transitionFocusSession(
     started.sessions,
@@ -127,7 +126,7 @@ test("local focus session lifecycle tracks active duration", () => {
   assert.equal(view.items[0].status, "completed");
 });
 
-test("sessionRemainingMs tracks active countdown", () => {
+test("sessionRemainingMs returns zero for manual focus sessions", () => {
   const started = startFocusSession([], {
     intent: "Timed focus",
     duration_minutes: 20
@@ -135,15 +134,15 @@ test("sessionRemainingMs tracks active countdown", () => {
 
   const remaining = sessionRemainingMs(started.session, new Date("2026-04-20T09:12:30.000Z"));
 
-  assert.equal(remaining, 7.5 * 60 * 1000);
+  assert.equal(remaining, 0);
 });
 
-test("isFocusSessionExpired only returns true after planned active time", () => {
+test("isFocusSessionExpired does not expire manual focus sessions", () => {
   const started = startFocusSession([], {
     intent: "Timed focus",
     duration_minutes: 20
   }, new Date("2026-04-20T09:00:00.000Z"));
 
   assert.equal(isFocusSessionExpired(started.session, new Date("2026-04-20T09:19:59.000Z")), false);
-  assert.equal(isFocusSessionExpired(started.session, new Date("2026-04-20T09:20:00.000Z")), true);
+  assert.equal(isFocusSessionExpired(started.session, new Date("2026-04-20T10:20:00.000Z")), false);
 });

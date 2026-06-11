@@ -9,18 +9,17 @@ import {
 import type { UserPreferences } from "../lib/types.js";
 
 type FocusOverlayMessage = {
-  sessionId: string;
+  mode: "block" | "offer";
+  sessionId?: string;
   message: string;
   host: string;
   category: string;
-  remainingMs: number;
 };
 
 {
 type FocusNudgeState = {
   activeOverlayKey: string | null;
   contextInvalidated: boolean;
-  countdownTimerId: number | null;
   listenerInstalled: boolean;
   suppressedHosts: Set<string>;
 };
@@ -29,7 +28,9 @@ const FOCUS_MESSAGE_TYPES = {
   showFocusNudge: "SHOW_FOCUS_NUDGE",
   saveSiteRule: "SAVE_SITE_RULE",
   closeCurrentTab: "CLOSE_CURRENT_TAB",
-  endFocusSession: "END_FOCUS_SESSION"
+  endFocusSession: "END_FOCUS_SESSION",
+  startFocusSession: "START_FOCUS_SESSION",
+  dismissFocusOffer: "DISMISS_FOCUS_OFFER"
 } as const;
 const OVERLAY_ID = "time-wise-focus-overlay";
 const FOCUS_BLOCKER_ENGAGE_EVENT = "time-wise-focus-blocker-engage";
@@ -40,7 +41,6 @@ const stateHost = globalThis as typeof globalThis & {
 const focusNudgeState = stateHost.__timeWiseFocusNudgeState || {
   activeOverlayKey: null,
   contextInvalidated: false,
-  countdownTimerId: null,
   listenerInstalled: false,
   suppressedHosts: new Set<string>()
 };
@@ -57,8 +57,10 @@ function isShowFocusNudgeMessage(message: unknown): message is FocusOverlayMessa
     typeof candidate.message === "string" &&
     typeof candidate.host === "string" &&
     typeof candidate.category === "string" &&
-    typeof candidate.remainingMs === "number" &&
-    Number.isFinite(candidate.remainingMs);
+    (
+      candidate.mode === "offer" ||
+      (candidate.mode === "block" && typeof candidate.sessionId === "string")
+    );
 }
 
 function sendBackgroundMessage<TResponse = unknown>(message: unknown): Promise<TResponse> {
@@ -78,7 +80,7 @@ function sendBackgroundMessage<TResponse = unknown>(message: unknown): Promise<T
 }
 
 function overlayKey(message: FocusOverlayMessage): string {
-  return `${message.sessionId}:${message.host}`;
+  return `${message.mode}:${message.sessionId || "offer"}:${message.host}`;
 }
 
 async function getStoredPreferences(): Promise<Partial<UserPreferences> | undefined> {
@@ -91,11 +93,6 @@ async function getStoredPreferences(): Promise<Partial<UserPreferences> | undefi
 }
 
 function removeExistingOverlay(): void {
-  if (focusNudgeState.countdownTimerId !== null) {
-    window.clearInterval(focusNudgeState.countdownTimerId);
-    focusNudgeState.countdownTimerId = null;
-  }
-
   const existing = document.getElementById(OVERLAY_ID);
   if (existing) {
     existing.remove();
@@ -122,53 +119,6 @@ function setButtonsDisabled(shadow: ShadowRoot, disabled: boolean): void {
   shadow.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
     button.disabled = disabled;
   });
-}
-
-function formatRemainingTime(value: number): string {
-  const totalSeconds = Math.max(0, Math.ceil(value / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function setCountdownText(shadow: ShadowRoot, remainingMs: number): void {
-  const value = shadow.querySelector<HTMLElement>(".countdown-value");
-  if (value) {
-    value.textContent = formatRemainingTime(remainingMs);
-  }
-}
-
-function startOverlayCountdown(shadow: ShadowRoot, message: FocusOverlayMessage, t: Translator): void {
-  const endsAt = Date.now() + Math.max(0, message.remainingMs);
-  let hasSentEnd = false;
-
-  const tick = (): void => {
-    const remainingMs = Math.max(0, endsAt - Date.now());
-    setCountdownText(shadow, remainingMs);
-
-    if (remainingMs > 0 || hasSentEnd) {
-      return;
-    }
-
-    hasSentEnd = true;
-    setButtonsDisabled(shadow, true);
-    void sendBackgroundMessage({
-      type: FOCUS_MESSAGE_TYPES.endFocusSession,
-      sessionId: message.sessionId
-    })
-      .then(() => {
-        releaseFocusBlocker();
-        removeExistingOverlay();
-      })
-      .catch((error: unknown) => {
-        setButtonsDisabled(shadow, false);
-        setStatus(shadow, error instanceof Error ? error.message : t("nudge.endFocusError"));
-      });
-  };
-
-  tick();
-  focusNudgeState.countdownTimerId = window.setInterval(tick, 1000);
 }
 
 async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElement> {
@@ -386,25 +336,6 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
       color: #030213;
     }
 
-    .countdown {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 16px;
-      margin: 18px 0 0;
-      color: #717182;
-      font-size: 13px;
-      line-height: 1.35;
-    }
-
-    .countdown-value {
-      color: #030213;
-      font-size: 18px;
-      font-weight: 600;
-      letter-spacing: 0;
-      line-height: 1;
-    }
-
     .status {
       min-height: 18px;
       margin: 14px 0 0;
@@ -457,9 +388,26 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   closeButton.className = "close";
   closeButton.type = "button";
   closeButton.textContent = "×";
-  closeButton.setAttribute("aria-label", t("nudge.closeTab"));
+  closeButton.setAttribute("aria-label", message.mode === "offer" ? t("nudge.closeOffer") : t("nudge.closeTab"));
   closeButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
+    if (message.mode === "offer") {
+      void sendBackgroundMessage({
+        type: FOCUS_MESSAGE_TYPES.dismissFocusOffer,
+        action: "close",
+        host: message.host
+      })
+        .then(() => {
+          releaseFocusBlocker();
+          removeExistingOverlay();
+        })
+        .catch((error: unknown) => {
+          setButtonsDisabled(shadow, false);
+          setStatus(shadow, error instanceof Error ? error.message : t("nudge.dismissOfferError"));
+        });
+      return;
+    }
+
     void sendBackgroundMessage({ type: FOCUS_MESSAGE_TYPES.closeCurrentTab })
       .catch((error: unknown) => {
         setButtonsDisabled(shadow, false);
@@ -489,7 +437,7 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   const title = document.createElement("h1");
   title.className = "title";
   title.id = "time-wise-focus-overlay-title";
-  title.textContent = copyVariant.text;
+  title.textContent = message.mode === "offer" ? message.message : copyVariant.text;
 
   const site = document.createElement("div");
   site.className = "site";
@@ -505,6 +453,58 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
 
   const actions = document.createElement("div");
   actions.className = "actions";
+
+  const status = document.createElement("p");
+  status.className = "status";
+  status.setAttribute("role", "status");
+
+  if (message.mode === "offer") {
+    const startButton = document.createElement("button");
+    startButton.className = "button primary";
+    startButton.type = "button";
+    startButton.textContent = t("nudge.startFocus");
+    startButton.addEventListener("click", () => {
+      setButtonsDisabled(shadow, true);
+      void sendBackgroundMessage<{ ok: true; session: { id: string } }>({ type: FOCUS_MESSAGE_TYPES.startFocusSession })
+        .then((response) => showFocusOverlay({
+          mode: "block",
+          sessionId: response.session.id,
+          message: t("nudge.message"),
+          host: message.host,
+          category: message.category
+        }))
+        .catch((error: unknown) => {
+          setButtonsDisabled(shadow, false);
+          setStatus(shadow, error instanceof Error ? error.message : t("nudge.startFocusError"));
+        });
+    });
+
+    const laterButton = document.createElement("button");
+    laterButton.className = "button secondary";
+    laterButton.type = "button";
+    laterButton.textContent = t("nudge.maybeLater");
+    laterButton.addEventListener("click", () => {
+      setButtonsDisabled(shadow, true);
+      void sendBackgroundMessage({
+        type: FOCUS_MESSAGE_TYPES.dismissFocusOffer,
+        action: "defer",
+        host: message.host
+      })
+        .then(() => {
+          releaseFocusBlocker();
+          removeExistingOverlay();
+        })
+        .catch((error: unknown) => {
+          setButtonsDisabled(shadow, false);
+          setStatus(shadow, error instanceof Error ? error.message : t("nudge.dismissOfferError"));
+        });
+    });
+
+    actions.append(startButton, laterButton);
+    panel.append(closeButton, imageWrap, title, site, actions, status);
+    shadow.append(style, panel);
+    return host;
+  }
 
   const leaveButton = document.createElement("button");
   leaveButton.className = "button primary";
@@ -546,6 +546,10 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   disableFocusButton.type = "button";
   disableFocusButton.textContent = t("nudge.disableFocus");
   disableFocusButton.addEventListener("click", () => {
+    if (!message.sessionId) {
+      return;
+    }
+
     setButtonsDisabled(shadow, true);
     void sendBackgroundMessage({
       type: FOCUS_MESSAGE_TYPES.endFocusSession,
@@ -562,26 +566,9 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
       });
   });
 
-  const status = document.createElement("p");
-  status.className = "status";
-  status.setAttribute("role", "status");
-
-  const countdown = document.createElement("div");
-  countdown.className = "countdown";
-  countdown.setAttribute("aria-live", "polite");
-
-  const countdownLabel = document.createElement("span");
-  countdownLabel.textContent = t("nudge.countdownLabel");
-
-  const countdownValue = document.createElement("strong");
-  countdownValue.className = "countdown-value";
-  countdownValue.textContent = formatRemainingTime(message.remainingMs);
-  countdown.append(countdownLabel, countdownValue);
-
   actions.append(leaveButton, workButton, disableFocusButton);
-  panel.append(closeButton, imageWrap, title, site, actions, countdown, status);
+  panel.append(closeButton, imageWrap, title, site, actions, status);
   shadow.append(style, panel);
-  startOverlayCountdown(shadow, message, t);
 
   return host;
 }

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { determineEarlyFocusBlock } from "./early-focus-block.js";
+import { decideDistractionSite } from "./site-block-rules.js";
 import type { FocusSession } from "./types.js";
 import { saveBuckets } from "./urlDecision/bucketCache.js";
 import { sha256Hex, splitHashPrefixSuffix } from "./urlDecision/hash.js";
@@ -111,6 +112,26 @@ test("user work override wins over seeded block rules", async () => {
     ),
     { action: "allow", reason: "user_override" }
   );
+});
+
+test("distraction decision works without active focus session and respects allow overrides", async () => {
+  assert.deepEqual(
+    await decideDistractionSite(
+      "https://youtube.com/shorts/abc",
+      { siteRules: { excludedHosts: [], categoryOverrides: { "youtube.com": "work" } } }
+    ),
+    { action: "allow", reason: "user_override" }
+  );
+
+  const decision = await decideDistractionSite(
+    "https://www.reddit.com/r/typescript",
+    { siteRules: { excludedHosts: [], categoryOverrides: {} } }
+  );
+
+  assert.equal(decision.action, "distracting");
+  assert.equal(decision.action === "distracting" && decision.host, "reddit.com");
+  assert.equal(decision.action === "distracting" && decision.category, "social");
+  assert.equal(decision.action === "distracting" && decision.reason, "default_rule");
 });
 
 test("user excluded host wins over forced distraction block", async () => {

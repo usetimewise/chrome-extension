@@ -21,6 +21,7 @@ import {
   forceFocusNudge,
   showFocusNudgeInTab
 } from "../focus/focus-session-flow.js";
+import { recordFocusOfferPromptEvent } from "../focus/focus-offer-flow.js";
 import {
   ensureClassificationForHost,
   processSiteClassificationQueue,
@@ -82,27 +83,22 @@ export function createBackgroundMessageListener(
         {
           const sessions = await getFocusSessions();
           const result = startFocusSession(sessions, {
-            intent: message.intent || "Focus block",
-            duration_minutes: message.minutes
+            intent: message.intent || "Focus block"
           });
           await saveFocusSessions(result.sessions);
           await syncFocusSessionTimer();
+          if (context.runtimeState.currentHost) {
+            await recordFocusOfferPromptEvent(context, "started", context.runtimeState.currentHost);
+          }
           return { ok: true, session: result.session, bootstrap: await buildBootstrap(context) };
         }
-        case MESSAGE_TYPES.pauseFocusSession:
-        case MESSAGE_TYPES.resumeFocusSession:
         case MESSAGE_TYPES.endFocusSession:
         {
-          const actionMap = {
-            [MESSAGE_TYPES.pauseFocusSession]: "pause",
-            [MESSAGE_TYPES.resumeFocusSession]: "resume",
-            [MESSAGE_TYPES.endFocusSession]: "end"
-          } as const;
           const sessions = await getFocusSessions();
           const result = transitionFocusSession(
             sessions,
             message.sessionId,
-            actionMap[String(message.type) as keyof typeof actionMap]
+            "end"
           );
           await saveFocusSessions(result.sessions);
           await syncFocusSessionTimer();
@@ -144,8 +140,7 @@ export function createBackgroundMessageListener(
             return { ok: false, error: "No sender tab available for focus blocker" };
           }
 
-          const focusSessionsView = buildFocusSessionsView(await syncFocusSessionTimer());
-          const activeSession = focusSessionsView.active_session;
+          await syncFocusSessionTimer();
           const settings = await getSettings();
           const t = createTranslator(settings.language);
           return showFocusNudgeInTab(
@@ -154,11 +149,17 @@ export function createBackgroundMessageListener(
             {
               sessionId: message.sessionId,
               host: message.host,
-              category: message.category,
-              remainingMs: activeSession?.id === message.sessionId ? activeSession.remaining_ms : 0
+              category: message.category
             }
           );
         }
+        case MESSAGE_TYPES.dismissFocusOffer:
+          await recordFocusOfferPromptEvent(
+            context,
+            message.action === "defer" ? "deferred" : "closed",
+            message.host
+          );
+          return { ok: true };
         default:
           return { ok: false, error: "Unknown message type" };
       }

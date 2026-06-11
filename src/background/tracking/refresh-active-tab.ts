@@ -1,5 +1,8 @@
 import { saveRuntimeState } from "../../lib/storage/runtime-state.js";
+import { getFocusSessions } from "../../lib/storage/focus-sessions.js";
+import { getSettings } from "../../lib/storage/site-rules.js";
 import { isTrackableUrl, normalizeHost } from "../../lib/utils.js";
+import { evaluateFocusOffer } from "../focus/focus-offer-flow.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
 import { classifyUrl, safeTabUrl } from "./classify-url.js";
 import { ensureClassificationForHost } from "./site-classification-worker.js";
@@ -35,6 +38,11 @@ export async function setActiveFromTab(
   context.runtimeState.currentWindowId = tab.windowId ?? null;
   await saveRuntimeState(context.runtimeState);
   void ensureClassificationForHost(context, nextHost);
+  const [sessions, settings] = await Promise.all([
+    getFocusSessions(),
+    getSettings()
+  ]);
+  void evaluateFocusOffer(context, sessions, settings);
 }
 
 export async function refreshActiveTab(context: BackgroundRuntimeContext): Promise<void> {

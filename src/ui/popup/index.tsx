@@ -11,11 +11,6 @@ import {
   type AppLanguage,
   type Translator
 } from "../../lib/i18n/index.js";
-import {
-  DEFAULT_FOCUS_SESSION_MINUTES,
-  MAX_FOCUS_SESSION_MINUTES,
-  MIN_FOCUS_SESSION_MINUTES
-} from "../../lib/local-focus-sessions.js";
 import { sendBackgroundMessage } from "../../lib/messaging/client.js";
 import {
   normalizeDefaultFocusMinutes,
@@ -32,7 +27,7 @@ type FocusActionState =
   | { status: "error"; message: string };
 
 type PopupView = "focus" | "settings";
-type SettingsTab = "companion" | "focus" | "blocking";
+type SettingsTab = "companion" | "blocking";
 
 type SettingsSaveState =
   | { status: "idle" }
@@ -40,24 +35,18 @@ type SettingsSaveState =
   | { status: "saved" }
   | { status: "error"; message: string };
 
-const SETTINGS_TABS: Array<{ id: SettingsTab; labelKey: "popup.tabCompanion" | "popup.tabFocus" | "popup.tabBlocking"; icon: string }> = [
+const SETTINGS_TABS: Array<{ id: SettingsTab; labelKey: "popup.tabCompanion" | "popup.tabBlocking"; icon: string }> = [
   { id: "companion", labelKey: "popup.tabCompanion", icon: "●" },
-  { id: "focus", labelKey: "popup.tabFocus", icon: "◷" },
   { id: "blocking", labelKey: "popup.tabBlocking", icon: "◆" }
 ];
 
-const FOCUS_PRESETS = [15, 25, 30, 45, 60, 90];
 const LANGUAGE_OPTIONS: Array<{ language: AppLanguage; labelKey: "language.english" | "language.russian"; shortLabel: string }> = [
   { language: "en", labelKey: "language.english", shortLabel: "EN" },
   { language: "ru", labelKey: "language.russian", shortLabel: "RU" }
 ];
 
-function clampFocusMinutes(value: number): number {
-  return normalizeDefaultFocusMinutes(value);
-}
-
 function getDefaultFocusMinutes(bootstrap: BootstrapResponse | null): number {
-  return clampFocusMinutes(bootstrap?.settings?.defaultFocusMinutes ?? DEFAULT_FOCUS_SESSION_MINUTES);
+  return normalizeDefaultFocusMinutes(bootstrap?.settings?.defaultFocusMinutes ?? 20);
 }
 
 function getBootstrapLanguage(bootstrap: BootstrapResponse | null): AppLanguage {
@@ -72,14 +61,6 @@ function buildPreferencesDraft(bootstrap: BootstrapResponse | null): UserPrefere
     disabledDefaultBlockRuleIds: [...(bootstrap?.settings?.disabledDefaultBlockRuleIds || [])],
     language: getBootstrapLanguage(bootstrap)
   };
-}
-
-function formatRemainingTime(value: number | undefined): string {
-  const totalSeconds = Math.max(0, Math.ceil(Number(value || 0) / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function LanguagePicker({
@@ -372,49 +353,6 @@ function SettingsView({
             </div>
           ) : null}
 
-          {activeTab === "focus" ? (
-            <div className="settings-section">
-              <p className="settings-copy">{t("popup.focusDurationCopy")}</p>
-              <div className="focus-duration-readout">
-                <strong>{draft.defaultFocusMinutes}</strong>
-                <span>{t("common.minutesShort")}</span>
-              </div>
-              <input
-                className="settings-range"
-                type="range"
-                min={MIN_FOCUS_SESSION_MINUTES}
-                max={MAX_FOCUS_SESSION_MINUTES}
-                step={1}
-                value={draft.defaultFocusMinutes}
-                onChange={(event) => {
-                  const nextDefaultFocusMinutes = clampFocusMinutes(event.currentTarget.valueAsNumber);
-                  applyPreferencesChange((current) => ({
-                    ...current,
-                    defaultFocusMinutes: nextDefaultFocusMinutes
-                  }));
-                }}
-              />
-              <div className="settings-range-labels">
-                <span>{MIN_FOCUS_SESSION_MINUTES} {t("common.minutesShort")}</span>
-                <span>{MAX_FOCUS_SESSION_MINUTES} {t("common.minutesShort")}</span>
-              </div>
-              <div className="focus-presets" aria-label={t("popup.quickTime")}>
-                {FOCUS_PRESETS.map((preset) => (
-                  <button
-                    key={preset}
-                    className={draft.defaultFocusMinutes === preset ? "focus-preset is-active" : "focus-preset"}
-                    type="button"
-                    onClick={() => {
-                      applyPreferencesChange((current) => ({ ...current, defaultFocusMinutes: preset }));
-                    }}
-                  >
-                    {preset} {t("common.minutesShort")}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
           {activeTab === "blocking" ? (
             <div className="settings-section">
               <p className="settings-copy">{t("popup.blockingCopy")}</p>
@@ -524,8 +462,6 @@ function PopupApp() {
   const [view, setView] = useState<PopupView>("focus");
   const [actionState, setActionState] = useState<FocusActionState>({ status: "idle" });
   const [languageSaveState, setLanguageSaveState] = useState<"idle" | "saving">("idle");
-  const [selectedMinutes, setSelectedMinutes] = useState(() => getDefaultFocusMinutes(null));
-  const didInitializeMinutesRef = useRef(false);
   const language = getBootstrapLanguage(bootstrap);
   const t = useMemo(() => createTranslator(language), [language]);
   const activeSession = bootstrap?.popupModel?.focusSession?.status === "active"
@@ -534,15 +470,6 @@ function PopupApp() {
   const isFocusActive = Boolean(activeSession);
   const isLoading = !bootstrap || actionState.status === "loading";
   const buttonLabel = isFocusActive ? t("popup.buttonStop") : t("popup.buttonStart");
-
-  useEffect(() => {
-    if (!bootstrap || didInitializeMinutesRef.current) {
-      return;
-    }
-
-    setSelectedMinutes(getDefaultFocusMinutes(bootstrap));
-    didInitializeMinutesRef.current = true;
-  }, [bootstrap]);
 
   async function handleToggleFocus() {
     if (actionState.status === "loading") {
@@ -558,8 +485,7 @@ function PopupApp() {
         });
       } else {
         await sendBackgroundMessage({
-          type: MESSAGE_TYPES.startFocusSession,
-          minutes: clampFocusMinutes(selectedMinutes)
+          type: MESSAGE_TYPES.startFocusSession
         });
       }
       await refreshBootstrap();
@@ -607,7 +533,6 @@ function PopupApp() {
         onBack={() => setView("focus")}
         onSaved={(nextBootstrap) => {
           applyBootstrap(nextBootstrap);
-          setSelectedMinutes(getDefaultFocusMinutes(nextBootstrap));
         }}
       />
     );
@@ -644,28 +569,6 @@ function PopupApp() {
             ? t("popup.focusActiveCopy")
             : t("popup.focusInactiveCopy")}
         </p>
-
-        {activeSession ? (
-          <div className="popup-countdown" aria-live="polite">
-            <span className="popup-countdown-label">{t("popup.countdownLabel")}</span>
-            <strong className="popup-countdown-value">{formatRemainingTime(activeSession.remaining_ms)}</strong>
-          </div>
-        ) : (
-          <label className="popup-timepicker">
-            <span className="popup-timepicker-label">{t("popup.focusMinutesLabel")}</span>
-            <input
-              className="popup-timepicker-input"
-              type="number"
-              min={MIN_FOCUS_SESSION_MINUTES}
-              max={MAX_FOCUS_SESSION_MINUTES}
-              step={5}
-              value={selectedMinutes}
-              onChange={(event) => setSelectedMinutes(clampFocusMinutes(event.currentTarget.valueAsNumber))}
-              onBlur={() => setSelectedMinutes((value) => clampFocusMinutes(value))}
-              disabled={isLoading}
-            />
-          </label>
-        )}
 
         <button
           className={isFocusActive ? "popup-primary-button is-danger" : "popup-primary-button"}

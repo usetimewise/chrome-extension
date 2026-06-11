@@ -151,57 +151,6 @@ body::before {
   line-height: 1.55;
 }
 
-.popup-timepicker {
-  display: grid;
-  gap: 8px;
-}
-
-.popup-timepicker-label,
-.popup-countdown-label {
-  color: #717182;
-  font-size: 13px;
-  line-height: 1.35;
-}
-
-.popup-timepicker-input {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 44px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #030213;
-  font: inherit;
-  font-size: 16px;
-  line-height: 1.2;
-  padding: 10px 12px;
-}
-
-.popup-timepicker-input:focus {
-  border-color: #030213;
-  outline: none;
-}
-
-.popup-timepicker-input:disabled {
-  opacity: 0.62;
-}
-
-.popup-countdown {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
-}
-
-.popup-countdown-value {
-  color: #030213;
-  font-size: 28px;
-  font-weight: 500;
-  letter-spacing: 0;
-  line-height: 1;
-}
-
 .popup-primary-button {
   width: 100%;
   min-height: 44px;
@@ -262,7 +211,7 @@ body::before {
 
 .settings-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   margin: 14px 20px 0;
   padding: 4px;
@@ -417,64 +366,6 @@ body::before {
   background: #030213;
   color: #ffffff;
   font-size: 12px;
-}
-
-.focus-duration-readout {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.focus-duration-readout strong {
-  color: #030213;
-  font-size: 48px;
-  font-weight: 500;
-  letter-spacing: 0;
-  line-height: 1;
-}
-
-.focus-duration-readout span {
-  color: #717182;
-  font-size: 17px;
-  line-height: 1.2;
-}
-
-.settings-range {
-  width: 100%;
-  accent-color: #030213;
-}
-
-.settings-range-labels {
-  display: flex;
-  justify-content: space-between;
-  color: #717182;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.focus-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.focus-preset {
-  min-height: 34px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #030213;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.2;
-  padding: 8px 11px;
-}
-
-.focus-preset.is-active {
-  border-color: #030213;
-  background: #030213;
-  color: #ffffff;
 }
 
 .blocked-host-form {

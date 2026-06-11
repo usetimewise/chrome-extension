@@ -14,14 +14,13 @@ export const MESSAGE_TYPES = {
   getBootstrap: "GET_BOOTSTRAP",
   retrySiteClassifications: "RETRY_SITE_CLASSIFICATIONS",
   startFocusSession: "START_FOCUS_SESSION",
-  pauseFocusSession: "PAUSE_FOCUS_SESSION",
-  resumeFocusSession: "RESUME_FOCUS_SESSION",
   endFocusSession: "END_FOCUS_SESSION",
   savePreferences: "SAVE_PREFERENCES",
   saveSiteRule: "SAVE_SITE_RULE",
   closeCurrentTab: "CLOSE_CURRENT_TAB",
   forceFocusNudge: "FORCE_FOCUS_NUDGE",
   showFocusNudge: "SHOW_FOCUS_NUDGE",
+  dismissFocusOffer: "DISMISS_FOCUS_OFFER",
   focusBlockerBlocked: "FOCUS_BLOCKER_BLOCKED"
 } as const;
 
@@ -35,7 +34,8 @@ export const DEFAULT_RUNTIME_STATE: RuntimeState = {
   focusNudgeNotifications: {
     sessionId: null,
     hosts: {}
-  }
+  },
+  focusOfferPromptEvents: []
 };
 
 export const CATEGORY_LABELS: Record<Category, string> = {

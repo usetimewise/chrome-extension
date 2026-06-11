@@ -3,7 +3,6 @@ import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
 import { createTranslator } from "../../lib/i18n/index.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
 import { getSettings } from "../../lib/storage/site-rules.js";
-import { sessionRemainingMs } from "../../lib/local-focus-sessions.js";
 import { decideFocusBlock } from "../../lib/site-block-rules.js";
 import type { BootstrapResponse, Category, FocusSession, Settings } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
@@ -11,15 +10,15 @@ import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
 export async function showFocusNudgeInTab(
   tabId: number,
   message: string,
-  details: { sessionId: string; host: string; category: string; remainingMs?: number }
+  details: { sessionId: string; host: string; category: string }
 ): Promise<{ ok: boolean; response: unknown }> {
   const payload = {
     type: MESSAGE_TYPES.showFocusNudge,
+    mode: "block",
     sessionId: details.sessionId,
     message,
     host: details.host,
-    category: details.category,
-    remainingMs: Math.max(0, Number(details.remainingMs || 0))
+    category: details.category
   } as const;
 
   try {
@@ -38,7 +37,7 @@ export async function showFocusNudgeInTab(
 export async function showFocusNudge(
   context: BackgroundRuntimeContext,
   message: string,
-  details: { sessionId: string; host: string; category: string; remainingMs?: number }
+  details: { sessionId: string; host: string; category: string }
 ): Promise<{ ok: boolean; response: unknown }> {
   const tabId = context.runtimeState.currentTabId;
   if (!tabId) {
@@ -95,8 +94,7 @@ export async function evaluateFocusNudgeNotification(
       {
         sessionId: activeSession.id,
         host: currentHost,
-        category: decision.category,
-        remainingMs: activeSession.remaining_ms ?? sessionRemainingMs(activeSession)
+        category: decision.category
       }
     );
   } catch {
@@ -111,13 +109,6 @@ export function buildPopupModel(
   settings: Settings
 ): BootstrapResponse["popupModel"] {
   const t = createTranslator(settings.language);
-  const focusSession = activeSession
-    ? {
-        ...activeSession,
-        remaining_ms: activeSession.remaining_ms ?? sessionRemainingMs(activeSession)
-      }
-    : null;
-
   return {
     state: activeSession?.status === "active" ? "focus_active" : "empty",
     statusLabel: activeSession?.status === "active" ? t("popup.focusActiveTitle") : t("popup.focusInactiveTitle"),
@@ -130,13 +121,11 @@ export function buildPopupModel(
           category: currentHostCategory || "other"
         }
       : null,
-    focusSession,
+    focusSession: activeSession,
     primaryAction: activeSession?.status === "active"
-      ? { type: MESSAGE_TYPES.pauseFocusSession, label: t("popup.buttonStop") }
+      ? { type: MESSAGE_TYPES.endFocusSession, label: t("popup.buttonStop") }
       : { type: MESSAGE_TYPES.startFocusSession, label: t("popup.buttonStart") },
-    secondaryActions: activeSession?.status === "active"
-      ? [{ type: MESSAGE_TYPES.endFocusSession, label: t("popup.buttonStop") }]
-      : [],
+    secondaryActions: [],
     canReclassify: Boolean(context.runtimeState.currentHost)
   };
 }

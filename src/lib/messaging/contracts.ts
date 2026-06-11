@@ -21,17 +21,6 @@ export type BackgroundRetrySiteClassificationsRequest = {
 export type BackgroundStartFocusSessionRequest = {
   type: typeof MESSAGE_TYPES.startFocusSession;
   intent?: string;
-  minutes?: number;
-};
-
-export type BackgroundPauseFocusSessionRequest = {
-  type: typeof MESSAGE_TYPES.pauseFocusSession;
-  sessionId: string;
-};
-
-export type BackgroundResumeFocusSessionRequest = {
-  type: typeof MESSAGE_TYPES.resumeFocusSession;
-  sessionId: string;
 };
 
 export type BackgroundEndFocusSessionRequest = {
@@ -66,18 +55,23 @@ export type BackgroundFocusBlockerBlockedRequest = {
   category: string;
 };
 
+export type BackgroundDismissFocusOfferRequest = {
+  type: typeof MESSAGE_TYPES.dismissFocusOffer;
+  action: "defer" | "close";
+  host: string;
+};
+
 export type BackgroundRequest =
   | BackgroundBootstrapRequest
   | BackgroundRetrySiteClassificationsRequest
   | BackgroundStartFocusSessionRequest
-  | BackgroundPauseFocusSessionRequest
-  | BackgroundResumeFocusSessionRequest
   | BackgroundEndFocusSessionRequest
   | BackgroundSavePreferencesRequest
   | BackgroundSaveSiteRuleRequest
   | BackgroundCloseCurrentTabRequest
   | BackgroundForceFocusNudgeRequest
-  | BackgroundFocusBlockerBlockedRequest;
+  | BackgroundFocusBlockerBlockedRequest
+  | BackgroundDismissFocusOfferRequest;
 
 export type BackgroundRequestType = BackgroundRequest["type"];
 
@@ -128,14 +122,13 @@ export type BackgroundSuccessResponseMap = {
   [MESSAGE_TYPES.getBootstrap]: BootstrapResponse;
   [MESSAGE_TYPES.retrySiteClassifications]: RetrySiteClassificationsResponse;
   [MESSAGE_TYPES.startFocusSession]: BackgroundFocusSessionResponse;
-  [MESSAGE_TYPES.pauseFocusSession]: BackgroundFocusSessionResponse;
-  [MESSAGE_TYPES.resumeFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.endFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.savePreferences]: BackgroundSavePreferencesResponse;
   [MESSAGE_TYPES.saveSiteRule]: BackgroundSaveSiteRuleResponse;
   [MESSAGE_TYPES.closeCurrentTab]: BackgroundCloseCurrentTabResponse;
   [MESSAGE_TYPES.forceFocusNudge]: BackgroundForceFocusNudgeResponse;
   [MESSAGE_TYPES.focusBlockerBlocked]: BackgroundFocusBlockerBlockedResponse;
+  [MESSAGE_TYPES.dismissFocusOffer]: BackgroundCloseCurrentTabResponse;
 };
 
 export type BackgroundSuccessResponse<TType extends BackgroundRequestType> = BackgroundSuccessResponseMap[TType];
@@ -146,11 +139,17 @@ export type BackgroundResponse<TType extends BackgroundRequestType> =
 
 export type ContentShowFocusNudgeRequest = {
   type: typeof MESSAGE_TYPES.showFocusNudge;
+  mode: "block";
   sessionId: string;
   message: string;
   host: string;
   category: string;
-  remainingMs: number;
+} | {
+  type: typeof MESSAGE_TYPES.showFocusNudge;
+  mode: "offer";
+  message: string;
+  host: string;
+  category: string;
 };
 
 export type ContentRequest = ContentShowFocusNudgeRequest;
@@ -175,14 +174,6 @@ function isValidMessageType(value: unknown): value is string {
 
 function isOptionalString(value: unknown): value is string | undefined {
   return value === undefined || typeof value === "string";
-}
-
-function isOptionalNumber(value: unknown): value is number | undefined {
-  return value === undefined || typeof value === "number";
-}
-
-function isRequiredNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
 }
 
 function isRequiredString(value: unknown): value is string {
@@ -230,9 +221,7 @@ export function isBackgroundRequest(value: unknown): value is BackgroundRequest 
     case MESSAGE_TYPES.closeCurrentTab:
       return true;
     case MESSAGE_TYPES.startFocusSession:
-      return isOptionalString(value.intent) && isOptionalNumber(value.minutes);
-    case MESSAGE_TYPES.pauseFocusSession:
-    case MESSAGE_TYPES.resumeFocusSession:
+      return isOptionalString(value.intent);
     case MESSAGE_TYPES.endFocusSession:
       return isRequiredString(value.sessionId);
     case MESSAGE_TYPES.savePreferences:
@@ -243,6 +232,9 @@ export function isBackgroundRequest(value: unknown): value is BackgroundRequest 
       return isRequiredString(value.sessionId) &&
         isRequiredString(value.host) &&
         isRequiredString(value.category);
+    case MESSAGE_TYPES.dismissFocusOffer:
+      return (value.action === "defer" || value.action === "close") &&
+        isRequiredString(value.host);
     default:
       return false;
   }
@@ -255,11 +247,17 @@ export function isContentRequest(value: unknown): value is ContentRequest {
 
   switch (value.type) {
     case MESSAGE_TYPES.showFocusNudge:
-      return isRequiredString(value.sessionId) &&
-        isRequiredString(value.message) &&
-        isRequiredString(value.host) &&
-        isRequiredString(value.category) &&
-        isRequiredNumber(value.remainingMs);
+      if (!isRequiredString(value.message) ||
+        !isRequiredString(value.host) ||
+        !isRequiredString(value.category)) {
+        return false;
+      }
+
+      if (value.mode === "offer") {
+        return true;
+      }
+
+      return value.mode === "block" && isRequiredString(value.sessionId);
     default:
       return false;
   }

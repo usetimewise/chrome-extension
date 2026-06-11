@@ -52,6 +52,15 @@ export interface RuntimeState {
     sessionId: string | null;
     hosts: Record<string, number>;
   };
+  focusOfferPromptEvents: FocusOfferPromptEvent[];
+}
+
+export type FocusOfferPromptEventType = "shown" | "deferred" | "closed" | "started";
+
+export interface FocusOfferPromptEvent {
+  type: FocusOfferPromptEventType;
+  at: number;
+  host: string;
 }
 
 export interface BootstrapResponse {

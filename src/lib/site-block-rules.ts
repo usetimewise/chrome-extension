@@ -35,6 +35,23 @@ export type FocusBlockDecision =
         | "no_block_decision";
     };
 
+export type DistractionDecision =
+  | {
+      action: "distracting";
+      host: string;
+      category: string;
+      reason: "user_block_rule" | "default_rule" | "cached_decision" | "lookup_decision";
+      matchedRule?: SiteBlockRule;
+    }
+  | {
+      action: "allow";
+      reason:
+        | "url_not_normalized"
+        | "user_override"
+        | "no_local_block_decision"
+        | "no_block_decision";
+    };
+
 export type FocusBlockDecisionContext = {
   sessions?: FocusSession[];
   siteRules?: SiteRuleState | null;
@@ -185,6 +202,25 @@ export async function decideFocusBlock(
     return { action: "allow", reason: "no_active_focus_session" };
   }
 
+  const decision = await decideDistractionSite(rawUrl, context);
+  if (decision.action === "allow") {
+    return decision;
+  }
+
+  return {
+    action: "block",
+    sessionId: session.id,
+    host: decision.host,
+    category: decision.category,
+    reason: decision.reason,
+    matchedRule: decision.matchedRule
+  };
+}
+
+export async function decideDistractionSite(
+  rawUrl: string,
+  context: Omit<FocusBlockDecisionContext, "sessions"> = {}
+): Promise<DistractionDecision> {
   const host = normalizedHost(rawUrl);
   if (!host) {
     return { action: "allow", reason: "url_not_normalized" };
@@ -197,8 +233,7 @@ export async function decideFocusBlock(
   const userRule = findUserBlockedRule(host, context.siteRules);
   if (userRule) {
     return {
-      action: "block",
-      sessionId: session.id,
+      action: "distracting",
       host,
       category: userRule.category,
       reason: "user_block_rule",
@@ -209,8 +244,7 @@ export async function decideFocusBlock(
   const defaultRule = findDefaultBlockedRule(rawUrl, context.disabledDefaultBlockRuleIds);
   if (defaultRule) {
     return {
-      action: "block",
-      sessionId: session.id,
+      action: "distracting",
       host,
       category: defaultRule.category,
       reason: "default_rule",
@@ -223,8 +257,7 @@ export async function decideFocusBlock(
     : await lookupCachedUrlDecision(rawUrl, { focusMode: "normal" });
   if (lookupDecision.action === "block") {
     return {
-      action: "block",
-      sessionId: session.id,
+      action: "distracting",
       host,
       category: lookupDecision.category || "other",
       reason: context.allowNetworkLookup ? "lookup_decision" : "cached_decision",
