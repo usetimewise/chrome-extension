@@ -27,10 +27,15 @@ import {
   processSiteClassificationQueue,
   retrySiteClassificationsNow
 } from "../tracking/site-classification-worker.js";
+import { refreshActiveTab } from "../tracking/refresh-active-tab.js";
 import { withRegisteredDevice } from "../device/registration.js";
 import { syncFocusSessionTimer } from "../focus/focus-session-timer.js";
 
 async function buildBootstrap(context: BackgroundRuntimeContext): Promise<BootstrapResponse> {
+  await refreshActiveTab(context, {
+    evaluateFocusNudge: false,
+    evaluateFocusOffer: false
+  });
   const currentFocusSessions = await syncFocusSessionTimer();
   const [settings, device, focusSessions, siteRules, siteClassifications] = await Promise.all([
     getSettings(),

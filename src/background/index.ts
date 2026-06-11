@@ -46,7 +46,8 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (tabId !== runtimeContext.runtimeState.currentTabId) {
+  const isKnownCurrentTab = tabId === runtimeContext.runtimeState.currentTabId;
+  if (!isKnownCurrentTab && (runtimeContext.runtimeState.currentTabId !== null || !tab.active)) {
     return;
   }
 

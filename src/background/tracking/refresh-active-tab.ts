@@ -3,13 +3,20 @@ import { getFocusSessions } from "../../lib/storage/focus-sessions.js";
 import { getSettings } from "../../lib/storage/site-rules.js";
 import { isTrackableUrl, normalizeHost } from "../../lib/utils.js";
 import { evaluateFocusOffer } from "../focus/focus-offer-flow.js";
+import { evaluateFocusNudgeNotification } from "../focus/focus-session-flow.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
 import { classifyUrl, safeTabUrl } from "./classify-url.js";
 import { ensureClassificationForHost } from "./site-classification-worker.js";
 
+type ActiveTabEvaluationOptions = {
+  evaluateFocusNudge?: boolean;
+  evaluateFocusOffer?: boolean;
+};
+
 export async function setActiveFromTab(
   context: BackgroundRuntimeContext,
-  tab: chrome.tabs.Tab | null | undefined
+  tab: chrome.tabs.Tab | null | undefined,
+  options: ActiveTabEvaluationOptions = {}
 ): Promise<void> {
   const tabUrl = safeTabUrl(tab);
   const urlClass = classifyUrl(tabUrl);
@@ -38,14 +45,29 @@ export async function setActiveFromTab(
   context.runtimeState.currentWindowId = tab.windowId ?? null;
   await saveRuntimeState(context.runtimeState);
   void ensureClassificationForHost(context, nextHost);
+  const shouldEvaluateFocusNudge = options.evaluateFocusNudge ?? true;
+  const shouldEvaluateFocusOffer = options.evaluateFocusOffer ?? true;
+  if (!shouldEvaluateFocusNudge && !shouldEvaluateFocusOffer) {
+    return;
+  }
+
   const [sessions, settings] = await Promise.all([
     getFocusSessions(),
     getSettings()
   ]);
-  void evaluateFocusOffer(context, sessions, settings);
+  if (shouldEvaluateFocusNudge) {
+    const activeSession = sessions.find((session) => session.status === "active") || null;
+    await evaluateFocusNudgeNotification(context, activeSession, settings);
+  }
+  if (shouldEvaluateFocusOffer) {
+    void evaluateFocusOffer(context, sessions, settings);
+  }
 }
 
-export async function refreshActiveTab(context: BackgroundRuntimeContext): Promise<void> {
+export async function refreshActiveTab(
+  context: BackgroundRuntimeContext,
+  options: ActiveTabEvaluationOptions = {}
+): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  await setActiveFromTab(context, tab);
+  await setActiveFromTab(context, tab, options);
 }

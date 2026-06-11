@@ -169,6 +169,19 @@ test("blocks user forced distraction rule before cached lookup", async () => {
   assert.equal(decision.action === "block" && decision.host, "example.com");
 });
 
+test("blocks user configured subdomain during active focus", async () => {
+  const decision = await determineEarlyFocusBlock(
+    "https://music.yandex.ru/home",
+    [activeSession()],
+    { excludedHosts: [], categoryOverrides: { "music.yandex.ru": "social" } }
+  );
+
+  assert.equal(decision.action, "block");
+  assert.equal(decision.action === "block" && decision.reason, "user_block_rule");
+  assert.equal(decision.action === "block" && decision.category, "social");
+  assert.equal(decision.action === "block" && decision.host, "music.yandex.ru");
+});
+
 test("blocks from cached url decision buckets without network lookup", async () => {
   const domainHash = await hashedKey("d:example.com");
   await saveBuckets([{
