@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MESSAGE_TYPES } from "../../lib/constants.js";
-import { FOCUS_COMPANIONS } from "../../lib/focus-companions.js";
+import {
+  createFocusCompanionPreview,
+  listFocusCompanions
+} from "../../lib/focus-companions/index.js";
 import {
   DEFAULT_FOCUS_SESSION_MINUTES,
   MAX_FOCUS_SESSION_MINUTES,
@@ -78,6 +81,11 @@ function SettingsView({
   const [saveState, setSaveState] = useState<SettingsSaveState>({ status: "idle" });
   const initializedFromBootstrapRef = useRef(false);
   const blockedHosts = useMemo(() => [...draft.blockedHosts].sort(), [draft.blockedHosts]);
+  const companionPreviews = useMemo(() => listFocusCompanions().map((companion) => (
+    createFocusCompanionPreview(companion.id, {
+      resolveAssetUrl: (path) => chrome.runtime.getURL(path)
+    })
+  )), []);
 
   useEffect(() => {
     if (!bootstrap || initializedFromBootstrapRef.current) {
@@ -174,7 +182,7 @@ function SettingsView({
             <div className="settings-section">
               <p className="settings-copy">Выберите компаньона, который будет появляться в блокировщике.</p>
               <div className="companion-grid">
-                {FOCUS_COMPANIONS.map((companion) => (
+                {companionPreviews.map((companion) => (
                   <button
                     key={companion.id}
                     className={draft.selectedCompanionId === companion.id
@@ -186,11 +194,14 @@ function SettingsView({
                       setSaveState({ status: "idle" });
                     }}
                   >
-                    <span className={`companion-avatar companion-avatar-${companion.colorClass}`}>
-                      {companion.imageFileName ? (
-                        <img src={chrome.runtime.getURL(`images/ceo/${companion.imageFileName}`)} alt="" />
+                    <span className={companion.visual.kind === "avatar"
+                      ? `companion-avatar companion-avatar-${companion.visual.colorClass}`
+                      : "companion-avatar"}
+                    >
+                      {companion.visual.kind === "image" ? (
+                        <img src={companion.visual.src} alt="" />
                       ) : (
-                        companion.avatarText
+                        companion.visual.text
                       )}
                     </span>
                     <span className="companion-name">{companion.name}</span>

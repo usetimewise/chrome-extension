@@ -1,5 +1,6 @@
 import type { Category, SiteClassificationState, SiteRuleState } from "./activity.js";
-import type { FocusCompanionId, FocusSession } from "./focus.js";
+import type { FocusSession } from "./focus.js";
+import type { FocusCompanionId } from "../focus-companions/index.js";
 
 export type NudgeSensitivity = "direct" | "balanced" | "gentle";
 

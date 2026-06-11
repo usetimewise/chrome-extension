@@ -73,6 +73,17 @@ test("saves normalized preferences and removes duplicate blocked hosts", async (
   assert.deepEqual(storage[STORAGE_KEYS.preferences], preferences);
 });
 
+test("normalizes invalid companion id to default companion", async () => {
+  storage[STORAGE_KEYS.preferences] = {
+    selectedCompanionId: "unknown",
+    defaultFocusMinutes: 20,
+    blockedHosts: []
+  };
+
+  const preferences = await getUserPreferences();
+  assert.equal(preferences.selectedCompanionId, "ceo");
+});
+
 test("builds effective settings from app settings, preferences, and site rules", () => {
   const effective = buildEffectiveSettings(
     APP_SETTINGS,

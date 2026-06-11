@@ -1,15 +1,4 @@
 export type FocusSessionStatus = "active" | "paused" | "completed";
-export type FocusCompanionId =
-  | "ceo"
-  | "cto"
-  | "mentor"
-  | "coach"
-  | "stoic"
-  | "scientist"
-  | "philosopher"
-  | "hacker"
-  | "monk"
-  | "detective";
 
 export interface FocusSession {
   id: string;

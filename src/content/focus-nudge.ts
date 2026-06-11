@@ -1,5 +1,5 @@
 import { STORAGE_KEYS } from "../lib/constants.js";
-import { getFocusCompanion, type FocusCompanion } from "../lib/focus-companions.js";
+import { createFocusCompanionOverlayVariant } from "../lib/focus-companions/index.js";
 import type { UserPreferences } from "../lib/types.js";
 
 type FocusOverlayMessage = {
@@ -11,14 +11,6 @@ type FocusOverlayMessage = {
 };
 
 {
-type OverlayCopyVariant = {
-  imageFileName: string | null;
-  avatarText: string;
-  colorClass: string;
-  imageAlt: string;
-  text: string;
-};
-
 type FocusNudgeState = {
   activeOverlayKey: string | null;
   contextInvalidated: boolean;
@@ -36,18 +28,6 @@ const FOCUS_MESSAGE_TYPES = {
 const OVERLAY_ID = "time-wise-focus-overlay";
 const FOCUS_BLOCKER_ENGAGE_EVENT = "time-wise-focus-blocker-engage";
 const FOCUS_BLOCKER_RELEASE_EVENT = "time-wise-focus-blocker-release";
-const CEO_IMAGE_VARIANTS = [
-  "ceo-s02p01-kpi-frown.png",
-  "ceo-s02p02-phone-no.png",
-  "ceo-s02p03-watch-tap.png",
-  "ceo-s02p04-clipboard-flip.png",
-  "ceo-s02p05-pinch-bridge.png",
-  "ceo-s02p06-meeting-call.png",
-  "ceo-s02p07-folded-arms.png",
-  "ceo-s02p08-redline-pen.png",
-  "ceo-s02p09-firm-stare.png",
-  "ceo-s02p10-tap-table.png"
-] as const;
 const stateHost = globalThis as typeof globalThis & {
   __timeWiseFocusNudgeState?: FocusNudgeState;
 };
@@ -95,33 +75,14 @@ function overlayKey(message: FocusOverlayMessage): string {
   return `${message.sessionId}:${message.host}`;
 }
 
-async function getSelectedCompanion(): Promise<FocusCompanion> {
+async function getSelectedCompanionId(): Promise<string | undefined> {
   try {
     const values = await chrome.storage.local.get(STORAGE_KEYS.preferences);
     const preferences = values[STORAGE_KEYS.preferences] as Partial<UserPreferences> | undefined;
-    return getFocusCompanion(preferences?.selectedCompanionId);
+    return preferences?.selectedCompanionId;
   } catch {
-    return getFocusCompanion("ceo");
+    return undefined;
   }
-}
-
-function getRandomCopyVariant(companion: FocusCompanion): OverlayCopyVariant {
-  const text = companion.copy[Math.floor(Math.random() * companion.copy.length)] || companion.copy[0];
-  const imageFileName = companion.id === "ceo"
-    ? CEO_IMAGE_VARIANTS[Math.floor(Math.random() * CEO_IMAGE_VARIANTS.length)]
-    : companion.imageFileName;
-
-  return {
-    imageFileName,
-    avatarText: companion.avatarText,
-    colorClass: companion.colorClass,
-    imageAlt: companion.name,
-    text
-  };
-}
-
-function getCeoImageUrl(imageFileName: string): string {
-  return chrome.runtime.getURL(`images/ceo/${imageFileName}`);
 }
 
 function removeExistingOverlay(): void {
@@ -206,7 +167,9 @@ function startOverlayCountdown(shadow: ShadowRoot, message: FocusOverlayMessage)
 }
 
 async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElement> {
-  const copyVariant = getRandomCopyVariant(await getSelectedCompanion());
+  const copyVariant = createFocusCompanionOverlayVariant(await getSelectedCompanionId(), {
+    resolveAssetUrl: (path) => chrome.runtime.getURL(path)
+  });
   const host = document.createElement("div");
   host.id = OVERLAY_ID;
 
@@ -498,19 +461,19 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   const imageWrap = document.createElement("div");
   imageWrap.className = "image-wrap";
 
-  if (copyVariant.imageFileName) {
+  if (copyVariant.visual.kind === "image") {
     const image = document.createElement("img");
     image.className = "image";
-    image.src = getCeoImageUrl(copyVariant.imageFileName);
-    image.alt = copyVariant.imageAlt;
+    image.src = copyVariant.visual.src;
+    image.alt = copyVariant.visual.alt;
     image.loading = "eager";
     image.decoding = "async";
     imageWrap.append(image);
   } else {
     const avatar = document.createElement("div");
-    avatar.className = `avatar avatar-${copyVariant.colorClass}`;
-    avatar.setAttribute("aria-label", copyVariant.imageAlt);
-    avatar.textContent = copyVariant.avatarText;
+    avatar.className = `avatar avatar-${copyVariant.visual.colorClass}`;
+    avatar.setAttribute("aria-label", copyVariant.visual.label);
+    avatar.textContent = copyVariant.visual.text;
     imageWrap.append(avatar);
   }
 

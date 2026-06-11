@@ -1,6 +1,6 @@
 import { DISTRACTION_CATEGORIES, STORAGE_KEYS } from "../constants.js";
 import { getAppSettings } from "../app-settings.js";
-import { isFocusCompanionId } from "../focus-companions.js";
+import { isFocusCompanionId } from "../focus-companions/index.js";
 import {
   DEFAULT_FOCUS_SESSION_MINUTES,
   MAX_FOCUS_SESSION_MINUTES,
