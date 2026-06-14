@@ -4,6 +4,7 @@ import { isPlainObject } from "../utils.js";
 import type {
   BootstrapResponse,
   Category,
+  FocusDistractionCountersState,
   FocusSession,
   RetrySiteClassificationsResponse,
   SiteRuleState,
@@ -16,6 +17,10 @@ export type BackgroundBootstrapRequest = {
 
 export type BackgroundRetrySiteClassificationsRequest = {
   type: typeof MESSAGE_TYPES.retrySiteClassifications;
+};
+
+export type BackgroundGetFocusDistractionCountersRequest = {
+  type: typeof MESSAGE_TYPES.getFocusDistractionCounters;
 };
 
 export type BackgroundStartFocusSessionRequest = {
@@ -63,6 +68,7 @@ export type BackgroundDismissFocusOfferRequest = {
 
 export type BackgroundRequest =
   | BackgroundBootstrapRequest
+  | BackgroundGetFocusDistractionCountersRequest
   | BackgroundRetrySiteClassificationsRequest
   | BackgroundStartFocusSessionRequest
   | BackgroundEndFocusSessionRequest
@@ -120,6 +126,7 @@ export interface BackgroundFocusBlockerBlockedResponse {
 
 export type BackgroundSuccessResponseMap = {
   [MESSAGE_TYPES.getBootstrap]: BootstrapResponse;
+  [MESSAGE_TYPES.getFocusDistractionCounters]: FocusDistractionCountersState;
   [MESSAGE_TYPES.retrySiteClassifications]: RetrySiteClassificationsResponse;
   [MESSAGE_TYPES.startFocusSession]: BackgroundFocusSessionResponse;
   [MESSAGE_TYPES.endFocusSession]: BackgroundFocusSessionResponse;
@@ -216,6 +223,7 @@ export function isBackgroundRequest(value: unknown): value is BackgroundRequest 
 
   switch (value.type) {
     case MESSAGE_TYPES.getBootstrap:
+    case MESSAGE_TYPES.getFocusDistractionCounters:
     case MESSAGE_TYPES.retrySiteClassifications:
     case MESSAGE_TYPES.forceFocusNudge:
     case MESSAGE_TYPES.closeCurrentTab:

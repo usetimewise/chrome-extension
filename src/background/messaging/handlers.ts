@@ -30,6 +30,10 @@ import {
 import { refreshActiveTab } from "../tracking/refresh-active-tab.js";
 import { withRegisteredDevice } from "../device/registration.js";
 import { syncFocusSessionTimer } from "../focus/focus-session-timer.js";
+import {
+  getDebugFocusDistractionCounters,
+  syncFocusDistractionCounterSession
+} from "../tracking/focus-distraction-tracker.js";
 
 async function buildBootstrap(context: BackgroundRuntimeContext): Promise<BootstrapResponse> {
   await refreshActiveTab(context, {
@@ -75,6 +79,8 @@ export function createBackgroundMessageListener(
       switch (message.type) {
         case MESSAGE_TYPES.getBootstrap:
           return buildBootstrap(context);
+        case MESSAGE_TYPES.getFocusDistractionCounters:
+          return getDebugFocusDistractionCounters(context);
         case MESSAGE_TYPES.retrySiteClassifications: {
           const retriedCount = await retrySiteClassificationsNow(context);
           const siteClassifications = await getSiteClassifications();
@@ -92,6 +98,7 @@ export function createBackgroundMessageListener(
           });
           await saveFocusSessions(result.sessions);
           await syncFocusSessionTimer();
+          await syncFocusDistractionCounterSession();
           if (context.runtimeState.currentHost) {
             await recordFocusOfferPromptEvent(context, "started", context.runtimeState.currentHost);
           }
@@ -107,6 +114,7 @@ export function createBackgroundMessageListener(
           );
           await saveFocusSessions(result.sessions);
           await syncFocusSessionTimer();
+          await syncFocusDistractionCounterSession();
           return { ok: true, session: result.session, bootstrap: await buildBootstrap(context) };
         }
         case MESSAGE_TYPES.saveSiteRule: {

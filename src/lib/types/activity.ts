@@ -33,3 +33,27 @@ export interface SiteClassificationRecord {
 export interface SiteClassificationState {
   byHost: Record<string, SiteClassificationRecord>;
 }
+
+export type FocusDistractionRuleSnapshot = {
+  id: string;
+  pattern: string;
+  patternType: "domain" | "url_prefix";
+  category: string;
+  source: "default" | "user" | "cache";
+};
+
+export type FocusDistractionCounter = {
+  rule: FocusDistractionRuleSnapshot;
+  totalMs: number;
+  lastUrl: string;
+  lastHost: string;
+  lastUpdatedAt: number;
+};
+
+export type FocusDistractionCountersState = {
+  sessionId: string | null;
+  startedAt: number | null;
+  lastDistractedAt: number | null;
+  updatedAt: number | null;
+  counters: Record<string, FocusDistractionCounter>;
+};

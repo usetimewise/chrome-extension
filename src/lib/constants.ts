@@ -4,6 +4,7 @@ export const STORAGE_KEYS = {
   device: "twt_device_v2",
   runtimeState: "twt_runtime_state_v2",
   focusSessions: "twt_focus_sessions_v1",
+  focusDistractionCounters: "twt_focus_distraction_counters_v1",
   preferences: "twt_preferences_v1",
   siteRules: "twt_site_rules_v1",
   siteClassifications: "twt_site_classifications_v1",
@@ -12,6 +13,7 @@ export const STORAGE_KEYS = {
 
 export const MESSAGE_TYPES = {
   getBootstrap: "GET_BOOTSTRAP",
+  getFocusDistractionCounters: "GET_FOCUS_DISTRACTION_COUNTERS",
   retrySiteClassifications: "RETRY_SITE_CLASSIFICATIONS",
   startFocusSession: "START_FOCUS_SESSION",
   endFocusSession: "END_FOCUS_SESSION",
