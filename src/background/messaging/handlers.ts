@@ -1,5 +1,6 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { createTranslator } from "../../lib/i18n/index.js";
+import { resolveFocusBlockSeverity } from "../../lib/focus-distraction-counters.js";
 import { getDeviceState } from "../../lib/storage/device-state.js";
 import { getFocusSessions, saveFocusSessions } from "../../lib/storage/focus-sessions.js";
 import { saveUserPreferences } from "../../lib/storage/preferences.js";
@@ -31,6 +32,7 @@ import { refreshActiveTab } from "../tracking/refresh-active-tab.js";
 import { withRegisteredDevice } from "../device/registration.js";
 import { syncFocusSessionTimer } from "../focus/focus-session-timer.js";
 import {
+  flushFocusDistractionTracking,
   getDebugFocusDistractionCounters,
   syncFocusDistractionCounterSession
 } from "../tracking/focus-distraction-tracker.js";
@@ -155,6 +157,8 @@ export function createBackgroundMessageListener(
 
           await syncFocusSessionTimer();
           const settings = await getSettings();
+          const counters = await flushFocusDistractionTracking(context);
+          const presentation = resolveFocusBlockSeverity(counters.counters);
           const t = createTranslator(settings.language);
           return showFocusNudgeInTab(
             tabId,
@@ -162,7 +166,8 @@ export function createBackgroundMessageListener(
             {
               sessionId: message.sessionId,
               host: message.host,
-              category: message.category
+              category: message.category,
+              presentation
             }
           );
         }

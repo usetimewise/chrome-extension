@@ -1,7 +1,7 @@
 import { MESSAGE_TYPES, STORAGE_KEYS } from "../lib/constants.js";
 import { determineEarlyFocusBlock } from "../lib/early-focus-block.js";
 import { buildEffectiveSiteRules } from "../lib/storage/preferences.js";
-import type { FocusSession, SiteRuleState, UserPreferences } from "../lib/types.js";
+import type { FocusDistractionCountersState, FocusSession, SiteRuleState, UserPreferences } from "../lib/types.js";
 
 const BLOCKER_ID = "time-wise-focus-blocker";
 const BLOCKER_STYLE_ID = "time-wise-focus-blocker-style";
@@ -23,6 +23,7 @@ type FocusBlockerBlockedMessage = {
   sessionId: string;
   host: string;
   category: string;
+  presentation: "soft" | "strict";
 };
 
 const stateHost = globalThis as typeof globalThis & {
@@ -152,23 +153,31 @@ async function readStorage(): Promise<{
   sessions: FocusSession[];
   siteRules: SiteRuleState | null;
   disabledDefaultBlockRuleIds: string[];
+  focusDistractionCounters: FocusDistractionCountersState["counters"];
 }> {
   const values = await chrome.storage.local.get([
+    STORAGE_KEYS.focusDistractionCounters,
     STORAGE_KEYS.focusSessions,
     STORAGE_KEYS.preferences,
     STORAGE_KEYS.siteRules
   ]);
   const storedSiteRules = values[STORAGE_KEYS.siteRules] as SiteRuleState | null || null;
   const preferences = values[STORAGE_KEYS.preferences] as UserPreferences | null || null;
+  const sessions = Array.isArray(values[STORAGE_KEYS.focusSessions])
+    ? values[STORAGE_KEYS.focusSessions] as FocusSession[]
+    : [];
+  const activeSession = sessions.find((session) => session.status === "active") || null;
+  const storedCounters = values[STORAGE_KEYS.focusDistractionCounters] as Partial<FocusDistractionCountersState> | null | undefined;
 
   return {
-    sessions: Array.isArray(values[STORAGE_KEYS.focusSessions])
-      ? values[STORAGE_KEYS.focusSessions] as FocusSession[]
-      : [],
+    sessions,
     siteRules: buildEffectiveSiteRules(storedSiteRules, preferences),
     disabledDefaultBlockRuleIds: Array.isArray(preferences?.disabledDefaultBlockRuleIds)
       ? preferences.disabledDefaultBlockRuleIds
-      : []
+      : [],
+    focusDistractionCounters: storedCounters?.sessionId === activeSession?.id
+      ? storedCounters.counters || {}
+      : {}
   };
 }
 
@@ -189,26 +198,33 @@ async function sendBlockedMessage(message: FocusBlockerBlockedMessage): Promise<
 
 async function evaluateCurrentPage(): Promise<void> {
   try {
-    const { sessions, siteRules, disabledDefaultBlockRuleIds } = await readStorage();
+    const { sessions, siteRules, disabledDefaultBlockRuleIds, focusDistractionCounters } = await readStorage();
     const decision = await determineEarlyFocusBlock(
       window.location.href,
       sessions,
       siteRules,
-      disabledDefaultBlockRuleIds
+      disabledDefaultBlockRuleIds,
+      focusDistractionCounters
     );
     if (decision.action !== "block") {
       releaseGate();
       return;
     }
 
-    focusBlockerState.gateState = "blocked";
-    installGate();
-    installMediaBlocker();
+    if (decision.severity === "strict") {
+      focusBlockerState.gateState = "blocked";
+      installGate();
+      installMediaBlocker();
+    } else {
+      releaseGate();
+    }
+
     await sendBlockedMessage({
       type: MESSAGE_TYPES.focusBlockerBlocked,
       sessionId: decision.sessionId,
       host: decision.host,
-      category: decision.category
+      category: decision.category,
+      presentation: decision.severity
     });
   } catch {
     releaseGate();
@@ -219,7 +235,6 @@ function scheduleEvaluation(): void {
   if (focusBlockerState.evaluateTimerId !== null) {
     window.clearTimeout(focusBlockerState.evaluateTimerId);
   }
-  engageGate();
   focusBlockerState.evaluateTimerId = window.setTimeout(() => {
     focusBlockerState.evaluateTimerId = null;
     void evaluateCurrentPage();
@@ -255,5 +270,4 @@ if (!focusBlockerState.listenerInstalled) {
 }
 
 installRouteListeners();
-engageGate();
 void evaluateCurrentPage();

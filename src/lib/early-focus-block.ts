@@ -1,5 +1,6 @@
+import { resolveFocusBlockSeverity } from "./focus-distraction-counters.js";
 import { decideFocusBlock } from "./site-block-rules.js";
-import type { FocusSession, SiteRuleState } from "./types.js";
+import type { FocusDistractionCountersState, FocusSession, SiteRuleState } from "./types.js";
 
 export type EarlyFocusBlockDecision =
   | {
@@ -7,6 +8,7 @@ export type EarlyFocusBlockDecision =
       sessionId: string;
       host: string;
       category: string;
+      severity: "soft" | "strict";
       reason: "user_block_rule" | "seed_rule" | "cached_decision";
     }
   | {
@@ -18,7 +20,8 @@ export async function determineEarlyFocusBlock(
   rawUrl: string,
   sessions: FocusSession[] = [],
   siteRules: SiteRuleState | null = null,
-  disabledDefaultBlockRuleIds: readonly string[] = []
+  disabledDefaultBlockRuleIds: readonly string[] = [],
+  counters: FocusDistractionCountersState["counters"] = {}
 ): Promise<EarlyFocusBlockDecision> {
   const decision = await decideFocusBlock(rawUrl, {
     sessions,
@@ -38,6 +41,7 @@ export async function determineEarlyFocusBlock(
     sessionId: decision.sessionId,
     host: decision.host,
     category: decision.category,
+    severity: resolveFocusBlockSeverity(counters),
     reason: decision.reason === "default_rule"
       ? "seed_rule"
       : decision.reason === "lookup_decision"

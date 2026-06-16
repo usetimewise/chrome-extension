@@ -6,6 +6,7 @@ import type {
 import type { SiteBlockRule } from "./site-block-rules.js";
 
 export const FOCUS_DISTRACTION_COUNTER_RESET_AFTER_MS = 8 * 60 * 60 * 1000;
+export const FOCUS_STRICT_BLOCK_AFTER_MS = 60 * 60 * 1000;
 
 export const EMPTY_FOCUS_DISTRACTION_COUNTERS: FocusDistractionCountersState = {
   sessionId: null,
@@ -115,4 +116,17 @@ export function addFocusDistractionDuration(
       [params.rule.id]: nextCounter
     }
   };
+}
+
+export function resolveFocusBlockSeverity(
+  counters: FocusDistractionCountersState["counters"]
+): "soft" | "strict" {
+  const totalMs = Object.values(counters).reduce((sum, counter) => {
+    const counterTotalMs = Number(counter.totalMs);
+    return Number.isFinite(counterTotalMs) && counterTotalMs > 0
+      ? sum + counterTotalMs
+      : sum;
+  }, 0);
+
+  return totalMs >= FOCUS_STRICT_BLOCK_AFTER_MS ? "strict" : "soft";
 }

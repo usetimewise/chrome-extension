@@ -5,7 +5,9 @@ import {
   addFocusDistractionDuration,
   createEmptyFocusDistractionCounters,
   ensureFocusDistractionCounterSession,
-  FOCUS_DISTRACTION_COUNTER_RESET_AFTER_MS
+  FOCUS_DISTRACTION_COUNTER_RESET_AFTER_MS,
+  FOCUS_STRICT_BLOCK_AFTER_MS,
+  resolveFocusBlockSeverity
 } from "./focus-distraction-counters.js";
 import { decideDistractionSite } from "./site-block-rules.js";
 import type { FocusSession } from "./types.js";
@@ -22,6 +24,22 @@ function activeSession(id = "focus-1"): FocusSession {
     pause_count: 0,
     distraction_count: 0
   };
+}
+
+function counterStateWithDurations(durations: number[]) {
+  return durations.reduce((state, durationMs, index) => addFocusDistractionDuration(state, {
+    rule: {
+      id: `rule:${index}`,
+      pattern: `example-${index}.com`,
+      patternType: "domain",
+      category: "social",
+      source: "default"
+    },
+    url: `https://example-${index}.com/feed`,
+    host: `example-${index}.com`,
+    durationMs,
+    now: 2_000 + index
+  }), createEmptyFocusDistractionCounters("focus-1", 1_000));
 }
 
 test("default url prefix rule counts shorts without counting the whole youtube domain", async () => {
@@ -128,4 +146,25 @@ test("counters reset when focus is inactive", () => {
 
   assert.equal(next.sessionId, null);
   assert.deepEqual(next.counters, {});
+});
+
+test("focus block severity stays soft before the strict threshold", () => {
+  const state = counterStateWithDurations([FOCUS_STRICT_BLOCK_AFTER_MS - 1]);
+
+  assert.equal(resolveFocusBlockSeverity(state.counters), "soft");
+});
+
+test("focus block severity is strict at the threshold", () => {
+  const state = counterStateWithDurations([FOCUS_STRICT_BLOCK_AFTER_MS]);
+
+  assert.equal(resolveFocusBlockSeverity(state.counters), "strict");
+});
+
+test("focus block severity sums counters across all rules", () => {
+  const state = counterStateWithDurations([
+    FOCUS_STRICT_BLOCK_AFTER_MS / 2,
+    FOCUS_STRICT_BLOCK_AFTER_MS / 2
+  ]);
+
+  assert.equal(resolveFocusBlockSeverity(state.counters), "strict");
 });

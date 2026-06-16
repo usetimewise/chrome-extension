@@ -58,6 +58,7 @@ export type BackgroundFocusBlockerBlockedRequest = {
   sessionId: string;
   host: string;
   category: string;
+  presentation: "soft" | "strict";
 };
 
 export type BackgroundDismissFocusOfferRequest = {
@@ -151,6 +152,7 @@ export type ContentShowFocusNudgeRequest = {
   message: string;
   host: string;
   category: string;
+  presentation: "soft" | "strict";
 } | {
   type: typeof MESSAGE_TYPES.showFocusNudge;
   mode: "offer";
@@ -202,6 +204,10 @@ function isCategory(value: unknown): value is Category {
   ].includes(value);
 }
 
+function isFocusBlockPresentation(value: unknown): value is "soft" | "strict" {
+  return value === "soft" || value === "strict";
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
@@ -239,7 +245,8 @@ export function isBackgroundRequest(value: unknown): value is BackgroundRequest 
     case MESSAGE_TYPES.focusBlockerBlocked:
       return isRequiredString(value.sessionId) &&
         isRequiredString(value.host) &&
-        isRequiredString(value.category);
+        isRequiredString(value.category) &&
+        isFocusBlockPresentation(value.presentation);
     case MESSAGE_TYPES.dismissFocusOffer:
       return (value.action === "defer" || value.action === "close") &&
         isRequiredString(value.host);
@@ -265,7 +272,9 @@ export function isContentRequest(value: unknown): value is ContentRequest {
         return true;
       }
 
-      return value.mode === "block" && isRequiredString(value.sessionId);
+      return value.mode === "block" &&
+        isRequiredString(value.sessionId) &&
+        isFocusBlockPresentation(value.presentation);
     default:
       return false;
   }

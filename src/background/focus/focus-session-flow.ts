@@ -1,16 +1,18 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
+import { resolveFocusBlockSeverity } from "../../lib/focus-distraction-counters.js";
 import { createTranslator } from "../../lib/i18n/index.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
 import { getSettings } from "../../lib/storage/site-rules.js";
 import { decideFocusBlock } from "../../lib/site-block-rules.js";
 import type { BootstrapResponse, Category, FocusSession, Settings } from "../../lib/types.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
+import { flushFocusDistractionTracking } from "../tracking/focus-distraction-tracker.js";
 
 export async function showFocusNudgeInTab(
   tabId: number,
   message: string,
-  details: { sessionId: string; host: string; category: string }
+  details: { sessionId: string; host: string; category: string; presentation: "soft" | "strict" }
 ): Promise<{ ok: boolean; response: unknown }> {
   const payload = {
     type: MESSAGE_TYPES.showFocusNudge,
@@ -18,7 +20,8 @@ export async function showFocusNudgeInTab(
     sessionId: details.sessionId,
     message,
     host: details.host,
-    category: details.category
+    category: details.category,
+    presentation: details.presentation
   } as const;
 
   try {
@@ -37,7 +40,7 @@ export async function showFocusNudgeInTab(
 export async function showFocusNudge(
   context: BackgroundRuntimeContext,
   message: string,
-  details: { sessionId: string; host: string; category: string }
+  details: { sessionId: string; host: string; category: string; presentation: "soft" | "strict" }
 ): Promise<{ ok: boolean; response: unknown }> {
   const tabId = context.runtimeState.currentTabId;
   if (!tabId) {
@@ -86,6 +89,8 @@ export async function evaluateFocusNudgeNotification(
     return;
   }
 
+  const counters = await flushFocusDistractionTracking(context);
+  const presentation = resolveFocusBlockSeverity(counters.counters);
   const t = createTranslator(settings.language);
   try {
     await showFocusNudge(
@@ -94,7 +99,8 @@ export async function evaluateFocusNudgeNotification(
       {
         sessionId: activeSession.id,
         host: currentHost,
-        category: decision.category
+        category: decision.category,
+        presentation
       }
     );
   } catch {
@@ -137,6 +143,6 @@ export async function forceFocusNudge(context: BackgroundRuntimeContext): Promis
   return showFocusNudge(
     context,
     t("nudge.message"),
-    { sessionId: "manual", host, category: "other" }
+    { sessionId: "manual", host, category: "other", presentation: "strict" }
   );
 }

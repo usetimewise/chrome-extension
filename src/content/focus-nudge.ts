@@ -9,11 +9,17 @@ import {
 import type { UserPreferences } from "../lib/types.js";
 
 type FocusOverlayMessage = {
-  mode: "block" | "offer";
-  sessionId?: string;
+  mode: "offer";
   message: string;
   host: string;
   category: string;
+} | {
+  mode: "block";
+  sessionId: string;
+  message: string;
+  host: string;
+  category: string;
+  presentation: "soft" | "strict";
 };
 
 {
@@ -21,6 +27,7 @@ type FocusNudgeState = {
   activeOverlayKey: string | null;
   contextInvalidated: boolean;
   listenerInstalled: boolean;
+  softDismissTimerId: number | null;
   suppressedHosts: Set<string>;
 };
 
@@ -42,6 +49,7 @@ const focusNudgeState = stateHost.__timeWiseFocusNudgeState || {
   activeOverlayKey: null,
   contextInvalidated: false,
   listenerInstalled: false,
+  softDismissTimerId: null,
   suppressedHosts: new Set<string>()
 };
 stateHost.__timeWiseFocusNudgeState = focusNudgeState;
@@ -52,15 +60,22 @@ function isShowFocusNudgeMessage(message: unknown): message is FocusOverlayMessa
   }
 
   const candidate = message as Record<string, unknown>;
-  return candidate.type === FOCUS_MESSAGE_TYPES.showFocusNudge &&
-    typeof candidate.sessionId === "string" &&
+  const hasBaseFields = candidate.type === FOCUS_MESSAGE_TYPES.showFocusNudge &&
     typeof candidate.message === "string" &&
     typeof candidate.host === "string" &&
-    typeof candidate.category === "string" &&
-    (
-      candidate.mode === "offer" ||
-      (candidate.mode === "block" && typeof candidate.sessionId === "string")
-    );
+    typeof candidate.category === "string";
+
+  if (!hasBaseFields) {
+    return false;
+  }
+
+  if (candidate.mode === "offer") {
+    return true;
+  }
+
+  return candidate.mode === "block" &&
+    typeof candidate.sessionId === "string" &&
+    (candidate.presentation === "soft" || candidate.presentation === "strict");
 }
 
 function sendBackgroundMessage<TResponse = unknown>(message: unknown): Promise<TResponse> {
@@ -80,7 +95,9 @@ function sendBackgroundMessage<TResponse = unknown>(message: unknown): Promise<T
 }
 
 function overlayKey(message: FocusOverlayMessage): string {
-  return `${message.mode}:${message.sessionId || "offer"}:${message.host}`;
+  return message.mode === "block"
+    ? `${message.mode}:${message.presentation}:${message.sessionId}:${message.host}`
+    : `${message.mode}:offer:${message.host}`;
 }
 
 async function getStoredPreferences(): Promise<Partial<UserPreferences> | undefined> {
@@ -93,6 +110,11 @@ async function getStoredPreferences(): Promise<Partial<UserPreferences> | undefi
 }
 
 function removeExistingOverlay(): void {
+  if (focusNudgeState.softDismissTimerId !== null) {
+    window.clearTimeout(focusNudgeState.softDismissTimerId);
+    focusNudgeState.softDismissTimerId = null;
+  }
+
   const existing = document.getElementById(OVERLAY_ID);
   if (existing) {
     existing.remove();
@@ -121,6 +143,50 @@ function setButtonsDisabled(shadow: ShadowRoot, disabled: boolean): void {
   });
 }
 
+function closeCurrentTab(shadow: ShadowRoot, t: Translator): void {
+  setButtonsDisabled(shadow, true);
+  void sendBackgroundMessage({ type: FOCUS_MESSAGE_TYPES.closeCurrentTab })
+    .catch((error: unknown) => {
+      setButtonsDisabled(shadow, false);
+      setStatus(shadow, error instanceof Error ? error.message : t("nudge.closeTabError"));
+    });
+}
+
+function saveCurrentSiteAsWork(shadow: ShadowRoot, message: Extract<FocusOverlayMessage, { mode: "block" }>, t: Translator): void {
+  setButtonsDisabled(shadow, true);
+  void sendBackgroundMessage({
+    type: FOCUS_MESSAGE_TYPES.saveSiteRule,
+    host: message.host,
+    category: "work",
+    excluded: false
+  })
+    .then(() => {
+      releaseFocusBlocker();
+      removeExistingOverlay();
+    })
+    .catch((error: unknown) => {
+      setButtonsDisabled(shadow, false);
+      setStatus(shadow, error instanceof Error ? error.message : t("nudge.saveRuleError"));
+    });
+}
+
+function endCurrentFocusSession(shadow: ShadowRoot, message: Extract<FocusOverlayMessage, { mode: "block" }>, t: Translator): void {
+  setButtonsDisabled(shadow, true);
+  void sendBackgroundMessage({
+    type: FOCUS_MESSAGE_TYPES.endFocusSession,
+    sessionId: message.sessionId
+  })
+    .then(() => {
+      focusNudgeState.suppressedHosts.add(overlayKey(message));
+      releaseFocusBlocker();
+      removeExistingOverlay();
+    })
+    .catch((error: unknown) => {
+      setButtonsDisabled(shadow, false);
+      setStatus(shadow, error instanceof Error ? error.message : t("nudge.endFocusError"));
+    });
+}
+
 async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElement> {
   const preferences = await getStoredPreferences();
   const language: AppLanguage = resolveLanguage(preferences?.language);
@@ -133,6 +199,352 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   host.id = OVERLAY_ID;
 
   const shadow = host.attachShadow({ mode: "open" });
+  if (message.mode === "block" && message.presentation === "soft") {
+    focusNudgeState.softDismissTimerId = window.setTimeout(() => {
+      removeExistingOverlay();
+    }, 10_000);
+
+    const style = document.createElement("style");
+    style.textContent = `
+      :host {
+        all: initial;
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 2147483647;
+        width: min(288px, calc(100vw - 32px));
+        box-sizing: border-box;
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        pointer-events: auto;
+        animation: toast-in 220ms ease-out both;
+      }
+
+      .toast {
+        position: relative;
+        box-sizing: border-box;
+        overflow: hidden;
+        width: 100%;
+        border: 1px solid rgba(3, 2, 19, 0.12);
+        border-radius: 16px;
+        background: #ffffff;
+        color: #030213;
+        box-shadow: 0 18px 42px rgba(3, 2, 19, 0.18);
+      }
+
+      .progress {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        overflow: hidden;
+        background: #ececf0;
+      }
+
+      .progress-value {
+        width: 100%;
+        height: 100%;
+        background: rgba(3, 2, 19, 0.4);
+        transform-origin: left center;
+        animation: progress-out 10000ms linear both;
+      }
+
+      .header {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px 16px 12px;
+      }
+
+      .thumb {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        overflow: hidden;
+        border-radius: 12px;
+        background: #ececf0;
+        color: #030213;
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .thumb-image {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top center;
+      }
+
+      .content {
+        min-width: 0;
+        flex: 1 1 auto;
+        padding-top: 2px;
+      }
+
+      .title {
+        margin: 0;
+        color: #030213;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0;
+        line-height: 1.35;
+      }
+
+      .site {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        margin-top: 5px;
+        color: #717182;
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 1.35;
+      }
+
+      .site-icon {
+        position: relative;
+        width: 12px;
+        height: 12px;
+        flex: 0 0 auto;
+      }
+
+      .site-icon::before {
+        content: "";
+        position: absolute;
+        inset: 1px 2px;
+        border: 1.4px solid #d97706;
+        border-radius: 7px 7px 5px 5px;
+        clip-path: polygon(50% 0, 100% 18%, 100% 62%, 50% 100%, 0 62%, 0 18%);
+      }
+
+      .site-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .close {
+        flex: 0 0 auto;
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: -3px -3px 0 0;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: #717182;
+        cursor: pointer;
+        font: inherit;
+        font-size: 18px;
+        line-height: 1;
+        padding: 0;
+      }
+
+      .close:hover:not(:disabled) {
+        background: #e9ebef;
+        color: #030213;
+      }
+
+      .actions {
+        display: grid;
+        gap: 6px;
+        padding: 0 16px 16px;
+      }
+
+      .secondary-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .button {
+        box-sizing: border-box;
+        width: 100%;
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+        font: inherit;
+        letter-spacing: 0;
+        line-height: 1.35;
+        transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
+      }
+
+      .button:disabled,
+      .close:disabled {
+        cursor: default;
+        opacity: 0.62;
+      }
+
+      .primary {
+        min-height: 36px;
+        padding: 8px 12px;
+        background: #030213;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .primary:hover:not(:disabled) {
+        background: rgba(3, 2, 19, 0.9);
+      }
+
+      .secondary,
+      .tertiary {
+        min-height: 32px;
+        padding: 7px 10px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .secondary {
+        background: #ececf0;
+        color: #030213;
+      }
+
+      .secondary:hover:not(:disabled),
+      .tertiary:hover:not(:disabled) {
+        background: #e9ebef;
+        color: #030213;
+      }
+
+      .tertiary {
+        background: transparent;
+        color: #717182;
+      }
+
+      .status {
+        min-height: 0;
+        margin: 0;
+        color: #b42318;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      @keyframes toast-in {
+        from {
+          opacity: 0;
+          transform: translateX(40px) scale(0.96);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateX(0) scale(1);
+        }
+      }
+
+      @keyframes progress-out {
+        from {
+          transform: scaleX(1);
+        }
+
+        to {
+          transform: scaleX(0);
+        }
+      }
+    `;
+
+    const toast = document.createElement("section");
+    toast.className = "toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+
+    const progress = document.createElement("div");
+    progress.className = "progress";
+    progress.setAttribute("aria-hidden", "true");
+    const progressValue = document.createElement("div");
+    progressValue.className = "progress-value";
+    progress.append(progressValue);
+
+    const header = document.createElement("div");
+    header.className = "header";
+
+    const thumb = document.createElement("div");
+    thumb.className = "thumb";
+    if (copyVariant.visual.kind === "image") {
+      const image = document.createElement("img");
+      image.className = "thumb-image";
+      image.src = copyVariant.visual.src;
+      image.alt = "";
+      image.loading = "eager";
+      image.decoding = "async";
+      thumb.append(image);
+    } else {
+      thumb.textContent = copyVariant.visual.text;
+      thumb.setAttribute("aria-label", copyVariant.visual.label);
+    }
+
+    const content = document.createElement("div");
+    content.className = "content";
+
+    const title = document.createElement("p");
+    title.className = "title";
+    title.textContent = copyVariant.text;
+
+    const site = document.createElement("div");
+    site.className = "site";
+    const siteIcon = document.createElement("span");
+    siteIcon.className = "site-icon";
+    siteIcon.setAttribute("aria-hidden", "true");
+    const siteText = document.createElement("span");
+    siteText.className = "site-text";
+    siteText.textContent = message.host;
+    site.append(siteIcon, siteText);
+    content.append(title, site);
+
+    const closeButton = document.createElement("button");
+    closeButton.className = "close";
+    closeButton.type = "button";
+    closeButton.textContent = "×";
+    closeButton.setAttribute("aria-label", t("nudge.closeOffer"));
+    closeButton.addEventListener("click", removeExistingOverlay);
+
+    header.append(thumb, content, closeButton);
+
+    const actions = document.createElement("div");
+    actions.className = "actions";
+
+    const leaveButton = document.createElement("button");
+    leaveButton.className = "button primary";
+    leaveButton.type = "button";
+    leaveButton.textContent = t("nudge.leave");
+    leaveButton.addEventListener("click", () => closeCurrentTab(shadow, t));
+
+    const secondaryActions = document.createElement("div");
+    secondaryActions.className = "secondary-actions";
+
+    const workButton = document.createElement("button");
+    workButton.className = "button secondary";
+    workButton.type = "button";
+    workButton.textContent = t("nudge.workSite");
+    workButton.addEventListener("click", () => saveCurrentSiteAsWork(shadow, message, t));
+
+    const disableFocusButton = document.createElement("button");
+    disableFocusButton.className = "button tertiary";
+    disableFocusButton.type = "button";
+    disableFocusButton.textContent = t("nudge.disableFocus");
+    disableFocusButton.addEventListener("click", () => endCurrentFocusSession(shadow, message, t));
+
+    const status = document.createElement("p");
+    status.className = "status";
+    status.setAttribute("role", "status");
+
+    secondaryActions.append(workButton, disableFocusButton);
+    actions.append(leaveButton, secondaryActions, status);
+    toast.append(progress, header, actions);
+    shadow.append(style, toast);
+    return host;
+  }
+
   const style = document.createElement("style");
   style.textContent = `
     :host {
@@ -471,7 +883,8 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
           sessionId: response.session.id,
           message: t("nudge.message"),
           host: message.host,
-          category: message.category
+          category: message.category,
+          presentation: "strict"
         }))
         .catch((error: unknown) => {
           setButtonsDisabled(shadow, false);
@@ -586,7 +999,11 @@ async function showFocusOverlay(message: FocusOverlayMessage): Promise<void> {
 
   removeExistingOverlay();
   focusNudgeState.activeOverlayKey = key;
-  engageFocusBlocker();
+  if (message.mode === "block" && message.presentation === "soft") {
+    releaseFocusBlocker();
+  } else {
+    engageFocusBlocker();
+  }
   document.documentElement.append(await buildOverlay(message));
 }
 
