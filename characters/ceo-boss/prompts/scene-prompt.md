@@ -22,7 +22,7 @@ Composition:
 - [camera angle]
 - [subject position]
 - [background requirements]
-- For standalone approved reference exports, use transparent background with preserved soft contact shadow.
+- For standalone approved reference exports, use external/manual background removal to create transparent background with preserved soft contact shadow.
 - For temporary generation assets, use a plain solid high-contrast removable background, with a soft natural contact shadow under the feet.
 - Do not bake in environment backgrounds, text, props, floor texture, walls, gradients, or decorative shadows unless the scene explicitly requires them.
 

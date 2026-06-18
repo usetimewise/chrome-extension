@@ -4,7 +4,7 @@
 
 - character_id: ceo-boss
 - name: CEO Boss
-- version: v0.1-candidate
+- version: v1.0-canon
 - character type: stylized chibi corporate executive mascot
 - visual style: glossy 3D toy-like chibi render with soft studio lighting, smooth rounded forms, compact body, oversized head, clean commercial mascot finish
 
@@ -91,17 +91,22 @@ Only include personality traits that affect expression, posture, or visual actin
 
 ## Canonical References
 
-No FLUX-generated canonical image is approved yet.
+Approved canonical reference:
+
+- full body front: `characters/ceo-boss/approved/ceo-boss-canon-v0.1-alpha.png`
+- source URL: `https://v3b.fal.media/files/b/0a9ecbb2/Qw6fzfhUGdLq_mVVpAjAF_3qC5YJwD.png`
+- approval: user-approved Alpha PNG canon, 2026-06-18
+- asset status: approved; PNG RGBA with real alpha channel
 
 Generated candidate:
 
 - base canonical candidate: FLUX request `92f7fb91-2302-49bf-8dac-5575971199de`
 - retry base canonical candidate: FLUX request `04d9c324-afb2-4d3c-a6d4-ad3bfcd0646b`
 - paid small candidate: FLUX request `7330e532-bab1-4ee3-8fcf-d56cb6376b13` - not-approved; not user-approved and not exported as a final transparent Alpha PNG with preserved contact shadow
+- Pro Alpha workflow candidate: FLUX request `d7e56142-3b71-493c-b3f0-4d0d4463b6af` - pending; submitted with removable-background prompt and not approved
 
 - base source candidate: `images/ceo/ceo-s02p07-folded-arms.png`
 - face close-up: pending
-- full body front: pending
 - three-quarter view: pending
 - profile: pending
 - neutral pose: pending
@@ -124,8 +129,8 @@ Generated candidate:
 
 ## Notes
 
-- Treat this as a candidate pack until one generated image is approved by the user.
+- This Character Pack has an approved full-body front canon.
 - Approved character references must be true Alpha PNG assets with transparent background and preserved semi-transparent contact shadow under the feet.
-- Plain gray or other solid backgrounds are allowed only as temporary generation backgrounds for later removal, not as final canonical references.
+- FLUX does not produce final transparency directly. Plain gray or other solid backgrounds are allowed only as temporary generation backgrounds for later external/manual removal, not as final canonical references.
 - Do not place the full `images/ceo` set into one FLUX request when the goal is consistency; it will encourage averaging and drift.
-- Generated candidates `92f7fb91-2302-49bf-8dac-5575971199de`, `04d9c324-afb2-4d3c-a6d4-ad3bfcd0646b`, and `7330e532-bab1-4ee3-8fcf-d56cb6376b13` must not be copied into `approved/` until explicitly accepted and exported as Alpha PNG assets.
+- Generated candidates `92f7fb91-2302-49bf-8dac-5575971199de`, `04d9c324-afb2-4d3c-a6d4-ad3bfcd0646b`, `7330e532-bab1-4ee3-8fcf-d56cb6376b13`, and `d7e56142-3b71-493c-b3f0-4d0d4463b6af` must not be copied into `approved/` until explicitly accepted and exported as Alpha PNG assets.

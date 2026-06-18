@@ -90,3 +90,30 @@ Direct requestId tool: not available in the exposed FLUX MCP tools for this sess
 History statuses checked: `all`, `ready`, `pending`, `failed`
 Result: all history checks returned no generations.
 Decision: do not use `generate_variations` as a status probe because it would create new images if the request is ready. Candidate remains unavailable for visual review.
+
+## Experiment: Pro Alpha workflow canonical candidate
+
+Date: 2026-06-18
+Goal: Create a new CEO Boss candidate using the updated removable-background prompt and the Alpha PNG approval workflow.
+Character version: v0.1-candidate
+Model: FLUX.2 Pro Preview
+Reference images: `images/ceo/ceo-s02p07-folded-arms.png` uploaded as FLUX media `112194dd-fc8e-4d94-8b16-88e91f3ce78a`
+Prompt: `characters/ceo-boss/prompts/base-prompt.md`
+Seed: pending from FLUX result metadata
+Result: submitted as FLUX request `d7e56142-3b71-493c-b3f0-4d0d4463b6af`
+Cost: `4.5` credits; credits changed from `990` to `985.5`
+Consistency issues: pending visual review
+What worked: generation request was accepted using a single source reference and the updated removable-background prompt
+What failed: `get_history(status=all)` and `get_history(status=all, after=2026-06-18T13:20:00Z)` did not return the new request immediately after submission
+Decision: candidate is pending/unavailable in history and must not be treated as canonical until the bitmap is ready, exported as Alpha PNG with preserved contact shadow, and explicitly approved by the user. Do not use `generate_variations` as a readiness probe.
+
+## Decision: User-approved Alpha PNG canon
+
+Date: 2026-06-18
+Goal: Promote the user-provided background-removed CEO Boss asset to canonical reference.
+Character version: v1.0-canon
+Approved asset: `characters/ceo-boss/approved/ceo-boss-canon-v0.1-alpha.png`
+Source URL: `https://v3b.fal.media/files/b/0a9ecbb2/Qw6fzfhUGdLq_mVVpAjAF_3qC5YJwD.png`
+Verification: local file reports as `PNG image data, 512 x 512, 8-bit/color RGBA, non-interlaced`; PNG IHDR color type is `6`, so the asset has a real alpha channel.
+Decision: this file is the approved full-body front canon for CEO Boss.
+Workflow note: FLUX is not expected to create transparent backgrounds. Continue generating future candidates on plain high-contrast removable backgrounds, then remove the background externally/manually before approving a final Alpha PNG.

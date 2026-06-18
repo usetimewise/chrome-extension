@@ -98,6 +98,16 @@ Approved character references must be final transparent-background assets:
 - Soft natural contact shadow preserved under the feet as semi-transparent pixels.
 - No baked-in environment background, floor texture, walls, gradients, text, props, or decorative shadows unless they are explicitly part of the approved character design.
 
+FLUX must not be asked to generate the final transparent background. It is more important that FLUX produces a clean, plain, solid, high-contrast removable background so the background can be removed reliably afterward.
+
+Background removal is an external/manual post-processing step outside the sandbox. A typical command shape is:
+
+```bash
+curl -s http://input.png | rembg i > output.png
+```
+
+After that step, verify/export the result as an Alpha PNG and only then treat it as eligible for approval.
+
 Use the minimal sufficient reference set for each task:
 
 - face close-up for identity
@@ -107,7 +117,7 @@ Use the minimal sufficient reference set for each task:
 
 Do not pass random, contradictory, or unapproved images as canonical references. Do not overwrite canonical references without an explicit user decision.
 
-Treat every generated bitmap as `candidate` until it has been post-processed into the approved asset format and the user explicitly approves it. A visually strong candidate is not an approved reference until the alpha PNG export exists.
+Treat every FLUX-generated bitmap as `candidate` until it has been post-processed into the approved asset format and the user explicitly approves it. A visually strong candidate is not an approved reference until the alpha PNG export exists.
 
 ## Prompt Language
 
@@ -182,7 +192,7 @@ Parallel variants are useful for exploration, but do not automatically treat the
 
 A character sheet should be technical and neutral:
 
-- plain solid background
+- plain solid high-contrast removable background
 - even lighting
 - no atmospheric effects
 - no complex perspective

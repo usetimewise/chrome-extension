@@ -28,43 +28,43 @@ export const FOCUS_COMPANION_CATALOG = {
     replicas: [
       {
         text: "Distraction detected. ROI on YouTube: negative. Reallocate.",
-        imagePath: "images/ceo/ceo-s02p01-kpi-frown.png"
+        imagePath: "images/ceo/ceo-s02p01-kpi-frown-alpha.png"
       },
       {
         text: "Twelve minutes of TikTok. That's a $40 mistake. Course-correct.",
-        imagePath: "images/ceo/ceo-s02p02-phone-no.png"
+        imagePath: "images/ceo/ceo-s02p02-phone-no-alpha.png"
       },
       {
         text: "Entertainment is not on the roadmap. Close the tab.",
-        imagePath: "images/ceo/ceo-s02p03-watch-tap.png"
+        imagePath: "images/ceo/ceo-s02p03-watch-tap-alpha.png"
       },
       {
         text: "You're optimizing for dopamine, not impact. Switch.",
-        imagePath: "images/ceo/ceo-s02p04-clipboard-flip.png"
+        imagePath: "images/ceo/ceo-s02p04-clipboard-flip-alpha.png"
       },
       {
         text: "Top performers don't scroll during sprint hours.",
-        imagePath: "images/ceo/ceo-s02p05-pinch-bridge.png"
+        imagePath: "images/ceo/ceo-s02p05-pinch-bridge-alpha.png"
       },
       {
         text: "Quick audit: is this tab on your OKRs? No? Close it.",
-        imagePath: "images/ceo/ceo-s02p06-meeting-call.png"
+        imagePath: "images/ceo/ceo-s02p06-meeting-call-alpha.png"
       },
       {
         text: "Reels won't appear in your performance review. Refocus.",
-        imagePath: "images/ceo/ceo-s02p07-folded-arms.png"
+        imagePath: "images/ceo/ceo-s02p07-folded-arms-alpha.png"
       },
       {
         text: "Your competitors are shipping. You're watching. Adjust.",
-        imagePath: "images/ceo/ceo-s02p08-redline-pen.png"
+        imagePath: "images/ceo/ceo-s02p08-redline-pen-alpha.png"
       },
       {
         text: "Calendar this for after-hours. Now back to the task.",
-        imagePath: "images/ceo/ceo-s02p09-firm-stare.png"
+        imagePath: "images/ceo/ceo-s02p09-firm-stare-alpha.png"
       },
       {
         text: "Execution gap detected. Close it now.",
-        imagePath: "images/ceo/ceo-s02p10-tap-table.png"
+        imagePath: "images/ceo/ceo-s02p10-tap-table-alpha.png"
       }
     ]
   },

@@ -18,5 +18,6 @@ Keep unchanged:
 Asset background rule:
 - Final approved reference exports must be transparent-background PNG files with a real alpha channel and the soft contact shadow preserved as semi-transparent pixels.
 - Temporary generation or edit backgrounds may be plain solid high-contrast removable backgrounds with a soft natural contact shadow under the feet.
+- FLUX is not expected to create final transparency directly; use external/manual background removal before approval.
 - Do not add baked-in environment backgrounds, text, props, floor texture, walls, gradients, or decorative shadows unless the edit explicitly requests a scene.
 ```

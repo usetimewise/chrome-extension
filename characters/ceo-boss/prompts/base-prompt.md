@@ -33,4 +33,4 @@ Lighting and style:
 - Palette: skin `#E2B18E`, hair `#111111`, suit `#151515`, shirt `#F2F2EE`, tie `#D71920`, temporary removable background `#85898B`.
 ```
 
-After generation, treat the result as a candidate. Do not mark it as approved until the background is removed, a transparent Alpha PNG with preserved soft contact shadow is exported, and the user explicitly chooses it as canon.
+After generation, treat the result as a candidate. FLUX is not expected to create final transparency directly. Do not mark it as approved until the background is removed externally, a transparent Alpha PNG with preserved soft contact shadow is exported, and the user explicitly chooses it as canon.
