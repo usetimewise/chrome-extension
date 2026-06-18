@@ -1,6 +1,6 @@
 import react from "@vitejs/plugin-react";
 import { build as buildWithEsbuild } from "esbuild";
-import { cpSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 
@@ -17,7 +17,9 @@ function copyExtensionStatic(): Plugin {
       const outDir = resolve(root, "dist");
       mkdirSync(outDir, { recursive: true });
       cpSync(resolve(root, "manifest.json"), resolve(outDir, "manifest.json"));
-      cpSync(resolve(root, "icons"), resolve(outDir, "icons"), { recursive: true });
+      if (existsSync(resolve(root, "icons"))) {
+        cpSync(resolve(root, "icons"), resolve(outDir, "icons"), { recursive: true });
+      }
       cpSync(resolve(root, "images"), resolve(outDir, "images"), { recursive: true });
     }
   };

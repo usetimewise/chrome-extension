@@ -188,6 +188,49 @@ function endCurrentFocusSession(shadow: ShadowRoot, message: Extract<FocusOverla
     });
 }
 
+function dismissFocusOffer(
+  shadow: ShadowRoot,
+  message: Extract<FocusOverlayMessage, { mode: "offer" }>,
+  action: "close" | "defer",
+  t: Translator
+): void {
+  setButtonsDisabled(shadow, true);
+  void sendBackgroundMessage({
+    type: FOCUS_MESSAGE_TYPES.dismissFocusOffer,
+    action,
+    host: message.host
+  })
+    .then(() => {
+      releaseFocusBlocker();
+      removeExistingOverlay();
+    })
+    .catch((error: unknown) => {
+      setButtonsDisabled(shadow, false);
+      setStatus(shadow, error instanceof Error ? error.message : t("nudge.dismissOfferError"));
+    });
+}
+
+function startFocusFromOffer(
+  shadow: ShadowRoot,
+  message: Extract<FocusOverlayMessage, { mode: "offer" }>,
+  t: Translator
+): void {
+  setButtonsDisabled(shadow, true);
+  void sendBackgroundMessage<{ ok: true; session: { id: string } }>({ type: FOCUS_MESSAGE_TYPES.startFocusSession })
+    .then((response) => showFocusOverlay({
+      mode: "block",
+      sessionId: response.session.id,
+      message: t("nudge.message"),
+      host: message.host,
+      category: message.category,
+      presentation: "soft"
+    }))
+    .catch((error: unknown) => {
+      setButtonsDisabled(shadow, false);
+      setStatus(shadow, error instanceof Error ? error.message : t("nudge.startFocusError"));
+    });
+}
+
 async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElement> {
   const preferences = await getStoredPreferences();
   const language: AppLanguage = resolveLanguage(preferences?.language);
@@ -200,8 +243,13 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   host.id = OVERLAY_ID;
 
   const shadow = host.attachShadow({ mode: "open" });
-  if (message.mode === "block" && message.presentation === "soft") {
+  if (message.mode === "offer" || message.presentation === "soft") {
     focusNudgeState.softDismissTimerId = window.setTimeout(() => {
+      if (message.mode === "offer") {
+        dismissFocusOffer(shadow, message, "defer", t);
+        return;
+      }
+
       removeExistingOverlay();
     }, 10_000);
 
@@ -478,7 +526,7 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
 
     const title = document.createElement("p");
     title.className = "title";
-    title.textContent = copyVariant.text;
+    title.textContent = message.mode === "offer" ? message.message : copyVariant.text;
 
     const site = document.createElement("div");
     site.className = "site";
@@ -494,12 +542,42 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
     closeButton.type = "button";
     closeButton.append(createContentIcon("close", { size: 16 }));
     closeButton.setAttribute("aria-label", t("nudge.closeOffer"));
-    closeButton.addEventListener("click", removeExistingOverlay);
+    closeButton.addEventListener("click", () => {
+      if (message.mode === "offer") {
+        dismissFocusOffer(shadow, message, "close", t);
+        return;
+      }
+
+      removeExistingOverlay();
+    });
 
     header.append(thumb, content, closeButton);
 
     const actions = document.createElement("div");
     actions.className = "actions";
+
+    if (message.mode === "offer") {
+      const startButton = document.createElement("button");
+      startButton.className = "button primary";
+      startButton.type = "button";
+      startButton.textContent = t("nudge.startFocus");
+      startButton.addEventListener("click", () => startFocusFromOffer(shadow, message, t));
+
+      const laterButton = document.createElement("button");
+      laterButton.className = "button secondary";
+      laterButton.type = "button";
+      laterButton.textContent = t("nudge.maybeLater");
+      laterButton.addEventListener("click", () => dismissFocusOffer(shadow, message, "defer", t));
+
+      const status = document.createElement("p");
+      status.className = "status";
+      status.setAttribute("role", "status");
+
+      actions.append(startButton, laterButton, status);
+      toast.append(progress, header, actions);
+      shadow.append(style, toast);
+      return host;
+    }
 
     const leaveButton = document.createElement("button");
     leaveButton.className = "button primary";
@@ -776,26 +854,9 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   closeButton.className = "close";
   closeButton.type = "button";
   closeButton.append(createContentIcon("close", { size: 18 }));
-  closeButton.setAttribute("aria-label", message.mode === "offer" ? t("nudge.closeOffer") : t("nudge.closeTab"));
+  closeButton.setAttribute("aria-label", t("nudge.closeTab"));
   closeButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
-    if (message.mode === "offer") {
-      void sendBackgroundMessage({
-        type: FOCUS_MESSAGE_TYPES.dismissFocusOffer,
-        action: "close",
-        host: message.host
-      })
-        .then(() => {
-          releaseFocusBlocker();
-          removeExistingOverlay();
-        })
-        .catch((error: unknown) => {
-          setButtonsDisabled(shadow, false);
-          setStatus(shadow, error instanceof Error ? error.message : t("nudge.dismissOfferError"));
-        });
-      return;
-    }
-
     void sendBackgroundMessage({ type: FOCUS_MESSAGE_TYPES.closeCurrentTab })
       .catch((error: unknown) => {
         setButtonsDisabled(shadow, false);
@@ -825,7 +886,7 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   const title = document.createElement("h1");
   title.className = "title";
   title.id = "time-wise-focus-overlay-title";
-  title.textContent = message.mode === "offer" ? message.message : copyVariant.text;
+  title.textContent = copyVariant.text;
 
   const site = document.createElement("div");
   site.className = "site";
@@ -843,55 +904,6 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   const status = document.createElement("p");
   status.className = "status";
   status.setAttribute("role", "status");
-
-  if (message.mode === "offer") {
-    const startButton = document.createElement("button");
-    startButton.className = "button primary";
-    startButton.type = "button";
-    startButton.textContent = t("nudge.startFocus");
-    startButton.addEventListener("click", () => {
-      setButtonsDisabled(shadow, true);
-      void sendBackgroundMessage<{ ok: true; session: { id: string } }>({ type: FOCUS_MESSAGE_TYPES.startFocusSession })
-        .then((response) => showFocusOverlay({
-          mode: "block",
-          sessionId: response.session.id,
-          message: t("nudge.message"),
-          host: message.host,
-          category: message.category,
-          presentation: "strict"
-        }))
-        .catch((error: unknown) => {
-          setButtonsDisabled(shadow, false);
-          setStatus(shadow, error instanceof Error ? error.message : t("nudge.startFocusError"));
-        });
-    });
-
-    const laterButton = document.createElement("button");
-    laterButton.className = "button secondary";
-    laterButton.type = "button";
-    laterButton.textContent = t("nudge.maybeLater");
-    laterButton.addEventListener("click", () => {
-      setButtonsDisabled(shadow, true);
-      void sendBackgroundMessage({
-        type: FOCUS_MESSAGE_TYPES.dismissFocusOffer,
-        action: "defer",
-        host: message.host
-      })
-        .then(() => {
-          releaseFocusBlocker();
-          removeExistingOverlay();
-        })
-        .catch((error: unknown) => {
-          setButtonsDisabled(shadow, false);
-          setStatus(shadow, error instanceof Error ? error.message : t("nudge.dismissOfferError"));
-        });
-    });
-
-    actions.append(startButton, laterButton);
-    panel.append(closeButton, imageWrap, title, site, actions, status);
-    shadow.append(style, panel);
-    return host;
-  }
 
   const leaveButton = document.createElement("button");
   leaveButton.className = "button primary";
@@ -973,7 +985,7 @@ async function showFocusOverlay(message: FocusOverlayMessage): Promise<void> {
 
   removeExistingOverlay();
   focusNudgeState.activeOverlayKey = key;
-  if (message.mode === "block" && message.presentation === "soft") {
+  if (message.mode === "offer" || message.presentation === "soft") {
     releaseFocusBlocker();
   } else {
     engageFocusBlocker();
