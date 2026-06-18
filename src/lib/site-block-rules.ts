@@ -60,6 +60,12 @@ export type FocusBlockDecisionContext = {
   allowNetworkLookup?: boolean;
 };
 
+export type LocalSiteBlockRuleContext = {
+  blockedHosts?: readonly string[];
+  siteRules?: SiteRuleState | null;
+  disabledDefaultBlockRuleIds?: readonly string[];
+};
+
 export const DEFAULT_SITE_BLOCK_RULES: SiteBlockRule[] = [
   {
     id: "default:youtube-shorts",
@@ -191,6 +197,39 @@ function matchRule(rawUrl: string, rule: SiteBlockRule): boolean {
 
 function findDefaultBlockedRule(rawUrl: string, disabledRuleIds: readonly string[] = []): SiteBlockRule | null {
   return buildEnabledDefaultBlockRules(disabledRuleIds).find((rule) => matchRule(rawUrl, rule)) || null;
+}
+
+function buildEffectiveLocalSiteRules(context: LocalSiteBlockRuleContext): SiteRuleState {
+  return {
+    excludedHosts: [...(context.siteRules?.excludedHosts || [])],
+    categoryOverrides: {
+      ...Object.fromEntries((context.blockedHosts || []).map((host) => [host, "social" as const])),
+      ...(context.siteRules?.categoryOverrides || {})
+    }
+  };
+}
+
+export function buildLocalBlockRules(context: LocalSiteBlockRuleContext = {}): SiteBlockRule[] {
+  const effectiveSiteRules = buildEffectiveLocalSiteRules(context);
+  return [
+    ...buildUserBlockRules(effectiveSiteRules),
+    ...buildEnabledDefaultBlockRules(context.disabledDefaultBlockRuleIds)
+  ].sort((left, right) => left.pattern.localeCompare(right.pattern));
+}
+
+export function isLocalSiteBlocked(rawUrl: string, context: LocalSiteBlockRuleContext = {}): boolean {
+  const host = normalizedHost(rawUrl);
+  if (!host) {
+    return false;
+  }
+
+  const effectiveSiteRules = buildEffectiveLocalSiteRules(context);
+  if (isUserAllowedHost(host, effectiveSiteRules)) {
+    return false;
+  }
+
+  return Boolean(findUserBlockedRule(host, effectiveSiteRules) ||
+    findDefaultBlockedRule(rawUrl, context.disabledDefaultBlockRuleIds));
 }
 
 export async function decideFocusBlock(

@@ -16,7 +16,12 @@ import {
   normalizeDefaultFocusMinutes,
   normalizePreferenceHost
 } from "../../lib/storage/preferences.js";
-import { DEFAULT_SITE_BLOCK_RULES, type SiteBlockRule } from "../../lib/site-block-rules.js";
+import {
+  DEFAULT_SITE_BLOCK_RULES,
+  buildLocalBlockRules,
+  isLocalSiteBlocked,
+  type SiteBlockRule
+} from "../../lib/site-block-rules.js";
 import type { BootstrapResponse, UserPreferences } from "../../lib/types.js";
 import { getErrorMessage } from "../../lib/utils.js";
 import { AppIcon, type AppIconName } from "../icons/index.js";
@@ -31,6 +36,12 @@ type PopupView = "focus" | "settings";
 type SettingsTab = "companion" | "blocking";
 
 type SettingsSaveState =
+  | { status: "idle" }
+  | { status: "saving" }
+  | { status: "saved" }
+  | { status: "error"; message: string };
+
+type QuickBlockState =
   | { status: "idle" }
   | { status: "saving" }
   | { status: "saved" }
@@ -141,17 +152,12 @@ function SettingsView({
   const isSavingPreferencesRef = useRef(false);
   const savedStatusTimerRef = useRef<number | null>(null);
   const blockRules = useMemo(() => {
-    const disabledDefaultIds = new Set(draft.disabledDefaultBlockRuleIds);
-    const userRules: SiteBlockRule[] = draft.blockedHosts.map((host) => ({
-      id: `user:${host}`,
-      pattern: host,
-      patternType: "domain",
-      category: "social",
-      source: "user"
-    }));
-    return [...userRules, ...DEFAULT_SITE_BLOCK_RULES.filter((rule) => !disabledDefaultIds.has(rule.id))]
-      .sort((left, right) => left.pattern.localeCompare(right.pattern));
-  }, [draft.blockedHosts, draft.disabledDefaultBlockRuleIds]);
+    return buildLocalBlockRules({
+      blockedHosts: draft.blockedHosts,
+      siteRules: bootstrap?.siteRules,
+      disabledDefaultBlockRuleIds: draft.disabledDefaultBlockRuleIds
+    });
+  }, [bootstrap?.siteRules, draft.blockedHosts, draft.disabledDefaultBlockRuleIds]);
   const disabledDefaultRules = useMemo(() => {
     const disabledDefaultIds = new Set(draft.disabledDefaultBlockRuleIds);
     return DEFAULT_SITE_BLOCK_RULES
@@ -253,9 +259,11 @@ function SettingsView({
       return;
     }
 
-    if (draft.blockedHosts.includes(host) || DEFAULT_SITE_BLOCK_RULES.some((rule) => (
-      !draft.disabledDefaultBlockRuleIds.includes(rule.id) && rule.pattern === host
-    ))) {
+    if (isLocalSiteBlocked(`https://${host}`, {
+      blockedHosts: draft.blockedHosts,
+      siteRules: bootstrap?.siteRules,
+      disabledDefaultBlockRuleIds: draft.disabledDefaultBlockRuleIds
+    })) {
       setBlockedHostError(t("popup.blockedHostDuplicate"));
       return;
     }
@@ -273,6 +281,35 @@ function SettingsView({
       ...current,
       blockedHosts: current.blockedHosts.filter((blockedHost) => blockedHost !== host)
     }));
+  }
+
+  async function handleRemoveSiteRule(host: string) {
+    setSaveState({ status: "saving" });
+
+    try {
+      const response = await sendBackgroundMessage({
+        type: MESSAGE_TYPES.saveSiteRule,
+        host,
+        category: "social",
+        excluded: true
+      });
+      onSaved(response.bootstrap);
+      showSavedStatus();
+    } catch (error) {
+      setSaveState({
+        status: "error",
+        message: getErrorMessage(error, t("popup.saveSettingsError"))
+      });
+    }
+  }
+
+  function handleRemoveBlockRule(rule: SiteBlockRule) {
+    if (draft.blockedHosts.includes(rule.pattern)) {
+      handleRemoveBlockedHost(rule.pattern);
+      return;
+    }
+
+    void handleRemoveSiteRule(rule.pattern);
   }
 
   function handleDisableDefaultRule(ruleId: string) {
@@ -406,7 +443,7 @@ function SettingsView({
                         if (rule.source === "default") {
                           handleDisableDefaultRule(rule.id);
                         } else {
-                          handleRemoveBlockedHost(rule.pattern);
+                          handleRemoveBlockRule(rule);
                         }
                       }}
                       aria-label={t("popup.removeHost", { host: rule.pattern })}
@@ -464,7 +501,9 @@ function PopupApp() {
   const { bootstrap, applyBootstrap, refreshBootstrap } = usePopupBootstrap();
   const [view, setView] = useState<PopupView>("focus");
   const [actionState, setActionState] = useState<FocusActionState>({ status: "idle" });
+  const [quickBlockState, setQuickBlockState] = useState<QuickBlockState>({ status: "idle" });
   const [languageSaveState, setLanguageSaveState] = useState<"idle" | "saving">("idle");
+  const quickBlockStatusTimerRef = useRef<number | null>(null);
   const language = getBootstrapLanguage(bootstrap);
   const t = useMemo(() => createTranslator(language), [language]);
   const activeSession = bootstrap?.popupModel?.focusSession?.status === "active"
@@ -473,6 +512,27 @@ function PopupApp() {
   const isFocusActive = Boolean(activeSession);
   const isLoading = !bootstrap || actionState.status === "loading";
   const buttonLabel = isFocusActive ? t("popup.buttonStop") : t("popup.buttonStart");
+  const currentUrl = bootstrap?.runtimeState?.currentUrl || null;
+  const currentHost = currentUrl && /^https?:\/\//.test(currentUrl)
+    ? bootstrap?.runtimeState?.currentHost || null
+    : null;
+  const currentSiteUrl = currentHost ? currentUrl : null;
+  const isCurrentSiteBlocked = Boolean(currentSiteUrl && isLocalSiteBlocked(currentSiteUrl, {
+    blockedHosts: bootstrap?.settings?.blockedHosts,
+    siteRules: bootstrap?.siteRules,
+    disabledDefaultBlockRuleIds: bootstrap?.settings?.disabledDefaultBlockRuleIds
+  }));
+  const isQuickBlockDisabled = !currentHost || isCurrentSiteBlocked || quickBlockState.status === "saving";
+
+  useEffect(() => () => {
+    if (quickBlockStatusTimerRef.current !== null) {
+      window.clearTimeout(quickBlockStatusTimerRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    setQuickBlockState((current) => current.status === "saving" ? current : { status: "idle" });
+  }, [currentHost]);
 
   async function handleToggleFocus() {
     if (actionState.status === "loading") {
@@ -524,6 +584,43 @@ function PopupApp() {
       });
     } finally {
       setLanguageSaveState("idle");
+    }
+  }
+
+  function showQuickBlockSavedStatus() {
+    if (quickBlockStatusTimerRef.current !== null) {
+      window.clearTimeout(quickBlockStatusTimerRef.current);
+    }
+
+    setQuickBlockState({ status: "saved" });
+    quickBlockStatusTimerRef.current = window.setTimeout(() => {
+      setQuickBlockState((current) => current.status === "saved" ? { status: "idle" } : current);
+      quickBlockStatusTimerRef.current = null;
+    }, 1600);
+  }
+
+  async function handleQuickBlockSite() {
+    if (!currentHost || isQuickBlockDisabled) {
+      return;
+    }
+
+    setQuickBlockState({ status: "saving" });
+    setActionState({ status: "idle" });
+
+    try {
+      const response = await sendBackgroundMessage({
+        type: MESSAGE_TYPES.saveSiteRule,
+        host: currentHost,
+        category: "social",
+        excluded: false
+      });
+      applyBootstrap(response.bootstrap);
+      showQuickBlockSavedStatus();
+    } catch (error) {
+      setQuickBlockState({
+        status: "error",
+        message: getErrorMessage(error, t("popup.quickBlockError"))
+      });
     }
   }
 
@@ -582,8 +679,34 @@ function PopupApp() {
           {actionState.status === "loading" ? actionState.label : buttonLabel}
         </button>
 
+        {currentHost ? (
+          <div className="quick-block-row">
+            <span className="quick-block-host" title={currentHost}>{currentHost}</span>
+            <button
+              className="quick-block-button"
+              type="button"
+              onClick={() => void handleQuickBlockSite()}
+              disabled={isQuickBlockDisabled}
+            >
+              {quickBlockState.status === "saving"
+                ? t("popup.quickBlockSaving")
+                : isCurrentSiteBlocked
+                  ? t("popup.quickBlockAlreadyBlocked")
+                  : t("popup.quickBlockButton")}
+            </button>
+          </div>
+        ) : null}
+
         {!bootstrap ? (
           <p className="popup-status-text" role="status">{t("popup.loadingState")}</p>
+        ) : null}
+
+        {quickBlockState.status === "saved" ? (
+          <p className="popup-status-text" role="status">{t("popup.quickBlockSaved")}</p>
+        ) : null}
+
+        {quickBlockState.status === "error" ? (
+          <p className="popup-error-text" role="alert">{quickBlockState.message}</p>
         ) : null}
 
         {actionState.status === "error" ? (
