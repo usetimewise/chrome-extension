@@ -91,6 +91,13 @@ Aim to collect these approved images over time:
 - back view when needed
 - separate outfit or accessory reference when needed
 
+Approved character references must be final transparent-background assets:
+
+- PNG with a real alpha channel, not a white, gray, or prompt-only "transparent" background.
+- Background fully removed from the character area.
+- Soft natural contact shadow preserved under the feet as semi-transparent pixels.
+- No baked-in environment background, floor texture, walls, gradients, text, props, or decorative shadows unless they are explicitly part of the approved character design.
+
 Use the minimal sufficient reference set for each task:
 
 - face close-up for identity
@@ -99,6 +106,8 @@ Use the minimal sufficient reference set for each task:
 - style reference only when the core references do not preserve style reliably
 
 Do not pass random, contradictory, or unapproved images as canonical references. Do not overwrite canonical references without an explicit user decision.
+
+Treat every generated bitmap as `candidate` until it has been post-processed into the approved asset format and the user explicitly approves it. A visually strong candidate is not an approved reference until the alpha PNG export exists.
 
 ## Prompt Language
 
@@ -275,13 +284,15 @@ Do not switch model inside a controlled experiment without making model choice t
 
 Treat seed as a helper, not an identity guarantee.
 
-Use variations when:
+Use variations only when the user explicitly asks for variations or alternatives, and the requested variation fits one of these cases:
 
 - the base result is already close
 - choosing expression, pose, or a small composition difference
 - the scene does not need a major rewrite
 
 Use edit when a specific element must change while the rest stays stable.
+
+Never use `generate_variations` to probe readiness or request status. If request-status tools are available, check readiness only through `get_result`; otherwise use `get_history`. If neither can confirm readiness, leave the request pending or unavailable and do not create variations as a diagnostic side effect.
 
 ## Templates
 

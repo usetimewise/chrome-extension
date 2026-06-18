@@ -14,4 +14,9 @@ Keep unchanged:
 - Face, hair, eyes, eyebrows, body proportions, outfit colors, and rendering style.
 - Background and composition unless the edit explicitly targets them.
 - Any approved accessories or props not mentioned above.
+
+Asset background rule:
+- Final approved reference exports must be transparent-background PNG files with a real alpha channel and the soft contact shadow preserved as semi-transparent pixels.
+- Temporary generation or edit backgrounds may be plain solid high-contrast removable backgrounds with a soft natural contact shadow under the feet.
+- Do not add baked-in environment backgrounds, text, props, floor texture, walls, gradients, or decorative shadows unless the edit explicitly requests a scene.
 ```

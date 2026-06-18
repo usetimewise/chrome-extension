@@ -35,6 +35,7 @@ Date: 2026-06-18
 Checked request: `92f7fb91-2302-49bf-8dac-5575971199de`
 Method: FLUX MCP `generate_variations` with `count=4`
 Result: `VARIATION_SOURCE_NOT_READY`; source exists but status is `pending`, and variations require a `ready` source.
+Diagnostic correction: using `generate_variations` as a readiness probe was an error and is no longer allowed; readiness must be checked only through `get_result` when available, or `get_history`.
 Decision: request is not lost, but no finished bitmap is available yet. Do not approve, reject, or build canonical references from this pending candidate.
 
 ## Experiment: Retry stable canonical design with Pro
@@ -51,6 +52,35 @@ Consistency issues: pending visual review
 What worked: kept the same single-reference setup and changed only the model from Max to Pro to avoid repeating the stuck request exactly
 What failed: pending
 Decision: candidate is pending and must not be treated as canonical until visual review and explicit user approval.
+
+## Experiment: Paid small design attempt
+
+Date: 2026-06-18
+Goal: Create a small paid CEO Boss candidate after free generations were exhausted.
+Character version: v0.1-candidate
+Model: FLUX.2 Klein 4B
+Reference images: `images/ceo/ceo-s02p07-folded-arms.png` as the only primary input reference
+Prompt: `characters/ceo-boss/prompts/base-prompt.md`
+Seed: pending from FLUX result metadata
+Result: submitted as FLUX request `7330e532-bab1-4ee3-8fcf-d56cb6376b13`
+Consistency issues: pending visual review
+What worked: used a single reference and a small 512x512 paid request to limit credit spend
+What failed: pending
+Decision: candidate is pending and must not be treated as canonical until visual review and explicit user approval.
+
+### Readiness check
+
+Date: 2026-06-18
+Checked request: `7330e532-bab1-4ee3-8fcf-d56cb6376b13`
+Result: ready in FLUX MCP history
+Model: FLUX.2 Klein 4B
+Seed: `3696246028`
+Size: `512x512`
+Image URL: available from FLUX MCP history
+Diagnostic correction: using `generate_variations` as a readiness probe was an error and is no longer allowed; readiness must be checked only through `get_result` when available, or `get_history`.
+Variation side effect: the mistaken readiness probe with `generate_variations` created four pending variation requests: `a45ec27b-8819-4aec-aa3c-07abea778cf3`, `dfc4a3bd-f4c5-4c67-bc16-e42dd1d754e8`, `c8662653-04f8-4ea5-b65a-ac6ce59736cf`, `f16a81a0-d6a6-4503-b153-440da5a62b5a`
+Credits after check: `990`
+Decision: candidate is not-approved because it was not approved by the user and does not meet the final Alpha PNG background standard.
 
 ### Retrieval check 3
 

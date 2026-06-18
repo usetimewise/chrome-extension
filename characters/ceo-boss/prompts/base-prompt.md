@@ -23,13 +23,14 @@ Composition:
 - Full-body character reference.
 - Front view with a very slight natural three-quarter depth.
 - Centered subject with all hands, legs, shoes, and hair silhouette clearly visible.
-- Plain neutral gray studio background with no text and no extra objects.
+- Plain solid high-contrast removable background, with a soft natural contact shadow under the feet.
+- No baked-in environment background, text, props, floor texture, walls, gradients, or decorative shadows.
 
 Lighting and style:
 - Even soft studio lighting.
 - Glossy smooth 3D chibi mascot render.
 - Clean readable silhouette with subtle soft shadows.
-- Palette: skin `#E2B18E`, hair `#111111`, suit `#151515`, shirt `#F2F2EE`, tie `#D71920`, background `#85898B`.
+- Palette: skin `#E2B18E`, hair `#111111`, suit `#151515`, shirt `#F2F2EE`, tie `#D71920`, temporary removable background `#85898B`.
 ```
 
-After generation, do not mark the result as approved until the user explicitly chooses it as canon.
+After generation, treat the result as a candidate. Do not mark it as approved until the background is removed, a transparent Alpha PNG with preserved soft contact shadow is exported, and the user explicitly chooses it as canon.

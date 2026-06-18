@@ -36,7 +36,7 @@ context until the user explicitly approves them as canonical references.
   - shirt: `#F2F2EE`
   - tie red: `#D71920`
   - shoe black: `#101010`
-  - studio gray background: `#85898B`
+  - temporary removable background: `#85898B`
 - eyes: narrow stern black eyes with heavy upper lids, small dark pupils, no large cute sparkle highlights
 - hair, fur, or head elements: glossy black sculpted executive hair, side-parted and swept back as a single clean helmet-like shape with subtle grooves; no facial hair
 - body proportions: chibi proportions, head about half of total height, short compact torso, short legs, small hands, broad stance
@@ -56,14 +56,15 @@ These elements must remain unchanged unless the user explicitly approves a new v
 - body proportions: oversized head, compact body, short legs and arms
 - outfit design: black suit, white shirt, red tie, black shoes
 - accessories: no permanent glasses, watch, phone, clipboard, pen, speech bubble, chart, or table
-- illustration style: glossy 3D chibi toy render on simple neutral studio background
+- illustration style: glossy 3D chibi toy render
+- approved reference background: transparent Alpha PNG with a preserved soft natural contact shadow under the feet
 
 ## Allowed Changes
 
 - expressions: stern, annoyed, impatient, skeptical, focused; keep the face recognizably strict
 - poses: arms folded, pointing, hand raised, checking watch, holding document, tapping table, standing neutral
 - lighting: neutral studio, soft office light, mild dramatic key light
-- backgrounds: plain gray studio, simple office, meeting room, dashboard screen, desk area
+- backgrounds: transparent Alpha PNG for approved references; plain solid high-contrast removable background only for temporary generation or work-in-progress assets; simple office, meeting room, dashboard screen, desk area for scene images
 - temporary props: phone, clipboard, pen, report, chart, watch, table, speech bubble
 - seasonal or scene-specific clothing: not allowed until a new outfit version is explicitly approved
 
@@ -96,6 +97,7 @@ Generated candidate:
 
 - base canonical candidate: FLUX request `92f7fb91-2302-49bf-8dac-5575971199de`
 - retry base canonical candidate: FLUX request `04d9c324-afb2-4d3c-a6d4-ad3bfcd0646b`
+- paid small candidate: FLUX request `7330e532-bab1-4ee3-8fcf-d56cb6376b13` - not-approved; not user-approved and not exported as a final transparent Alpha PNG with preserved contact shadow
 
 - base source candidate: `images/ceo/ceo-s02p07-folded-arms.png`
 - face close-up: pending
@@ -123,5 +125,7 @@ Generated candidate:
 ## Notes
 
 - Treat this as a candidate pack until one generated image is approved by the user.
+- Approved character references must be true Alpha PNG assets with transparent background and preserved semi-transparent contact shadow under the feet.
+- Plain gray or other solid backgrounds are allowed only as temporary generation backgrounds for later removal, not as final canonical references.
 - Do not place the full `images/ceo` set into one FLUX request when the goal is consistency; it will encourage averaging and drift.
-- Generated candidates `92f7fb91-2302-49bf-8dac-5575971199de` and `04d9c324-afb2-4d3c-a6d4-ad3bfcd0646b` must not be copied into `approved/` until explicitly accepted.
+- Generated candidates `92f7fb91-2302-49bf-8dac-5575971199de`, `04d9c324-afb2-4d3c-a6d4-ad3bfcd0646b`, and `7330e532-bab1-4ee3-8fcf-d56cb6376b13` must not be copied into `approved/` until explicitly accepted and exported as Alpha PNG assets.
