@@ -19,7 +19,6 @@ function copyExtensionStatic(): Plugin {
       cpSync(resolve(root, "manifest.json"), resolve(outDir, "manifest.json"));
       cpSync(resolve(root, "icons"), resolve(outDir, "icons"), { recursive: true });
       cpSync(resolve(root, "images"), resolve(outDir, "images"), { recursive: true });
-      cpSync(resolve(root, "vendor"), resolve(outDir, "vendor"), { recursive: true });
     }
   };
 }
@@ -51,6 +50,7 @@ function bundleContentScripts(): Plugin {
 
 export default defineConfig(() => {
   const input = {
+    iconPreview: resolve(__dirname, "icon-preview.html"),
     popup: resolve(__dirname, "popup.html"),
     background: resolve(__dirname, "src/background/index.ts")
   };

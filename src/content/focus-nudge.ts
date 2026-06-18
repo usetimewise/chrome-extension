@@ -7,6 +7,7 @@ import {
   type Translator
 } from "../lib/i18n/index.js";
 import type { UserPreferences } from "../lib/types.js";
+import { createContentIcon } from "./icon-elements.js";
 
 type FocusOverlayMessage = {
   mode: "offer";
@@ -309,19 +310,11 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
       }
 
       .site-icon {
-        position: relative;
-        width: 12px;
-        height: 12px;
+        display: block;
+        width: 14px;
+        height: 14px;
         flex: 0 0 auto;
-      }
-
-      .site-icon::before {
-        content: "";
-        position: absolute;
-        inset: 1px 2px;
-        border: 1.4px solid #d97706;
-        border-radius: 7px 7px 5px 5px;
-        clip-path: polygon(50% 0, 100% 18%, 100% 62%, 50% 100%, 0 62%, 0 18%);
+        color: #d97706;
       }
 
       .site-text {
@@ -344,9 +337,6 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
         background: transparent;
         color: #717182;
         cursor: pointer;
-        font: inherit;
-        font-size: 18px;
-        line-height: 1;
         padding: 0;
       }
 
@@ -492,9 +482,7 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
 
     const site = document.createElement("div");
     site.className = "site";
-    const siteIcon = document.createElement("span");
-    siteIcon.className = "site-icon";
-    siteIcon.setAttribute("aria-hidden", "true");
+    const siteIcon = createContentIcon("site", { className: "site-icon", size: 14 });
     const siteText = document.createElement("span");
     siteText.className = "site-text";
     siteText.textContent = message.host;
@@ -504,7 +492,7 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
     const closeButton = document.createElement("button");
     closeButton.className = "close";
     closeButton.type = "button";
-    closeButton.textContent = "×";
+    closeButton.append(createContentIcon("close", { size: 16 }));
     closeButton.setAttribute("aria-label", t("nudge.closeOffer"));
     closeButton.addEventListener("click", removeExistingOverlay);
 
@@ -593,10 +581,6 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
       background: transparent;
       color: #717182;
       cursor: pointer;
-      font: inherit;
-      font-size: 24px;
-      font-weight: 500;
-      line-height: 1;
       padding: 0;
       transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
     }
@@ -668,19 +652,11 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
     }
 
     .site-icon {
-      position: relative;
+      display: block;
       width: 14px;
       height: 14px;
       flex: 0 0 auto;
-    }
-
-    .site-icon::before {
-      content: "";
-      position: absolute;
-      inset: 1px 2px;
-      border: 1.5px solid #d97706;
-      border-radius: 7px 7px 5px 5px;
-      clip-path: polygon(50% 0, 100% 18%, 100% 62%, 50% 100%, 0 62%, 0 18%);
+      color: #d97706;
     }
 
     .site-text {
@@ -799,7 +775,7 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   const closeButton = document.createElement("button");
   closeButton.className = "close";
   closeButton.type = "button";
-  closeButton.textContent = "×";
+  closeButton.append(createContentIcon("close", { size: 18 }));
   closeButton.setAttribute("aria-label", message.mode === "offer" ? t("nudge.closeOffer") : t("nudge.closeTab"));
   closeButton.addEventListener("click", () => {
     setButtonsDisabled(shadow, true);
@@ -854,9 +830,7 @@ async function buildOverlay(message: FocusOverlayMessage): Promise<HTMLDivElemen
   const site = document.createElement("div");
   site.className = "site";
 
-  const siteIcon = document.createElement("span");
-  siteIcon.className = "site-icon";
-  siteIcon.setAttribute("aria-hidden", "true");
+  const siteIcon = createContentIcon("site", { className: "site-icon", size: 14 });
 
   const siteText = document.createElement("span");
   siteText.className = "site-text";

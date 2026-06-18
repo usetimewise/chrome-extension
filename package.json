@@ -9,6 +9,7 @@
     "test": "tsx --test src/lib/*.test.ts src/lib/urlDecision/*.test.ts"
   },
   "dependencies": {
+    "lucide-react": "^1.21.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

@@ -19,6 +19,7 @@ import {
 import { DEFAULT_SITE_BLOCK_RULES, type SiteBlockRule } from "../../lib/site-block-rules.js";
 import type { BootstrapResponse, UserPreferences } from "../../lib/types.js";
 import { getErrorMessage } from "../../lib/utils.js";
+import { AppIcon, type AppIconName } from "../icons/index.js";
 import { usePopupBootstrap } from "./hooks/use-popup-bootstrap.js";
 
 type FocusActionState =
@@ -35,9 +36,9 @@ type SettingsSaveState =
   | { status: "saved" }
   | { status: "error"; message: string };
 
-const SETTINGS_TABS: Array<{ id: SettingsTab; labelKey: "popup.tabCompanion" | "popup.tabBlocking"; icon: string }> = [
-  { id: "companion", labelKey: "popup.tabCompanion", icon: "●" },
-  { id: "blocking", labelKey: "popup.tabBlocking", icon: "◆" }
+const SETTINGS_TABS: Array<{ id: SettingsTab; labelKey: "popup.tabCompanion" | "popup.tabBlocking"; icon: AppIconName }> = [
+  { id: "companion", labelKey: "popup.tabCompanion", icon: "companion" },
+  { id: "blocking", labelKey: "popup.tabBlocking", icon: "blocking" }
 ];
 
 const LANGUAGE_OPTIONS: Array<{ language: AppLanguage; labelKey: "language.english" | "language.russian"; shortLabel: string }> = [
@@ -293,7 +294,7 @@ function SettingsView({
       <section className="settings-panel">
         <header className="settings-header">
           <button className="settings-icon-button" type="button" onClick={onBack} aria-label={t("popup.backToFocus")}>
-            ←
+            <AppIcon name="back" />
           </button>
           <div>
             <p className="popup-kicker">Time Wise</p>
@@ -309,7 +310,7 @@ function SettingsView({
               type="button"
               onClick={() => setActiveTab(tab.id)}
             >
-              <span aria-hidden="true">{tab.icon}</span>
+              <AppIcon name={tab.icon} size={15} />
               {t(tab.labelKey)}
             </button>
           ))}
@@ -345,7 +346,9 @@ function SettingsView({
                     <span className="companion-role">{companion.role}</span>
                     <span className="companion-description">{companion.description}</span>
                     {draft.selectedCompanionId === companion.id ? (
-                      <span className="companion-check" aria-label={t("popup.selected")}>✓</span>
+                      <span className="companion-check" aria-label={t("popup.selected")}>
+                        <AppIcon name="check" size={13} strokeWidth={2.4} />
+                      </span>
                     ) : null}
                   </button>
                 ))}
@@ -380,7 +383,7 @@ function SettingsView({
                   disabled={!newBlockedHost.trim()}
                   aria-label={t("popup.addSite")}
                 >
-                  +
+                  <AppIcon name="add" />
                 </button>
               </div>
               {blockedHostError ? (
@@ -408,7 +411,7 @@ function SettingsView({
                       }}
                       aria-label={t("popup.removeHost", { host: rule.pattern })}
                     >
-                      ×
+                      <AppIcon name="close" size={16} />
                     </button>
                   </div>
                 ))}
@@ -426,7 +429,7 @@ function SettingsView({
                         onClick={() => handleRestoreDefaultRule(rule.id)}
                         aria-label={t("popup.restoreDefaultRule", { host: rule.pattern })}
                       >
-                        ↻
+                        <AppIcon name="restore" size={16} />
                       </button>
                     </div>
                   ))}
@@ -557,7 +560,7 @@ function PopupApp() {
               onClick={() => setView("settings")}
               aria-label={t("popup.openSettings")}
             >
-              ⚙
+              <AppIcon name="settings" />
             </button>
           </div>
         </header>
