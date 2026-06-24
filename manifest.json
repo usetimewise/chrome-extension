@@ -1,59 +1,36 @@
 {
-  "manifest_version": 3,
-  "name": "Time Wise Tracker",
-  "version": "0.2.0",
-  "description": "A focus-first browser companion that blocks distracting URLs during focus sessions.",
-  "permissions": [
-    "tabs",
-    "scripting",
-    "storage",
-    "idle",
-    "alarms"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "background": {
-    "service_worker": "assets/background.js",
-    "type": "module"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
-      "js": [
-        "assets/focus-blocker.js"
-      ],
-      "all_frames": false,
-      "run_at": "document_start"
+    "manifest_version": 3,
+    "name": "Time Wise Tracker",
+    "version": "0.2.0",
+    "description": "A focus-first browser companion that blocks distracting URLs during focus sessions.",
+    "permissions": ["tabs", "scripting", "storage", "idle", "alarms"],
+    "host_permissions": ["<all_urls>"],
+    "background": {
+        "service_worker": "assets/background.js",
+        "type": "module"
     },
-    {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
-      "js": [
-        "assets/focus-nudge.js"
-      ],
-      "all_frames": false,
-      "run_at": "document_idle"
+    "content_scripts": [
+        {
+            "matches": ["http://*/*", "https://*/*"],
+            "js": ["assets/focus-blocker.js"],
+            "all_frames": false,
+            "run_at": "document_start"
+        },
+        {
+            "matches": ["http://*/*", "https://*/*"],
+            "js": ["assets/focus-nudge.js"],
+            "all_frames": false,
+            "run_at": "document_idle"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["images/ceo/*.png"],
+            "matches": ["http://*/*", "https://*/*"]
+        }
+    ],
+    "action": {
+        "default_title": "Time Wise: focus mode off",
+        "default_popup": "popup.html"
     }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "images/ceo/*.png"
-      ],
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ]
-    }
-  ],
-  "action": {
-    "default_title": "Time Wise: focus mode off",
-    "default_popup": "popup.html"
-  }
 }

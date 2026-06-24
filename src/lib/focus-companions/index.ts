@@ -1,18 +1,18 @@
 export { DEFAULT_FOCUS_COMPANION_ID } from "./catalog.js";
 export {
-  createFocusCompanionOverlayVariant,
-  createFocusCompanionPreview,
-  getFocusCompanion,
-  isFocusCompanionId,
-  listFocusCompanions
+    createFocusCompanionOverlayVariant,
+    createFocusCompanionPreview,
+    getFocusCompanion,
+    isFocusCompanionId,
+    listFocusCompanions,
 } from "./selectors.js";
 export type {
-  FocusCompanion,
-  FocusCompanionAssetUrlResolver,
-  FocusCompanionAvailability,
-  FocusCompanionId,
-  FocusCompanionOverlayVariant,
-  FocusCompanionPreview,
-  FocusCompanionReplica,
-  FocusCompanionVisual
+    FocusCompanion,
+    FocusCompanionAssetUrlResolver,
+    FocusCompanionAvailability,
+    FocusCompanionId,
+    FocusCompanionOverlayVariant,
+    FocusCompanionPreview,
+    FocusCompanionReplica,
+    FocusCompanionVisual,
 } from "./types.js";

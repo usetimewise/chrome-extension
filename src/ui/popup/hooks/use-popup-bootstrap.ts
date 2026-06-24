@@ -4,42 +4,44 @@ import { sendBackgroundMessage } from "../../../lib/messaging/client.js";
 import type { BootstrapResponse } from "../../../lib/types.js";
 
 export function usePopupBootstrap() {
-  const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
-  const bootstrapInFlightRef = useRef(false);
+    const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
+    const bootstrapInFlightRef = useRef(false);
 
-  async function loadBootstrap() {
-    if (bootstrapInFlightRef.current) {
-      return;
+    async function loadBootstrap() {
+        if (bootstrapInFlightRef.current) {
+            return;
+        }
+
+        bootstrapInFlightRef.current = true;
+        try {
+            const next = await sendBackgroundMessage({
+                type: MESSAGE_TYPES.getBootstrap,
+            });
+            setBootstrap(next);
+        } finally {
+            bootstrapInFlightRef.current = false;
+        }
     }
 
-    bootstrapInFlightRef.current = true;
-    try {
-      const next = await sendBackgroundMessage({ type: MESSAGE_TYPES.getBootstrap });
-      setBootstrap(next);
-    } finally {
-      bootstrapInFlightRef.current = false;
-    }
-  }
+    useEffect(() => {
+        let refreshTimer: number | null = null;
 
-  useEffect(() => {
-    let refreshTimer: number | null = null;
+        void loadBootstrap();
 
-    void loadBootstrap();
+        refreshTimer = window.setInterval(() => {
+            void loadBootstrap();
+        }, 1000);
 
-    refreshTimer = window.setInterval(() => {
-      void loadBootstrap();
-    }, 1000);
+        return () => {
+            if (refreshTimer !== null) {
+                window.clearInterval(refreshTimer);
+            }
+        };
+    }, []);
 
-    return () => {
-      if (refreshTimer !== null) {
-        window.clearInterval(refreshTimer);
-      }
+    return {
+        bootstrap,
+        applyBootstrap: setBootstrap,
+        refreshBootstrap: loadBootstrap,
     };
-  }, []);
-
-  return {
-    bootstrap,
-    applyBootstrap: setBootstrap,
-    refreshBootstrap: loadBootstrap
-  };
 }
