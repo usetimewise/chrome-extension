@@ -30,6 +30,7 @@ type FocusOverlayMessage =
         activeOverlayKey: string | null;
         contextInvalidated: boolean;
         listenerInstalled: boolean;
+        overlayRequestId: number;
         softDismissTimerId: number | null;
         suppressedHosts: Set<string>;
     };
@@ -52,6 +53,7 @@ type FocusOverlayMessage =
         activeOverlayKey: null,
         contextInvalidated: false,
         listenerInstalled: false,
+        overlayRequestId: 0,
         softDismissTimerId: null,
         suppressedHosts: new Set<string>(),
     };
@@ -292,9 +294,48 @@ type FocusOverlayMessage =
             });
     }
 
-    async function buildOverlay(
-        message: FocusOverlayMessage,
-    ): Promise<HTMLDivElement> {
+    function scheduleAutoDismiss(params: {
+        key: string;
+        message: FocusOverlayMessage;
+        requestId: number;
+        shadow: ShadowRoot;
+        t: Translator;
+    }): void {
+        if (
+            params.message.mode !== "offer" &&
+            params.message.presentation !== "soft"
+        ) {
+            return;
+        }
+
+        focusNudgeState.softDismissTimerId = window.setTimeout(() => {
+            focusNudgeState.softDismissTimerId = null;
+            if (
+                focusNudgeState.overlayRequestId !== params.requestId ||
+                focusNudgeState.activeOverlayKey !== params.key
+            ) {
+                return;
+            }
+
+            if (params.message.mode === "offer") {
+                dismissFocusOffer(
+                    params.shadow,
+                    params.message,
+                    "defer",
+                    params.t,
+                );
+                return;
+            }
+
+            removeExistingOverlay();
+        }, 10_000);
+    }
+
+    async function buildOverlay(message: FocusOverlayMessage): Promise<{
+        host: HTMLDivElement;
+        shadow: ShadowRoot;
+        t: Translator;
+    }> {
         const preferences = await getStoredPreferences();
         const language: AppLanguage = resolveLanguage(preferences?.language);
         const t = createTranslator(language);
@@ -310,15 +351,6 @@ type FocusOverlayMessage =
 
         const shadow = host.attachShadow({ mode: "open" });
         if (message.mode === "offer" || message.presentation === "soft") {
-            focusNudgeState.softDismissTimerId = window.setTimeout(() => {
-                if (message.mode === "offer") {
-                    dismissFocusOffer(shadow, message, "defer", t);
-                    return;
-                }
-
-                removeExistingOverlay();
-            }, 10_000);
-
             const style = document.createElement("style");
             style.textContent = `
       :host {
@@ -650,7 +682,7 @@ type FocusOverlayMessage =
                 actions.append(startButton, laterButton, status);
                 toast.append(progress, header, actions);
                 shadow.append(style, toast);
-                return host;
+                return { host, shadow, t };
             }
 
             const leaveButton = document.createElement("button");
@@ -688,7 +720,7 @@ type FocusOverlayMessage =
             actions.append(leaveButton, secondaryActions, status);
             toast.append(progress, header, actions);
             shadow.append(style, toast);
-            return host;
+            return { host, shadow, t };
         }
 
         const style = document.createElement("style");
@@ -1074,7 +1106,7 @@ type FocusOverlayMessage =
         panel.append(closeButton, imageWrap, title, site, actions, status);
         shadow.append(style, panel);
 
-        return host;
+        return { host, shadow, t };
     }
 
     async function showFocusOverlay(
@@ -1093,6 +1125,8 @@ type FocusOverlayMessage =
             return;
         }
 
+        const requestId = focusNudgeState.overlayRequestId + 1;
+        focusNudgeState.overlayRequestId = requestId;
         removeExistingOverlay();
         focusNudgeState.activeOverlayKey = key;
         if (message.mode === "offer" || message.presentation === "soft") {
@@ -1100,7 +1134,24 @@ type FocusOverlayMessage =
         } else {
             engageFocusBlocker();
         }
-        document.documentElement.append(await buildOverlay(message));
+        const overlay = await buildOverlay(message);
+        if (
+            focusNudgeState.overlayRequestId !== requestId ||
+            focusNudgeState.activeOverlayKey !== key
+        ) {
+            overlay.host.remove();
+            return;
+        }
+
+        document.getElementById(OVERLAY_ID)?.remove();
+        document.documentElement.append(overlay.host);
+        scheduleAutoDismiss({
+            key,
+            message,
+            requestId,
+            shadow: overlay.shadow,
+            t: overlay.t,
+        });
     }
 
     if (
