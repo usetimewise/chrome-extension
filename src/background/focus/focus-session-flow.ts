@@ -1,8 +1,13 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
-import { resolveFocusBlockSeverity } from "../../lib/focus-distraction-counters.js";
+import {
+    markFocusNudgeNotificationShown,
+    resolveFocusBlockSeverity,
+    shouldSuppressSoftFocusNudge,
+} from "../../lib/focus-distraction-counters.js";
 import { createTranslator } from "../../lib/i18n/index.js";
 import { sendContentMessage } from "../../lib/messaging/client.js";
+import { saveRuntimeState } from "../../lib/storage/runtime-state.js";
 import { getSettings } from "../../lib/storage/site-rules.js";
 import { decideFocusBlock } from "../../lib/site-block-rules.js";
 import type {
@@ -65,6 +70,56 @@ export async function showFocusNudge(
     return showFocusNudgeInTab(tabId, message, details);
 }
 
+export async function showFocusNudgeWithSoftUrlLimit(
+    context: BackgroundRuntimeContext,
+    tabId: number,
+    message: string,
+    details: {
+        sessionId: string;
+        host: string;
+        category: string;
+        presentation: "soft" | "strict";
+    },
+    currentUrl: string | null,
+): Promise<{ ok: boolean; response: unknown }> {
+    if (
+        currentUrl &&
+        shouldSuppressSoftFocusNudge({
+            notifications: context.runtimeState.focusNudgeNotifications,
+            sessionId: details.sessionId,
+            currentUrl,
+            presentation: details.presentation,
+        })
+    ) {
+        devDebugLog("focusNudge.softUrlLimit.skip", {
+            sessionId: details.sessionId,
+            url: currentUrl,
+        });
+        return {
+            ok: true,
+            response: { suppressed: true, reason: "soft_url_unchanged" },
+        };
+    }
+
+    const result = await showFocusNudgeInTab(tabId, message, details);
+    if (currentUrl) {
+        const nextNotifications = markFocusNudgeNotificationShown({
+            notifications: context.runtimeState.focusNudgeNotifications,
+            sessionId: details.sessionId,
+            currentUrl,
+            presentation: details.presentation,
+        });
+        if (nextNotifications !== context.runtimeState.focusNudgeNotifications) {
+            context.runtimeState.focusNudgeNotifications = nextNotifications;
+            await saveRuntimeState({
+                focusNudgeNotifications: nextNotifications,
+            });
+        }
+    }
+
+    return result;
+}
+
 export async function evaluateFocusNudgeNotification(
     context: BackgroundRuntimeContext,
     activeSession: FocusSession | null,
@@ -116,12 +171,18 @@ export async function evaluateFocusNudgeNotification(
     const presentation = resolveFocusBlockSeverity(counters.counters);
     const t = createTranslator(settings.language);
     try {
-        await showFocusNudge(context, t("nudge.message"), {
-            sessionId: activeSession.id,
-            host: currentHost,
-            category: decision.category,
-            presentation,
-        });
+        await showFocusNudgeWithSoftUrlLimit(
+            context,
+            currentTabId,
+            t("nudge.message"),
+            {
+                sessionId: activeSession.id,
+                host: currentHost,
+                category: decision.category,
+                presentation,
+            },
+            currentUrl,
+        );
     } catch {
         devDebugWarn("focusNudge.showFailed");
     }

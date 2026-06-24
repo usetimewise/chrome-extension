@@ -55,6 +55,7 @@ export interface RuntimeState {
     focusNudgeNotifications: {
         sessionId: string | null;
         hosts: Record<string, number>;
+        lastSoftUrl: string | null;
     };
     focusOfferPromptEvents: FocusOfferPromptEvent[];
 }

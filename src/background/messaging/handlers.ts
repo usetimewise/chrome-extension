@@ -30,7 +30,7 @@ import {
     buildPopupModel,
     evaluateFocusNudgeNotification,
     forceFocusNudge,
-    showFocusNudgeInTab,
+    showFocusNudgeWithSoftUrlLimit,
 } from "../focus/focus-session-flow.js";
 import { recordFocusOfferPromptEvent } from "../focus/focus-offer-flow.js";
 import {
@@ -224,12 +224,18 @@ export function createBackgroundMessageListener(
                         counters.counters,
                     );
                     const t = createTranslator(settings.language);
-                    return showFocusNudgeInTab(tabId, t("nudge.message"), {
-                        sessionId: message.sessionId,
-                        host: message.host,
-                        category: message.category,
-                        presentation,
-                    });
+                    return showFocusNudgeWithSoftUrlLimit(
+                        context,
+                        tabId,
+                        t("nudge.message"),
+                        {
+                            sessionId: message.sessionId,
+                            host: message.host,
+                            category: message.category,
+                            presentation,
+                        },
+                        sender.tab?.url || context.runtimeState.currentUrl,
+                    );
                 }
                 case MESSAGE_TYPES.dismissFocusOffer:
                     await recordFocusOfferPromptEvent(

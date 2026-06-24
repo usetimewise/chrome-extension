@@ -34,6 +34,13 @@ export async function setActiveFromTab(
 
     const nextHost = normalizeHost(tabUrl);
     const now = Date.now();
+    if (context.runtimeState.currentUrl !== tabUrl) {
+        context.runtimeState.focusNudgeNotifications = {
+            ...context.runtimeState.focusNudgeNotifications,
+            lastSoftUrl: null,
+        };
+    }
+
     if (
         context.runtimeState.currentHost !== nextHost ||
         !context.runtimeState.currentHostStartedAt

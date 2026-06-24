@@ -36,6 +36,7 @@ export const DEFAULT_RUNTIME_STATE: RuntimeState = {
     focusNudgeNotifications: {
         sessionId: null,
         hosts: {},
+        lastSoftUrl: null,
     },
     focusOfferPromptEvents: [],
 };

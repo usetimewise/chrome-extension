@@ -39,6 +39,11 @@ export async function getRuntimeState(): Promise<RuntimeState> {
             hosts: {
                 ...(runtime?.focusNudgeNotifications?.hosts || {}),
             },
+            lastSoftUrl:
+                typeof runtime?.focusNudgeNotifications?.lastSoftUrl ===
+                "string"
+                    ? runtime.focusNudgeNotifications.lastSoftUrl
+                    : null,
         },
         focusOfferPromptEvents: normalizeFocusOfferPromptEvents(
             runtime?.focusOfferPromptEvents,

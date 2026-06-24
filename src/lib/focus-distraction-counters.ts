@@ -2,6 +2,7 @@ import type {
     FocusDistractionCounter,
     FocusDistractionCountersState,
     FocusSession,
+    RuntimeState,
 } from "./types.js";
 import type { SiteBlockRule } from "./site-block-rules.js";
 
@@ -138,4 +139,34 @@ export function resolveFocusBlockSeverity(
     }, 0);
 
     return totalMs >= FOCUS_STRICT_BLOCK_AFTER_MS ? "strict" : "soft";
+}
+
+export function shouldSuppressSoftFocusNudge(params: {
+    notifications: RuntimeState["focusNudgeNotifications"];
+    sessionId: string;
+    currentUrl: string;
+    presentation: "soft" | "strict";
+}): boolean {
+    return (
+        params.presentation === "soft" &&
+        params.notifications.sessionId === params.sessionId &&
+        params.notifications.lastSoftUrl === params.currentUrl
+    );
+}
+
+export function markFocusNudgeNotificationShown(params: {
+    notifications: RuntimeState["focusNudgeNotifications"];
+    sessionId: string;
+    currentUrl: string;
+    presentation: "soft" | "strict";
+}): RuntimeState["focusNudgeNotifications"] {
+    if (params.presentation !== "soft") {
+        return params.notifications;
+    }
+
+    return {
+        ...params.notifications,
+        sessionId: params.sessionId,
+        lastSoftUrl: params.currentUrl,
+    };
 }

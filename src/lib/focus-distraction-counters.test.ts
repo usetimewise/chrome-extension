@@ -7,7 +7,9 @@ import {
     ensureFocusDistractionCounterSession,
     FOCUS_DISTRACTION_COUNTER_RESET_AFTER_MS,
     FOCUS_STRICT_BLOCK_AFTER_MS,
+    markFocusNudgeNotificationShown,
     resolveFocusBlockSeverity,
+    shouldSuppressSoftFocusNudge,
 } from "./focus-distraction-counters.js";
 import { decideDistractionSite } from "./site-block-rules.js";
 import type { FocusSession } from "./types.js";
@@ -212,4 +214,95 @@ test("focus block severity sums counters across all rules", () => {
     ]);
 
     assert.equal(resolveFocusBlockSeverity(state.counters), "strict");
+});
+
+test("soft focus nudge is suppressed while the current url has not changed", () => {
+    const notifications = {
+        sessionId: "focus-1",
+        hosts: {},
+        lastSoftUrl: "https://example.com/watch",
+    };
+
+    assert.equal(
+        shouldSuppressSoftFocusNudge({
+            notifications,
+            sessionId: "focus-1",
+            currentUrl: "https://example.com/watch",
+            presentation: "soft",
+        }),
+        true,
+    );
+});
+
+test("soft focus nudge is allowed after the current url changes", () => {
+    const notifications = {
+        sessionId: "focus-1",
+        hosts: {},
+        lastSoftUrl: "https://example.com/watch",
+    };
+
+    assert.equal(
+        shouldSuppressSoftFocusNudge({
+            notifications,
+            sessionId: "focus-1",
+            currentUrl: "https://example.com/next",
+            presentation: "soft",
+        }),
+        false,
+    );
+});
+
+test("soft focus nudge is allowed for a new focus session", () => {
+    const notifications = {
+        sessionId: "focus-1",
+        hosts: {},
+        lastSoftUrl: "https://example.com/watch",
+    };
+
+    assert.equal(
+        shouldSuppressSoftFocusNudge({
+            notifications,
+            sessionId: "focus-2",
+            currentUrl: "https://example.com/watch",
+            presentation: "soft",
+        }),
+        false,
+    );
+});
+
+test("strict focus nudge is never suppressed by the soft url limit", () => {
+    const notifications = {
+        sessionId: "focus-1",
+        hosts: {},
+        lastSoftUrl: "https://example.com/watch",
+    };
+
+    assert.equal(
+        shouldSuppressSoftFocusNudge({
+            notifications,
+            sessionId: "focus-1",
+            currentUrl: "https://example.com/watch",
+            presentation: "strict",
+        }),
+        false,
+    );
+});
+
+test("shown soft focus nudge records the current url", () => {
+    const notifications = markFocusNudgeNotificationShown({
+        notifications: {
+            sessionId: null,
+            hosts: {},
+            lastSoftUrl: null,
+        },
+        sessionId: "focus-1",
+        currentUrl: "https://example.com/watch",
+        presentation: "soft",
+    });
+
+    assert.deepEqual(notifications, {
+        sessionId: "focus-1",
+        hosts: {},
+        lastSoftUrl: "https://example.com/watch",
+    });
 });
