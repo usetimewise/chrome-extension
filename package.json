@@ -5,6 +5,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
+        "images:avif": "node scripts/convert-png-to-avif.mjs",
+        "images:avif:archive-png": "node scripts/convert-png-to-avif.mjs --archive-png logs/png-images",
         "lint": "eslint .",
         "typecheck": "tsc --noEmit",
         "test": "tsx --test src/lib/*.test.ts src/lib/urlDecision/*.test.ts"

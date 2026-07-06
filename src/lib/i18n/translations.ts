@@ -61,10 +61,8 @@ export const EN_MESSAGES = {
     "nudge.message":
         "You got distracted. This site looks like a distraction during focus.",
     "nudge.offerMessage": "This looks distracting. Turn on focus mode?",
-    "nudge.saveRuleError": "Could not save the site rule",
     "nudge.startFocus": "Start focus",
     "nudge.startFocusError": "Could not start focus mode",
-    "nudge.workSite": "I need this site",
 } as const;
 
 export type TranslationKey = keyof typeof EN_MESSAGES;
@@ -135,8 +133,6 @@ export const RU_MESSAGES: Partial<Record<TranslationKey, string>> = {
     "nudge.message":
         "Ты отвлекся. Этот сайт выглядит как отвлечение во время фокусировки.",
     "nudge.offerMessage": "Похоже, это отвлекающий сайт. Включить фокусировку?",
-    "nudge.saveRuleError": "Не удалось сохранить правило для сайта",
     "nudge.startFocus": "Включить фокус",
     "nudge.startFocusError": "Не удалось включить фокусировку",
-    "nudge.workSite": "Мне нужен этот сайт",
 };

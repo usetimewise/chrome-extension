@@ -42,7 +42,6 @@ type FocusOverlayMessage =
 
     const FOCUS_MESSAGE_TYPES = {
         showFocusNudge: "SHOW_FOCUS_NUDGE",
-        saveSiteRule: "SAVE_SITE_RULE",
         closeCurrentTab: "CLOSE_CURRENT_TAB",
         endFocusSession: "END_FOCUS_SESSION",
         startFocusSession: "START_FOCUS_SESSION",
@@ -196,33 +195,6 @@ type FocusOverlayMessage =
                     : t("nudge.closeTabError"),
             );
         });
-    }
-
-    function saveCurrentSiteAsWork(
-        shadow: ShadowRoot,
-        message: Extract<FocusOverlayMessage, { mode: "block" }>,
-        t: Translator,
-    ): void {
-        setButtonsDisabled(shadow, true);
-        void sendBackgroundMessage({
-            type: FOCUS_MESSAGE_TYPES.saveSiteRule,
-            host: message.host,
-            category: "work",
-            excluded: false,
-        })
-            .then(() => {
-                releaseFocusBlocker();
-                removeExistingOverlay();
-            })
-            .catch((error: unknown) => {
-                setButtonsDisabled(shadow, false);
-                setStatus(
-                    shadow,
-                    error instanceof Error
-                        ? error.message
-                        : t("nudge.saveRuleError"),
-                );
-            });
     }
 
     function endCurrentFocusSession(
@@ -512,12 +484,6 @@ type FocusOverlayMessage =
         padding: 0 18px 18px;
       }
 
-      .secondary-actions {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 6px;
-      }
-
       .button {
         box-sizing: border-box;
         width: 100%;
@@ -708,17 +674,6 @@ type FocusOverlayMessage =
                 closeCurrentTab(shadow, t),
             );
 
-            const secondaryActions = document.createElement("div");
-            secondaryActions.className = "secondary-actions";
-
-            const workButton = document.createElement("button");
-            workButton.className = "button secondary";
-            workButton.type = "button";
-            workButton.textContent = t("nudge.workSite");
-            workButton.addEventListener("click", () =>
-                saveCurrentSiteAsWork(shadow, message, t),
-            );
-
             const disableFocusButton = document.createElement("button");
             disableFocusButton.className = "button tertiary";
             disableFocusButton.type = "button";
@@ -731,8 +686,7 @@ type FocusOverlayMessage =
             status.className = "status";
             status.setAttribute("role", "status");
 
-            secondaryActions.append(workButton, disableFocusButton);
-            actions.append(leaveButton, secondaryActions, status);
+            actions.append(leaveButton, disableFocusButton, status);
             toast.append(progress, header, actions);
             shadow.append(style, toast);
             return { host, shadow, t };
@@ -1060,33 +1014,6 @@ type FocusOverlayMessage =
             });
         });
 
-        const workButton = document.createElement("button");
-        workButton.className = "button secondary";
-        workButton.type = "button";
-        workButton.textContent = t("nudge.workSite");
-        workButton.addEventListener("click", () => {
-            setButtonsDisabled(shadow, true);
-            void sendBackgroundMessage({
-                type: FOCUS_MESSAGE_TYPES.saveSiteRule,
-                host: message.host,
-                category: "work",
-                excluded: false,
-            })
-                .then(() => {
-                    releaseFocusBlocker();
-                    removeExistingOverlay();
-                })
-                .catch((error: unknown) => {
-                    setButtonsDisabled(shadow, false);
-                    setStatus(
-                        shadow,
-                        error instanceof Error
-                            ? error.message
-                            : t("nudge.saveRuleError"),
-                    );
-                });
-        });
-
         const disableFocusButton = document.createElement("button");
         disableFocusButton.className = "button tertiary";
         disableFocusButton.type = "button";
@@ -1117,7 +1044,7 @@ type FocusOverlayMessage =
                 });
         });
 
-        actions.append(leaveButton, workButton, disableFocusButton);
+        actions.append(leaveButton, disableFocusButton);
         panel.append(closeButton, imageWrap, title, site, actions, status);
         shadow.append(style, panel);
 
