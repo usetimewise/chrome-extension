@@ -1,6 +1,6 @@
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-type ContentIconName = "close" | "site";
+type ContentIconName = "close" | "shieldOff" | "site";
 
 type ContentIconOptions = {
     className?: string;
@@ -9,6 +9,11 @@ type ContentIconOptions = {
 
 const ICON_PATHS: Record<ContentIconName, string[]> = {
     close: ["M18 6 6 18", "m6 6 12 12"],
+    shieldOff: [
+        "M19.69 14A6.9 6.9 0 0 0 20 12V5l-8-3-5.43 2.04",
+        "M4.73 4.73 4 5v7c0 6 8 10 8 10a20.64 20.64 0 0 0 5.62-5.38",
+        "m1 1 22 22",
+    ],
     site: [
         "M21.54 15H17a2 2 0 0 0-2 2v4.54",
         "M7 3.34V5a3 3 0 0 0 3 3 2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17",

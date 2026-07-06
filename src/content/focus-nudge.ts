@@ -346,7 +346,7 @@ type FocusOverlayMessage =
         top: 16px;
         right: 16px;
         z-index: 2147483647;
-        width: min(336px, calc(100vw - 32px));
+        width: min(320px, calc(100vw - 32px));
         box-sizing: border-box;
         color-scheme: light;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -359,6 +359,7 @@ type FocusOverlayMessage =
         box-sizing: border-box;
         overflow: hidden;
         width: 100%;
+        display: flex;
         border: 1px solid rgba(3, 2, 19, 0.12);
         border-radius: 16px;
         background: #ffffff;
@@ -386,25 +387,34 @@ type FocusOverlayMessage =
 
       .header {
         display: flex;
-        align-items: flex-start;
-        gap: 14px;
-        padding: 18px 18px 14px;
+        align-items: stretch;
+        width: 100%;
+        min-height: 164px;
       }
 
       .thumb {
-        flex: 0 0 auto;
+        position: relative;
+        flex: 0 0 96px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 52px;
-        height: 52px;
+        width: 96px;
+        min-height: 164px;
         overflow: hidden;
-        border-radius: 14px;
         background: #ececf0;
         color: #030213;
-        font-size: 18px;
+        font-size: 32px;
         font-weight: 700;
         line-height: 1;
+      }
+
+      .thumb::after {
+        position: absolute;
+        inset: auto 0 0;
+        height: 40px;
+        content: "";
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.18), transparent);
+        pointer-events: none;
       }
 
       .thumb-image {
@@ -418,7 +428,21 @@ type FocusOverlayMessage =
       .content {
         min-width: 0;
         flex: 1 1 auto;
-        padding-top: 2px;
+        display: flex;
+        flex-direction: column;
+        padding: 16px 16px 16px;
+      }
+
+      .top-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .copy {
+        min-width: 0;
+        flex: 1 1 auto;
       }
 
       .title {
@@ -435,7 +459,7 @@ type FocusOverlayMessage =
         align-items: center;
         gap: 6px;
         min-width: 0;
-        margin-top: 5px;
+        margin-top: 4px;
         color: #717182;
         font-size: 12px;
         font-weight: 400;
@@ -444,8 +468,8 @@ type FocusOverlayMessage =
 
       .site-icon {
         display: block;
-        width: 14px;
-        height: 14px;
+        width: 12px;
+        height: 12px;
         flex: 0 0 auto;
         color: #d97706;
       }
@@ -481,7 +505,7 @@ type FocusOverlayMessage =
       .actions {
         display: grid;
         gap: 6px;
-        padding: 0 18px 18px;
+        margin-top: auto;
       }
 
       .button {
@@ -603,6 +627,12 @@ type FocusOverlayMessage =
             const content = document.createElement("div");
             content.className = "content";
 
+            const topRow = document.createElement("div");
+            topRow.className = "top-row";
+
+            const copy = document.createElement("div");
+            copy.className = "copy";
+
             const title = document.createElement("p");
             title.className = "title";
             title.textContent =
@@ -610,15 +640,15 @@ type FocusOverlayMessage =
 
             const site = document.createElement("div");
             site.className = "site";
-            const siteIcon = createContentIcon("site", {
+            const siteIcon = createContentIcon("shieldOff", {
                 className: "site-icon",
-                size: 14,
+                size: 12,
             });
             const siteText = document.createElement("span");
             siteText.className = "site-text";
             siteText.textContent = message.host;
             site.append(siteIcon, siteText);
-            content.append(title, site);
+            copy.append(title, site);
 
             const closeButton = document.createElement("button");
             closeButton.className = "close";
@@ -633,8 +663,6 @@ type FocusOverlayMessage =
 
                 removeExistingOverlay();
             });
-
-            header.append(thumb, content, closeButton);
 
             const actions = document.createElement("div");
             actions.className = "actions";
@@ -661,7 +689,10 @@ type FocusOverlayMessage =
                 status.setAttribute("role", "status");
 
                 actions.append(startButton, laterButton, status);
-                toast.append(progress, header, actions);
+                topRow.append(copy, closeButton);
+                content.append(topRow, actions);
+                header.append(thumb, content);
+                toast.append(progress, header);
                 shadow.append(style, toast);
                 return { host, shadow, t };
             }
@@ -687,7 +718,10 @@ type FocusOverlayMessage =
             status.setAttribute("role", "status");
 
             actions.append(leaveButton, disableFocusButton, status);
-            toast.append(progress, header, actions);
+            topRow.append(copy, closeButton);
+            content.append(topRow, actions);
+            header.append(thumb, content);
+            toast.append(progress, header);
             shadow.append(style, toast);
             return { host, shadow, t };
         }
@@ -715,14 +749,17 @@ type FocusOverlayMessage =
     .panel {
       box-sizing: border-box;
       position: relative;
-      width: min(100%, 448px);
-      padding: 40px 32px;
+      display: flex;
+      width: min(100%, 544px);
+      min-height: 320px;
+      overflow: hidden;
+      padding: 0;
       border: 1px solid rgba(0, 0, 0, 0.1);
       border-radius: 16px;
       background: #ffffff;
       color: #030213;
       box-shadow: 0 25px 50px rgba(0, 0, 0, 0.28);
-      text-align: center;
+      text-align: left;
       animation: panel-zoom-in 300ms ease-out both;
     }
 
@@ -750,25 +787,39 @@ type FocusOverlayMessage =
     }
 
     .image-wrap {
+      position: relative;
+      flex: 0 0 224px;
       display: flex;
+      align-items: stretch;
       justify-content: center;
-      margin: 0 0 24px;
+      margin: 0;
+      overflow: hidden;
+      background: #ececf0;
+    }
+
+    .image-wrap::after {
+      position: absolute;
+      inset: auto 0 0;
+      height: 64px;
+      content: "";
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.22), transparent);
+      pointer-events: none;
     }
 
     .image {
       display: block;
-      width: 160px;
-      height: 160px;
-      object-fit: contain;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
     }
 
     .avatar {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 160px;
-      height: 160px;
-      border-radius: 16px;
+      width: 100%;
+      min-height: 320px;
       font-size: 64px;
       font-weight: 700;
       line-height: 1;
@@ -785,8 +836,18 @@ type FocusOverlayMessage =
     .avatar-indigo { background: #eef2ff; color: #4338ca; }
     .avatar-gray { background: #f0f1f4; color: #4b5563; }
 
+    .panel-content {
+      box-sizing: border-box;
+      min-width: 0;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 32px 24px;
+    }
+
     .title {
-      margin: 0 0 4px;
+      margin: 0 0 8px;
       color: #030213;
       font-size: 24px;
       font-weight: 600;
@@ -800,7 +861,8 @@ type FocusOverlayMessage =
       gap: 8px;
       box-sizing: border-box;
       max-width: 100%;
-      margin: 4px 0 32px;
+      align-self: flex-start;
+      margin: 8px 0 24px;
       padding: 6px 12px;
       border-radius: 8px;
       background: #ececf0;
@@ -826,7 +888,7 @@ type FocusOverlayMessage =
 
     .actions {
       display: grid;
-      gap: 12px;
+      gap: 8px;
       width: 100%;
     }
 
@@ -915,7 +977,21 @@ type FocusOverlayMessage =
 
     @media (max-width: 480px) {
       .panel {
-        padding: 36px 24px 28px;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .image-wrap,
+      .avatar {
+        min-height: 180px;
+      }
+
+      .image-wrap {
+        flex-basis: 180px;
+      }
+
+      .panel-content {
+        padding: 28px 24px 24px;
       }
 
       .title {
@@ -978,7 +1054,7 @@ type FocusOverlayMessage =
         const site = document.createElement("div");
         site.className = "site";
 
-        const siteIcon = createContentIcon("site", {
+        const siteIcon = createContentIcon("shieldOff", {
             className: "site-icon",
             size: 14,
         });
@@ -1045,7 +1121,12 @@ type FocusOverlayMessage =
         });
 
         actions.append(leaveButton, disableFocusButton);
-        panel.append(closeButton, imageWrap, title, site, actions, status);
+
+        const panelContent = document.createElement("div");
+        panelContent.className = "panel-content";
+        panelContent.append(title, site, actions, status);
+
+        panel.append(closeButton, imageWrap, panelContent);
         shadow.append(style, panel);
 
         return { host, shadow, t };
