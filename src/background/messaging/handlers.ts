@@ -1,6 +1,9 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { createTranslator } from "../../lib/i18n/index.js";
-import { resolveFocusBlockSeverity } from "../../lib/focus-distraction-counters.js";
+import {
+    resolveFocusBlockSeverity,
+    resolveFocusCompanionScenario,
+} from "../../lib/focus-distraction-counters.js";
 import { getDeviceState } from "../../lib/storage/device-state.js";
 import {
     getFocusSessions,
@@ -223,6 +226,9 @@ export function createBackgroundMessageListener(
                     const presentation = resolveFocusBlockSeverity(
                         counters.counters,
                     );
+                    const scenarioId = resolveFocusCompanionScenario(
+                        counters.counters,
+                    );
                     const t = createTranslator(settings.language);
                     return showFocusNudgeWithSoftUrlLimit(
                         context,
@@ -233,6 +239,7 @@ export function createBackgroundMessageListener(
                             host: message.host,
                             category: message.category,
                             presentation,
+                            scenarioId,
                         },
                         sender.tab?.url || context.runtimeState.currentUrl,
                     );

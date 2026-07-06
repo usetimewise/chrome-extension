@@ -39,6 +39,7 @@ async function showFocusOfferInTab(
         message: details.message,
         host: details.host,
         category: details.category,
+        scenarioId: "2",
     } as const;
 
     try {

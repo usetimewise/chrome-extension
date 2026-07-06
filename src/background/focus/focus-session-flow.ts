@@ -2,6 +2,7 @@ import { MESSAGE_TYPES } from "../../lib/constants.js";
 import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
 import {
     markFocusNudgeNotificationShown,
+    resolveFocusCompanionScenario,
     resolveFocusBlockSeverity,
     shouldSuppressSoftFocusNudge,
 } from "../../lib/focus-distraction-counters.js";
@@ -16,6 +17,7 @@ import type {
     FocusSession,
     Settings,
 } from "../../lib/types.js";
+import type { FocusCompanionScenarioId } from "../../lib/focus-companions/index.js";
 import type { BackgroundRuntimeContext } from "../runtime/runtime-state.js";
 import { flushFocusDistractionTracking } from "../tracking/focus-distraction-tracker.js";
 
@@ -27,6 +29,7 @@ export async function showFocusNudgeInTab(
         host: string;
         category: string;
         presentation: "soft" | "strict";
+        scenarioId?: FocusCompanionScenarioId;
     },
 ): Promise<{ ok: boolean; response: unknown }> {
     const payload = {
@@ -37,6 +40,7 @@ export async function showFocusNudgeInTab(
         host: details.host,
         category: details.category,
         presentation: details.presentation,
+        scenarioId: details.scenarioId,
     } as const;
 
     try {
@@ -60,6 +64,7 @@ export async function showFocusNudge(
         host: string;
         category: string;
         presentation: "soft" | "strict";
+        scenarioId?: FocusCompanionScenarioId;
     },
 ): Promise<{ ok: boolean; response: unknown }> {
     const tabId = context.runtimeState.currentTabId;
@@ -79,6 +84,7 @@ export async function showFocusNudgeWithSoftUrlLimit(
         host: string;
         category: string;
         presentation: "soft" | "strict";
+        scenarioId?: FocusCompanionScenarioId;
     },
     currentUrl: string | null,
 ): Promise<{ ok: boolean; response: unknown }> {
@@ -169,6 +175,7 @@ export async function evaluateFocusNudgeNotification(
 
     const counters = await flushFocusDistractionTracking(context);
     const presentation = resolveFocusBlockSeverity(counters.counters);
+    const scenarioId = resolveFocusCompanionScenario(counters.counters);
     const t = createTranslator(settings.language);
     try {
         await showFocusNudgeWithSoftUrlLimit(
@@ -180,6 +187,7 @@ export async function evaluateFocusNudgeNotification(
                 host: currentHost,
                 category: decision.category,
                 presentation,
+                scenarioId,
             },
             currentUrl,
         );
@@ -238,5 +246,6 @@ export async function forceFocusNudge(
         host,
         category: "other",
         presentation: "strict",
+        scenarioId: "2",
     });
 }

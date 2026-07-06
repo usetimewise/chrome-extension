@@ -4,10 +4,13 @@ import type {
     FocusSession,
     RuntimeState,
 } from "./types.js";
+import type { FocusCompanionScenarioId } from "./focus-companions/index.js";
 import type { SiteBlockRule } from "./site-block-rules.js";
 
 export const FOCUS_DISTRACTION_COUNTER_RESET_AFTER_MS = 8 * 60 * 60 * 1000;
 export const FOCUS_STRICT_BLOCK_AFTER_MS = 2 * 60 * 1000;
+export const FOCUS_COMPANION_SCENARIO_THREE_AFTER_MS = 10 * 60 * 1000;
+export const FOCUS_COMPANION_SCENARIO_FOUR_AFTER_MS = 30 * 60 * 1000;
 
 export const EMPTY_FOCUS_DISTRACTION_COUNTERS: FocusDistractionCountersState = {
     sessionId: null,
@@ -131,14 +134,36 @@ export function addFocusDistractionDuration(
 export function resolveFocusBlockSeverity(
     counters: FocusDistractionCountersState["counters"],
 ): "soft" | "strict" {
-    const totalMs = Object.values(counters).reduce((sum, counter) => {
+    const totalMs = getTotalFocusDistractionMs(counters);
+
+    return totalMs >= FOCUS_STRICT_BLOCK_AFTER_MS ? "strict" : "soft";
+}
+
+export function resolveFocusCompanionScenario(
+    counters: FocusDistractionCountersState["counters"],
+): FocusCompanionScenarioId {
+    const totalMs = getTotalFocusDistractionMs(counters);
+
+    if (totalMs >= FOCUS_COMPANION_SCENARIO_FOUR_AFTER_MS) {
+        return "4";
+    }
+
+    if (totalMs >= FOCUS_COMPANION_SCENARIO_THREE_AFTER_MS) {
+        return "3";
+    }
+
+    return "2";
+}
+
+function getTotalFocusDistractionMs(
+    counters: FocusDistractionCountersState["counters"],
+): number {
+    return Object.values(counters).reduce((sum, counter) => {
         const counterTotalMs = Number(counter.totalMs);
         return Number.isFinite(counterTotalMs) && counterTotalMs > 0
             ? sum + counterTotalMs
             : sum;
     }, 0);
-
-    return totalMs >= FOCUS_STRICT_BLOCK_AFTER_MS ? "strict" : "soft";
 }
 
 export function shouldSuppressSoftFocusNudge(params: {

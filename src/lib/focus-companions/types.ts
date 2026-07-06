@@ -1,4 +1,9 @@
-import type { FOCUS_COMPANION_CATALOG } from "./catalog.js";
+import type {
+    FOCUS_COMPANION_CATALOG,
+    FocusCompanionScenarioId,
+} from "./catalog.js";
+
+export type { FocusCompanionScenarioId };
 
 export type FocusCompanionId = keyof typeof FOCUS_COMPANION_CATALOG;
 export type FocusCompanionAvailability = "free" | "paid";
@@ -7,7 +12,7 @@ export type FocusCompanionCatalogEntry =
     (typeof FOCUS_COMPANION_CATALOG)[keyof typeof FOCUS_COMPANION_CATALOG];
 
 export type FocusCompanionReplica =
-    FocusCompanionCatalogEntry["replicas"][number];
+    FocusCompanionCatalogEntry["scenarios"][FocusCompanionScenarioId][number];
 
 export type FocusCompanion = {
     id: FocusCompanionId;
@@ -18,8 +23,9 @@ export type FocusCompanion = {
     availability: FocusCompanionAvailability;
     avatarText: string;
     colorClass: string;
+    defaultScenarioId: FocusCompanionScenarioId;
     defaultReplicaIndex: number;
-    replicas: readonly [FocusCompanionReplica, ...FocusCompanionReplica[]];
+    scenarios: FocusCompanionCatalogEntry["scenarios"];
 };
 
 export type FocusCompanionVisual =
@@ -46,6 +52,7 @@ export type FocusCompanionPreview = {
 
 export type FocusCompanionOverlayVariant = {
     companionId: FocusCompanionId;
+    scenarioId: FocusCompanionScenarioId;
     text: string;
     visual: FocusCompanionVisual;
 };

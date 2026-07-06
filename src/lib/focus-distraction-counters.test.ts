@@ -9,6 +9,7 @@ import {
     FOCUS_STRICT_BLOCK_AFTER_MS,
     markFocusNudgeNotificationShown,
     resolveFocusBlockSeverity,
+    resolveFocusCompanionScenario,
     shouldSuppressSoftFocusNudge,
 } from "./focus-distraction-counters.js";
 import { decideDistractionSite } from "./site-block-rules.js";
@@ -214,6 +215,18 @@ test("focus block severity sums counters across all rules", () => {
     ]);
 
     assert.equal(resolveFocusBlockSeverity(state.counters), "strict");
+});
+
+test("focus companion scenario follows distraction duration thresholds", () => {
+    assert.equal(resolveFocusCompanionScenario(counterStateWithDurations([
+        9 * 60 * 1000,
+    ]).counters), "2");
+    assert.equal(resolveFocusCompanionScenario(counterStateWithDurations([
+        10 * 60 * 1000,
+    ]).counters), "3");
+    assert.equal(resolveFocusCompanionScenario(counterStateWithDurations([
+        30 * 60 * 1000,
+    ]).counters), "4");
 });
 
 test("soft focus nudge is suppressed while the current url has not changed", () => {

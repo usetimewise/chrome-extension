@@ -1,4 +1,5 @@
 import { MESSAGE_TYPES } from "../constants.js";
+import type { FocusCompanionScenarioId } from "../focus-companions/index.js";
 import { normalizeLanguage } from "../i18n/index.js";
 import { isPlainObject } from "../utils.js";
 import type {
@@ -164,6 +165,7 @@ export type ContentShowFocusNudgeRequest =
           host: string;
           category: string;
           presentation: "soft" | "strict";
+          scenarioId?: FocusCompanionScenarioId;
       }
     | {
           type: typeof MESSAGE_TYPES.showFocusNudge;
@@ -171,6 +173,7 @@ export type ContentShowFocusNudgeRequest =
           message: string;
           host: string;
           category: string;
+          scenarioId?: FocusCompanionScenarioId;
       };
 
 export type ContentRequest = ContentShowFocusNudgeRequest;
@@ -225,6 +228,20 @@ function isCategory(value: unknown): value is Category {
 
 function isFocusBlockPresentation(value: unknown): value is "soft" | "strict" {
     return value === "soft" || value === "strict";
+}
+
+function isOptionalFocusCompanionScenarioId(
+    value: unknown,
+): value is FocusCompanionScenarioId | undefined {
+    return (
+        value === undefined ||
+        value === "1" ||
+        value === "2" ||
+        value === "3" ||
+        value === "4" ||
+        value === "5" ||
+        value === "6"
+    );
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -299,7 +316,8 @@ export function isContentRequest(value: unknown): value is ContentRequest {
             if (
                 !isRequiredString(value.message) ||
                 !isRequiredString(value.host) ||
-                !isRequiredString(value.category)
+                !isRequiredString(value.category) ||
+                !isOptionalFocusCompanionScenarioId(value.scenarioId)
             ) {
                 return false;
             }

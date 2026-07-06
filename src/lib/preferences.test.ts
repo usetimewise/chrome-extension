@@ -64,7 +64,7 @@ test("normalizes blocked host input to hostname", () => {
 
 test("saves normalized preferences and removes duplicate blocked hosts", async () => {
     const preferences = await saveUserPreferences({
-        selectedCompanionId: "mentor",
+        selectedCompanionId: "th",
         defaultFocusMinutes: 26.4,
         blockedHosts: [
             "https://www.example.com/path",
@@ -80,7 +80,7 @@ test("saves normalized preferences and removes duplicate blocked hosts", async (
     });
 
     assert.deepEqual(preferences, {
-        selectedCompanionId: "mentor",
+        selectedCompanionId: "th",
         defaultFocusMinutes: 26,
         blockedHosts: ["example.com", "reddit.com"],
         disabledDefaultBlockRuleIds: ["default:reddit"],

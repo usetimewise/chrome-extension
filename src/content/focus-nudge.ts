@@ -1,5 +1,8 @@
 import { STORAGE_KEYS } from "../lib/constants.js";
-import { createFocusCompanionOverlayVariant } from "../lib/focus-companions/index.js";
+import {
+    createFocusCompanionOverlayVariant,
+    type FocusCompanionScenarioId,
+} from "../lib/focus-companions/index.js";
 import {
     createTranslator,
     resolveLanguage,
@@ -15,6 +18,7 @@ type FocusOverlayMessage =
           message: string;
           host: string;
           category: string;
+          scenarioId?: FocusCompanionScenarioId;
       }
     | {
           mode: "block";
@@ -23,6 +27,7 @@ type FocusOverlayMessage =
           host: string;
           category: string;
           presentation: "soft" | "strict";
+          scenarioId?: FocusCompanionScenarioId;
       };
 
 {
@@ -69,11 +74,20 @@ type FocusOverlayMessage =
         }
 
         const candidate = message as Record<string, unknown>;
+        const hasValidScenarioId =
+            candidate.scenarioId === undefined ||
+            candidate.scenarioId === "1" ||
+            candidate.scenarioId === "2" ||
+            candidate.scenarioId === "3" ||
+            candidate.scenarioId === "4" ||
+            candidate.scenarioId === "5" ||
+            candidate.scenarioId === "6";
         const hasBaseFields =
             candidate.type === FOCUS_MESSAGE_TYPES.showFocusNudge &&
             typeof candidate.message === "string" &&
             typeof candidate.host === "string" &&
-            typeof candidate.category === "string";
+            typeof candidate.category === "string" &&
+            hasValidScenarioId;
 
         if (!hasBaseFields) {
             return false;
@@ -343,6 +357,7 @@ type FocusOverlayMessage =
             preferences?.selectedCompanionId,
             {
                 language,
+                scenarioId: message.scenarioId,
                 resolveAssetUrl: (path) => chrome.runtime.getURL(path),
             },
         );

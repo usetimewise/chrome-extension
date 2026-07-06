@@ -1,4 +1,5 @@
 import {
+    DEFAULT_FOCUS_COMPANION_SCENARIO_ID,
     DEFAULT_FOCUS_COMPANION_ID,
     FOCUS_COMPANION_CATALOG,
 } from "./catalog.js";
@@ -14,11 +15,13 @@ import type {
     FocusCompanionOverlayVariant,
     FocusCompanionPreview,
     FocusCompanionReplica,
+    FocusCompanionScenarioId,
     FocusCompanionVisual,
 } from "./types.js";
 
 type OverlayVariantOptions = {
     language?: AppLanguage;
+    scenarioId?: FocusCompanionScenarioId;
     resolveAssetUrl?: FocusCompanionAssetUrlResolver;
     randomInt?: (maxExclusive: number) => number;
 };
@@ -79,11 +82,20 @@ function createReplicaVisual(
     };
 }
 
-function getDefaultReplica(companion: FocusCompanion): FocusCompanionReplica {
+function getScenarioReplicas(
+    companion: FocusCompanion,
+    scenarioId: FocusCompanionScenarioId,
+): readonly [FocusCompanionReplica, ...FocusCompanionReplica[]] {
     return (
-        companion.replicas[companion.defaultReplicaIndex] ||
-        companion.replicas[0]
+        companion.scenarios[scenarioId] ||
+        companion.scenarios[companion.defaultScenarioId] ||
+        companion.scenarios[DEFAULT_FOCUS_COMPANION_SCENARIO_ID]
     );
+}
+
+function getDefaultReplica(companion: FocusCompanion): FocusCompanionReplica {
+    const replicas = getScenarioReplicas(companion, companion.defaultScenarioId);
+    return replicas[companion.defaultReplicaIndex] || replicas[0];
 }
 
 function createDefaultVisual(
@@ -145,15 +157,21 @@ export function createFocusCompanionOverlayVariant(
 ): FocusCompanionOverlayVariant {
     const randomInt = options.randomInt || defaultRandomInt;
     const companion = getFocusCompanion(id);
-    const replicaIndex = randomInt(companion.replicas.length);
-    const replica =
-        companion.replicas[replicaIndex] || getDefaultReplica(companion);
+    const scenarioId =
+        options.scenarioId ||
+        companion.defaultScenarioId ||
+        DEFAULT_FOCUS_COMPANION_SCENARIO_ID;
+    const replicas = getScenarioReplicas(companion, scenarioId);
+    const replicaIndex = randomInt(replicas.length);
+    const replica = replicas[replicaIndex] || getDefaultReplica(companion);
     const language = options.language || DEFAULT_LANGUAGE;
 
     return {
         companionId: companion.id,
+        scenarioId,
         text: getFocusCompanionReplicaText(
             companion.id,
+            scenarioId,
             replicaIndex,
             language,
         ),
