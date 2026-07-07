@@ -5,8 +5,8 @@ import { resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 
 const CONTENT_SCRIPT_INPUTS = {
-    "focus-blocker": "src/content/focus-blocker.ts",
-    "focus-nudge": "src/content/focus-nudge.ts",
+    "focus-blocker": "src/content/focus-blocker/index.ts",
+    "focus-nudge": "src/content/focus-nudge/index.ts",
 } as const;
 
 function copyExtensionStatic(): Plugin {
