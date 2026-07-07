@@ -1,4 +1,4 @@
-import { resolveFocusBlockSeverity } from "./focus-distraction-counters.js";
+import { resolveFocusBlockPresentation } from "./focus-distraction-counters.js";
 import { decideFocusBlock } from "./site-block-rules.js";
 import type {
     FocusDistractionCountersState,
@@ -13,7 +13,11 @@ export type EarlyFocusBlockDecision =
           host: string;
           category: string;
           severity: "soft" | "strict";
-          reason: "user_block_rule" | "seed_rule" | "cached_decision";
+          reason:
+              | "forced_rule"
+              | "user_block_rule"
+              | "seed_rule"
+              | "cached_decision";
       }
     | {
           action: "allow";
@@ -52,7 +56,10 @@ export async function determineEarlyFocusBlock(
         sessionId: decision.sessionId,
         host: decision.host,
         category: decision.category,
-        severity: resolveFocusBlockSeverity(counters),
+        severity: resolveFocusBlockPresentation({
+            counters,
+            currentUrl: rawUrl,
+        }),
         reason:
             decision.reason === "default_rule"
                 ? "seed_rule"

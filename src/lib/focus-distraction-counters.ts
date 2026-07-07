@@ -6,6 +6,9 @@ import type {
 } from "./types.js";
 import type { FocusCompanionScenarioId } from "./focus-companions/index.js";
 import type { SiteBlockRule } from "./site-block-rules.js";
+import { normalizeUrl } from "./urlDecision/normalizeUrl.js";
+
+export type FocusBlockPresentation = "soft" | "strict";
 
 export const FOCUS_DISTRACTION_COUNTER_RESET_AFTER_MS = 8 * 60 * 60 * 1000;
 export const FOCUS_STRICT_BLOCK_AFTER_MS = 2 * 60 * 1000;
@@ -133,10 +136,40 @@ export function addFocusDistractionDuration(
 
 export function resolveFocusBlockSeverity(
     counters: FocusDistractionCountersState["counters"],
-): "soft" | "strict" {
+): FocusBlockPresentation {
     const totalMs = getTotalFocusDistractionMs(counters);
 
     return totalMs >= FOCUS_STRICT_BLOCK_AFTER_MS ? "strict" : "soft";
+}
+
+export function resolveFocusBlockPresentation(params: {
+    counters: FocusDistractionCountersState["counters"];
+    currentUrl: string;
+}): FocusBlockPresentation {
+    const normalized = normalizeUrl(params.currentUrl);
+    if (
+        normalized?.domain === "example.com" &&
+        normalized.pathSegments.length === 1
+    ) {
+        if (normalized.pathSegments[0] === "hard") {
+            return "strict";
+        }
+
+        if (normalized.pathSegments[0] === "soft") {
+            return "soft";
+        }
+    }
+
+    return resolveFocusBlockSeverity(params.counters);
+}
+
+function isForcedExampleSoftUrl(rawUrl: string): boolean {
+    const normalized = normalizeUrl(rawUrl);
+    return (
+        normalized?.domain === "example.com" &&
+        normalized.pathSegments.length === 1 &&
+        normalized.pathSegments[0] === "soft"
+    );
 }
 
 export function resolveFocusCompanionScenario(
@@ -170,8 +203,12 @@ export function shouldSuppressSoftFocusNudge(params: {
     notifications: RuntimeState["focusNudgeNotifications"];
     sessionId: string;
     currentUrl: string;
-    presentation: "soft" | "strict";
+    presentation: FocusBlockPresentation;
 }): boolean {
+    if (isForcedExampleSoftUrl(params.currentUrl)) {
+        return false;
+    }
+
     return (
         params.presentation === "soft" &&
         params.notifications.sessionId === params.sessionId &&
@@ -183,7 +220,7 @@ export function markFocusNudgeNotificationShown(params: {
     notifications: RuntimeState["focusNudgeNotifications"];
     sessionId: string;
     currentUrl: string;
-    presentation: "soft" | "strict";
+    presentation: FocusBlockPresentation;
 }): RuntimeState["focusNudgeNotifications"] {
     if (params.presentation !== "soft") {
         return params.notifications;

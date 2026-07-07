@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { isLocalSiteBlocked } from "./site-block-rules.js";
+import { decideDistractionSite, isLocalSiteBlocked } from "./site-block-rules.js";
 
 test("local block helper treats preference blocked hosts as blocked", () => {
     assert.equal(
@@ -11,6 +11,65 @@ test("local block helper treats preference blocked hosts as blocked", () => {
         }),
         true,
     );
+});
+
+test("forced example urls are blocked without user rules", async () => {
+    const hardDecision = await decideDistractionSite("https://example.com/hard", {
+        siteRules: { excludedHosts: [], categoryOverrides: {} },
+        allowNetworkLookup: false,
+    });
+    assert.equal(hardDecision.action, "distracting");
+    assert.equal(
+        hardDecision.action === "distracting" && hardDecision.reason,
+        "forced_rule",
+    );
+    assert.equal(
+        hardDecision.action === "distracting" && hardDecision.matchedRule?.id,
+        "forced:example-hard",
+    );
+
+    const softDecision = await decideDistractionSite(
+        "https://example.com/soft?from=test",
+        {
+            siteRules: { excludedHosts: [], categoryOverrides: {} },
+            allowNetworkLookup: false,
+        },
+    );
+    assert.equal(softDecision.action, "distracting");
+    assert.equal(
+        softDecision.action === "distracting" && softDecision.reason,
+        "forced_rule",
+    );
+    assert.equal(
+        softDecision.action === "distracting" && softDecision.matchedRule?.id,
+        "forced:example-soft",
+    );
+});
+
+test("forced example urls do not match subdomains or child paths", async () => {
+    const subdomainDecision = await decideDistractionSite(
+        "https://docs.example.com/hard",
+        {
+            siteRules: { excludedHosts: [], categoryOverrides: {} },
+            allowNetworkLookup: false,
+        },
+    );
+    assert.deepEqual(subdomainDecision, {
+        action: "allow",
+        reason: "no_local_block_decision",
+    });
+
+    const childPathDecision = await decideDistractionSite(
+        "https://example.com/soft/next",
+        {
+            siteRules: { excludedHosts: [], categoryOverrides: {} },
+            allowNetworkLookup: false,
+        },
+    );
+    assert.deepEqual(childPathDecision, {
+        action: "allow",
+        reason: "no_local_block_decision",
+    });
 });
 
 test("local block helper treats distraction category overrides as blocked", () => {

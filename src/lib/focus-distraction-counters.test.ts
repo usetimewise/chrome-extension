@@ -8,6 +8,7 @@ import {
     FOCUS_DISTRACTION_COUNTER_RESET_AFTER_MS,
     FOCUS_STRICT_BLOCK_AFTER_MS,
     markFocusNudgeNotificationShown,
+    resolveFocusBlockPresentation,
     resolveFocusBlockSeverity,
     resolveFocusCompanionScenario,
     shouldSuppressSoftFocusNudge,
@@ -217,6 +218,42 @@ test("focus block severity sums counters across all rules", () => {
     assert.equal(resolveFocusBlockSeverity(state.counters), "strict");
 });
 
+test("example hard url forces strict presentation below the strict threshold", () => {
+    const state = counterStateWithDurations([FOCUS_STRICT_BLOCK_AFTER_MS - 1]);
+
+    assert.equal(
+        resolveFocusBlockPresentation({
+            counters: state.counters,
+            currentUrl: "https://example.com/hard",
+        }),
+        "strict",
+    );
+});
+
+test("example soft url forces soft presentation above the strict threshold", () => {
+    const state = counterStateWithDurations([FOCUS_STRICT_BLOCK_AFTER_MS]);
+
+    assert.equal(
+        resolveFocusBlockPresentation({
+            counters: state.counters,
+            currentUrl: "https://example.com/soft?from=test",
+        }),
+        "soft",
+    );
+});
+
+test("focus block presentation keeps threshold behavior for other urls", () => {
+    const state = counterStateWithDurations([FOCUS_STRICT_BLOCK_AFTER_MS]);
+
+    assert.equal(
+        resolveFocusBlockPresentation({
+            counters: state.counters,
+            currentUrl: "https://example.com/feed",
+        }),
+        "strict",
+    );
+});
+
 test("focus companion scenario follows distraction duration thresholds", () => {
     assert.equal(resolveFocusCompanionScenario(counterStateWithDurations([
         9 * 60 * 1000,
@@ -244,6 +281,24 @@ test("soft focus nudge is suppressed while the current url has not changed", () 
             presentation: "soft",
         }),
         true,
+    );
+});
+
+test("forced example soft url ignores previous soft notification", () => {
+    const notifications = {
+        sessionId: "focus-1",
+        hosts: {},
+        lastSoftUrl: "https://example.com/soft",
+    };
+
+    assert.equal(
+        shouldSuppressSoftFocusNudge({
+            notifications,
+            sessionId: "focus-1",
+            currentUrl: "https://example.com/soft",
+            presentation: "soft",
+        }),
+        false,
     );
 });
 

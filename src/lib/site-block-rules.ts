@@ -26,6 +26,7 @@ export type FocusBlockDecision =
           host: string;
           category: string;
           reason:
+              | "forced_rule"
               | "user_block_rule"
               | "default_rule"
               | "cached_decision"
@@ -48,6 +49,7 @@ export type DistractionDecision =
           host: string;
           category: string;
           reason:
+              | "forced_rule"
               | "user_block_rule"
               | "default_rule"
               | "cached_decision"
@@ -124,6 +126,23 @@ export const DEFAULT_SITE_BLOCK_RULES: SiteBlockRule[] = [
         id: "default:twitter",
         pattern: "twitter.com",
         patternType: "domain",
+        category: "social",
+        source: "default",
+    },
+];
+
+const FORCED_SITE_BLOCK_RULES: SiteBlockRule[] = [
+    {
+        id: "forced:example-hard",
+        pattern: "example.com/hard",
+        patternType: "url_prefix",
+        category: "social",
+        source: "default",
+    },
+    {
+        id: "forced:example-soft",
+        pattern: "example.com/soft",
+        patternType: "url_prefix",
         category: "social",
         source: "default",
     },
@@ -264,6 +283,25 @@ function findDefaultBlockedRule(
     );
 }
 
+function findForcedBlockedRule(rawUrl: string): SiteBlockRule | null {
+    const normalized = normalizeUrl(rawUrl);
+    if (!normalized || normalized.domain !== "example.com") {
+        return null;
+    }
+
+    if (normalized.pathSegments.length !== 1) {
+        return null;
+    }
+
+    return (
+        FORCED_SITE_BLOCK_RULES.find(
+            (rule) =>
+                splitPattern(rule.pattern)?.pathSegments[0] ===
+                normalized.pathSegments[0],
+        ) || null
+    );
+}
+
 function buildEffectiveLocalSiteRules(
     context: LocalSiteBlockRuleContext,
 ): SiteRuleState {
@@ -300,6 +338,10 @@ export function isLocalSiteBlocked(
         return false;
     }
 
+    if (findForcedBlockedRule(rawUrl)) {
+        return true;
+    }
+
     const effectiveSiteRules = buildEffectiveLocalSiteRules(context);
     if (isUserAllowedHost(host, effectiveSiteRules)) {
         return false;
@@ -307,7 +349,10 @@ export function isLocalSiteBlocked(
 
     return Boolean(
         findUserBlockedRule(host, effectiveSiteRules) ||
-        findDefaultBlockedRule(rawUrl, context.disabledDefaultBlockRuleIds),
+            findDefaultBlockedRule(
+                rawUrl,
+                context.disabledDefaultBlockRuleIds,
+            ),
     );
 }
 
@@ -342,6 +387,17 @@ export async function decideDistractionSite(
     const host = normalizedHost(rawUrl);
     if (!host) {
         return { action: "allow", reason: "url_not_normalized" };
+    }
+
+    const forcedRule = findForcedBlockedRule(rawUrl);
+    if (forcedRule) {
+        return {
+            action: "distracting",
+            host,
+            category: forcedRule.category,
+            reason: "forced_rule",
+            matchedRule: forcedRule,
+        };
     }
 
     if (isUserAllowedHost(host, context.siteRules)) {

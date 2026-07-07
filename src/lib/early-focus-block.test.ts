@@ -89,6 +89,45 @@ test("blocks seeded short video rules before cached lookup", async () => {
     assert.equal(decision.action === "block" && decision.reason, "seed_rule");
 });
 
+test("example hard url is an early strict block", async () => {
+    const decision = await determineEarlyFocusBlock(
+        "https://example.com/hard",
+        [activeSession()],
+    );
+
+    assert.equal(decision.action, "block");
+    assert.equal(decision.action === "block" && decision.reason, "forced_rule");
+    assert.equal(decision.action === "block" && decision.severity, "strict");
+});
+
+test("example soft url is an early soft block", async () => {
+    const decision = await determineEarlyFocusBlock(
+        "https://example.com/soft",
+        [activeSession()],
+        null,
+        [],
+        {
+            "rule:strict": {
+                rule: {
+                    id: "rule:strict",
+                    pattern: "example.com",
+                    patternType: "domain",
+                    category: "social",
+                    source: "default",
+                },
+                totalMs: 2 * 60 * 1000,
+                lastUrl: "https://example.com/feed",
+                lastHost: "example.com",
+                lastUpdatedAt: 1_000,
+            },
+        },
+    );
+
+    assert.equal(decision.action, "block");
+    assert.equal(decision.action === "block" && decision.reason, "forced_rule");
+    assert.equal(decision.action === "block" && decision.severity, "soft");
+});
+
 test("disabled seeded prefix rule does not block the whole domain", async () => {
     assert.deepEqual(
         await determineEarlyFocusBlock(

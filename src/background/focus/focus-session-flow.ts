@@ -3,7 +3,7 @@ import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
 import {
     markFocusNudgeNotificationShown,
     resolveFocusCompanionScenario,
-    resolveFocusBlockSeverity,
+    resolveFocusBlockPresentation,
     shouldSuppressSoftFocusNudge,
 } from "../../lib/focus-distraction-counters.js";
 import { createTranslator } from "../../lib/i18n/index.js";
@@ -174,7 +174,10 @@ export async function evaluateFocusNudgeNotification(
     }
 
     const counters = await flushFocusDistractionTracking(context);
-    const presentation = resolveFocusBlockSeverity(counters.counters);
+    const presentation = resolveFocusBlockPresentation({
+        counters: counters.counters,
+        currentUrl,
+    });
     const scenarioId = resolveFocusCompanionScenario(counters.counters);
     const t = createTranslator(settings.language);
     try {
