@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Time Wise Tracker",
+    "name": "ZalipOff",
     "version": "0.2.0",
     "description": "A focus-first browser companion that blocks distracting URLs during focus sessions.",
     "permissions": ["tabs", "scripting", "storage", "idle", "alarms"],
@@ -30,7 +30,7 @@
         }
     ],
     "action": {
-        "default_title": "Time Wise: focus mode off",
+        "default_title": "ZalipOff: focus mode off",
         "default_popup": "popup.html"
     }
 }

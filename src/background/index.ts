@@ -36,7 +36,7 @@ const FOCUS_DISTRACTION_HEARTBEAT_ALARM = "focus_distraction_heartbeat";
 
 declare global {
     // Debug helper for the extension service worker console.
-    var getTimeWiseFocusDistractionCounters:
+    var getZalipOffFocusDistractionCounters:
         | (() => Promise<unknown>)
         | undefined;
 }
@@ -166,7 +166,7 @@ chrome.runtime.onSuspend.addListener(() => {
     void flushFocusDistractionTracking(runtimeContext);
 });
 
-globalThis.getTimeWiseFocusDistractionCounters = () =>
+globalThis.getZalipOffFocusDistractionCounters = () =>
     getDebugFocusDistractionCounters(runtimeContext);
 
 void boot();

@@ -3,7 +3,7 @@ import { getSettings } from "../../lib/storage/site-rules.js";
 import type { FocusSession } from "../../lib/types.js";
 import { updateProductivityActionIcon } from "../action/productivity-icon.js";
 
-export const FOCUS_SESSION_TIMER_ALARM = "TWT_FOCUS_SESSION_TIMER";
+export const FOCUS_SESSION_TIMER_ALARM = "ZALIPOFF_FOCUS_SESSION_TIMER";
 
 async function clearFocusSessionTimer(): Promise<void> {
     await chrome.alarms.clear(FOCUS_SESSION_TIMER_ALARM);

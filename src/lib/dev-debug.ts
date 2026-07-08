@@ -1,5 +1,5 @@
 export const isDevDebugEnabled =
-    import.meta.env?.VITE_TIMEWISE_DEV_DEBUG === "true";
+    import.meta.env?.VITE_ZALIPOFF_DEV_DEBUG === "true";
 
 type DebugPayload = Record<string, unknown>;
 
@@ -8,7 +8,7 @@ export function devDebugLog(event: string, payload: DebugPayload = {}): void {
         return;
     }
 
-    console.log(`[TimeWise][dev] ${event}`, payload);
+    console.log(`[ZalipOff][dev] ${event}`, payload);
 }
 
 export function devDebugWarn(event: string, payload: DebugPayload = {}): void {
@@ -16,5 +16,5 @@ export function devDebugWarn(event: string, payload: DebugPayload = {}): void {
         return;
     }
 
-    console.warn(`[TimeWise][dev] ${event}`, payload);
+    console.warn(`[ZalipOff][dev] ${event}`, payload);
 }

@@ -17,13 +17,13 @@ export function installRouteListeners(): void {
     }
 
     const originalPushState = history.pushState;
-    history.pushState = function timeWisePushState(...args): void {
+    history.pushState = function zalipOffPushState(...args): void {
         originalPushState.apply(this, args);
         scheduleEvaluation();
     };
 
     const originalReplaceState = history.replaceState;
-    history.replaceState = function timeWiseReplaceState(...args): void {
+    history.replaceState = function zalipOffReplaceState(...args): void {
         originalReplaceState.apply(this, args);
         scheduleEvaluation();
     };

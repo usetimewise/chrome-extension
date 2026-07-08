@@ -8,11 +8,11 @@ export type FocusNudgeState = {
 };
 
 const stateHost = globalThis as typeof globalThis & {
-    __timeWiseFocusNudgeState?: FocusNudgeState;
+    __zalipOffFocusNudgeState?: FocusNudgeState;
 };
 
 export const focusNudgeState: FocusNudgeState =
-    stateHost.__timeWiseFocusNudgeState || {
+    stateHost.__zalipOffFocusNudgeState || {
         activeOverlayKey: null,
         contextInvalidated: false,
         listenerInstalled: false,
@@ -21,4 +21,4 @@ export const focusNudgeState: FocusNudgeState =
         suppressedHosts: new Set<string>(),
     };
 
-stateHost.__timeWiseFocusNudgeState = focusNudgeState;
+stateHost.__zalipOffFocusNudgeState = focusNudgeState;

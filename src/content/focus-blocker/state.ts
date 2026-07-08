@@ -9,11 +9,11 @@ export type FocusBlockerState = {
 };
 
 const stateHost = globalThis as typeof globalThis & {
-    __timeWiseFocusBlockerState?: FocusBlockerState;
+    __zalipOffFocusBlockerState?: FocusBlockerState;
 };
 
 export const focusBlockerState: FocusBlockerState =
-    stateHost.__timeWiseFocusBlockerState || {
+    stateHost.__zalipOffFocusBlockerState || {
         contextInvalidated: false,
         evaluateTimerId: null,
         gateState: "pending",
@@ -23,4 +23,4 @@ export const focusBlockerState: FocusBlockerState =
         routeListenerInstalled: false,
     };
 
-stateHost.__timeWiseFocusBlockerState = focusBlockerState;
+stateHost.__zalipOffFocusBlockerState = focusBlockerState;

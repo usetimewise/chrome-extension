@@ -398,7 +398,7 @@ function SettingsView({
                         <AppIcon name="back" />
                     </button>
                     <div>
-                        <p className="popup-kicker">Time Wise</p>
+                        <p className="popup-kicker">ZalipOff</p>
                         <h1 className="settings-title">
                             {t("popup.settingsTitle")}
                         </h1>
@@ -836,7 +836,7 @@ function PopupApp() {
         <main className="popup-shell" aria-label="Focus mode">
             <section className="popup-focus-panel" aria-busy={isLoading}>
                 <header className="popup-focus-header">
-                    <p className="popup-kicker">Time Wise</p>
+                    <p className="popup-kicker">ZalipOff</p>
                     <div className="popup-header-actions">
                         <LanguagePicker
                             language={language}

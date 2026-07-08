@@ -10,8 +10,8 @@ export function installGate(): void {
     const style = document.createElement("style");
     style.id = BLOCKER_STYLE_ID;
     style.textContent = `
-    html.time-wise-focus-blocked,
-    html.time-wise-focus-blocked body {
+    html.zalipoff-focus-blocked,
+    html.zalipoff-focus-blocked body {
       overflow: hidden !important;
     }
   `;
@@ -28,13 +28,13 @@ export function installGate(): void {
         "pointer-events: auto",
     ].join(";");
 
-    document.documentElement.classList.add("time-wise-focus-blocked");
+    document.documentElement.classList.add("zalipoff-focus-blocked");
     document.documentElement.append(style, blocker);
 }
 
 export function releaseGate(): void {
     focusBlockerState.gateState = "released";
-    document.documentElement.classList.remove("time-wise-focus-blocked");
+    document.documentElement.classList.remove("zalipoff-focus-blocked");
     document.getElementById(BLOCKER_ID)?.remove();
     document.getElementById(BLOCKER_STYLE_ID)?.remove();
     releaseMediaBlocker();

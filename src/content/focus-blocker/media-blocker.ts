@@ -54,7 +54,7 @@ export function installMediaBlocker(): void {
             blockMediaElement(this);
             return Promise.reject(
                 new DOMException(
-                    "Blocked during active Time Wise focus mode.",
+                    "Blocked during active ZalipOff focus mode.",
                     "NotAllowedError",
                 ),
             );

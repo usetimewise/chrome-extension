@@ -1,6 +1,6 @@
 export const EN_MESSAGES = {
-    "action.focusActive": "Time Wise: focus mode on",
-    "action.focusInactive": "Time Wise: focus mode off",
+    "action.focusActive": "ZalipOff: focus mode on",
+    "action.focusInactive": "ZalipOff: focus mode off",
     "common.minutesShort": "min",
     "language.english": "English",
     "language.russian": "Russian",
@@ -68,8 +68,8 @@ export const EN_MESSAGES = {
 export type TranslationKey = keyof typeof EN_MESSAGES;
 
 export const RU_MESSAGES: Partial<Record<TranslationKey, string>> = {
-    "action.focusActive": "Time Wise: фокусировка включена",
-    "action.focusInactive": "Time Wise: фокусировка выключена",
+    "action.focusActive": "ZalipOff: фокусировка включена",
+    "action.focusInactive": "ZalipOff: фокусировка выключена",
     "common.minutesShort": "мин",
     "language.english": "Английский",
     "language.russian": "Русский",

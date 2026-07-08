@@ -1,14 +1,14 @@
 import type { Category, RuntimeState } from "./types.js";
 
 export const STORAGE_KEYS = {
-    device: "twt_device_v2",
-    runtimeState: "twt_runtime_state_v2",
-    focusSessions: "twt_focus_sessions_v1",
-    focusDistractionCounters: "twt_focus_distraction_counters_v1",
-    preferences: "twt_preferences_v1",
-    siteRules: "twt_site_rules_v1",
-    siteClassifications: "twt_site_classifications_v1",
-    siteDecisionCache: "twt_site_decision_cache_v1",
+    device: "zalipoff_device_v2",
+    runtimeState: "zalipoff_runtime_state_v2",
+    focusSessions: "zalipoff_focus_sessions_v1",
+    focusDistractionCounters: "zalipoff_focus_distraction_counters_v1",
+    preferences: "zalipoff_preferences_v1",
+    siteRules: "zalipoff_site_rules_v1",
+    siteClassifications: "zalipoff_site_classifications_v1",
+    siteDecisionCache: "zalipoff_site_decision_cache_v1",
 } as const;
 
 export const MESSAGE_TYPES = {

@@ -30,7 +30,7 @@
 
 ```bash
 /Applications/Chromium-Gost.app/Contents/MacOS/Chromium-Gost \
-  --user-data-dir=/tmp/time-wise-extension-live-test \
+  --user-data-dir=/tmp/zalipoff-extension-live-test \
   --load-extension=/Users/ikochergin/work/time-wise-tracker-chrome/extension/dist \
   --disable-extensions-except=/Users/ikochergin/work/time-wise-tracker-chrome/extension/dist \
   --remote-debugging-port=9227 \
@@ -43,11 +43,11 @@
 * перед запуском live smoke сначала выполни `npm run build`, потому что проверяется именно `dist`;
 * запускай команду с escalated permissions: это GUI-приложение и локальный DevTools порт;
 * дождись строки `DevTools listening on ws://127.0.0.1:9227/...` в выводе процесса, первые `curl` к порту могут упасть, если браузер еще поднимается;
-* extension id ищи в `/tmp/time-wise-extension-live-test/Default/Secure Preferences`, а не только в `Preferences`; для этого проекта при загрузке `dist` id обычно `ooocnckfllceadgfjbihhjjedjdhejfm`;
+* extension id ищи в `/tmp/zalipoff-extension-live-test/Default/Secure Preferences`, а не только в `Preferences`; для этого проекта при загрузке `dist` id обычно `ooocnckfllceadgfjbihhjjedjdhejfm`;
 * CDP endpoint `/json/new?...` в Chromium-Gost требует `PUT`, `GET` возвращает `405`;
 * popup открывай как `chrome-extension://<extension-id>/popup.html`;
 * в popup кнопка настроек имеет selector `.settings-icon-button` и `aria-label="Открыть настройки"`;
-* после проверки закрой тестовый браузер через `pkill -f time-wise-extension-live-test`, чтобы следующий smoke не цеплялся к старому профилю или вкладкам.
+* после проверки закрой тестовый браузер через `pkill -f zalipoff-extension-live-test`, чтобы следующий smoke не цеплялся к старому профилю или вкладкам.
 
 # Основные принципы
 

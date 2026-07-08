@@ -22,7 +22,7 @@ function IconPreviewApp() {
     return (
         <main className="icon-preview-shell">
             <header className="icon-preview-header">
-                <p>Time Wise</p>
+                <p>ZalipOff</p>
                 <h1>Icon Preview</h1>
             </header>
 

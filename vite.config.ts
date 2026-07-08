@@ -49,9 +49,9 @@ function bundleContentScripts(): Plugin {
                         target: "chrome114",
                         sourcemap: true,
                         define: {
-                            "import.meta.env.VITE_TIMEWISE_DEV_DEBUG":
+                            "import.meta.env.VITE_ZALIPOFF_DEV_DEBUG":
                                 JSON.stringify(
-                                    process.env.VITE_TIMEWISE_DEV_DEBUG || "",
+                                    process.env.VITE_ZALIPOFF_DEV_DEBUG || "",
                                 ),
                         },
                         legalComments: "none",

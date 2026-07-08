@@ -238,7 +238,7 @@ function buildFullscreenOverlay(
     panel.className = "panel";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-modal", "true");
-    panel.setAttribute("aria-labelledby", "time-wise-focus-overlay-title");
+    panel.setAttribute("aria-labelledby", "zalipoff-focus-overlay-title");
 
     const closeButton = document.createElement("button");
     closeButton.className = "close";
@@ -255,7 +255,7 @@ function buildFullscreenOverlay(
 
     const title = document.createElement("h1");
     title.className = "title";
-    title.id = "time-wise-focus-overlay-title";
+    title.id = "zalipoff-focus-overlay-title";
     title.textContent = copyVariant.text;
 
     const actions = document.createElement("div");

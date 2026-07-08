@@ -105,7 +105,7 @@ test("ready hosts are restored from storage after restart", async () => {
     state.byHost["retry.example"].nextRetryAt = new Date(
         Date.now() - 1_000,
     ).toISOString();
-    storage["twt_site_classifications_v1"] = clone(state);
+    storage["zalipoff_site_classifications_v1"] = clone(state);
 
     assert.deepEqual(await getHostsReadyForClassification(10), [
         "pending.example",
