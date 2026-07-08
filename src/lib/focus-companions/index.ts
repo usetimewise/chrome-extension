@@ -3,6 +3,7 @@ export {
     createFocusCompanionOverlayVariant,
     createFocusCompanionPreview,
     getFocusCompanion,
+    getFocusCompanionTheme,
     isFocusCompanionId,
     listFocusCompanions,
 } from "./selectors.js";
@@ -15,5 +16,6 @@ export type {
     FocusCompanionPreview,
     FocusCompanionReplica,
     FocusCompanionScenarioId,
+    FocusCompanionTheme,
     FocusCompanionVisual,
 } from "./types.js";

@@ -16,6 +16,7 @@ import type {
     FocusCompanionPreview,
     FocusCompanionReplica,
     FocusCompanionScenarioId,
+    FocusCompanionTheme,
     FocusCompanionVisual,
 } from "./types.js";
 
@@ -123,6 +124,12 @@ export function getFocusCompanion(
         : toFocusCompanion(DEFAULT_FOCUS_COMPANION_ID);
 }
 
+export function getFocusCompanionTheme(
+    id: string | null | undefined,
+): FocusCompanionTheme {
+    return getFocusCompanion(id).theme;
+}
+
 export function isFocusCompanionId(value: unknown): value is FocusCompanionId {
     return typeof value === "string" && value in FOCUS_COMPANION_CATALOG;
 }
@@ -169,6 +176,7 @@ export function createFocusCompanionOverlayVariant(
     return {
         companionId: companion.id,
         scenarioId,
+        theme: companion.theme,
         text: getFocusCompanionReplicaText(
             companion.id,
             scenarioId,

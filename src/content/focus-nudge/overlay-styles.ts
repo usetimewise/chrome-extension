@@ -2,6 +2,13 @@ import {TOAST_AUTO_DISMISS_MS} from "./constants";
 
 export const TOAST_OVERLAY_STYLES = `
       :host {
+        --companion-primary: #4b5563;
+        --companion-primary-hover: #374151;
+        --companion-soft: #f0f1f4;
+        --companion-soft-hover: #e2e5ea;
+        --companion-accent-text: #4b5563;
+        --companion-contrast-text: #ffffff;
+
         all: initial;
         position: fixed;
         top: 16px;
@@ -41,7 +48,7 @@ export const TOAST_OVERLAY_STYLES = `
       .progress-value {
         width: 100%;
         height: 100%;
-        background: rgba(3, 2, 19, 0.4);
+        background: var(--companion-primary);
         transform-origin: left center;
         animation: progress-out `+TOAST_AUTO_DISMISS_MS.toString()+`ms linear both;
       }
@@ -62,8 +69,8 @@ export const TOAST_OVERLAY_STYLES = `
         width: 150px;
         min-height: 164px;
         overflow: hidden;
-        background: #ececf0;
-        color: #030213;
+        background: var(--companion-soft);
+        color: var(--companion-accent-text);
         font-size: 32px;
         font-weight: 700;
         line-height: 1;
@@ -132,7 +139,7 @@ export const TOAST_OVERLAY_STYLES = `
         width: 12px;
         height: 12px;
         flex: 0 0 auto;
-        color: #d97706;
+        color: var(--companion-accent-text);
       }
 
       .site-text {
@@ -159,8 +166,8 @@ export const TOAST_OVERLAY_STYLES = `
       }
 
       .close:hover:not(:disabled) {
-        background: #e9ebef;
-        color: #030213;
+        background: var(--companion-soft);
+        color: var(--companion-accent-text);
       }
 
       .actions {
@@ -190,14 +197,14 @@ export const TOAST_OVERLAY_STYLES = `
       .primary {
         min-height: 36px;
         padding: 8px 12px;
-        background: #030213;
-        color: #ffffff;
+        background: var(--companion-primary);
+        color: var(--companion-contrast-text);
         font-size: 14px;
         font-weight: 500;
       }
 
       .primary:hover:not(:disabled) {
-        background: rgba(3, 2, 19, 0.9);
+        background: var(--companion-primary-hover);
       }
 
       .secondary,
@@ -209,19 +216,19 @@ export const TOAST_OVERLAY_STYLES = `
       }
 
       .secondary {
-        background: #ececf0;
-        color: #030213;
+        background: var(--companion-soft);
+        color: var(--companion-accent-text);
       }
 
       .secondary:hover:not(:disabled),
       .tertiary:hover:not(:disabled) {
-        background: #e9ebef;
-        color: #030213;
+        background: var(--companion-soft-hover);
+        color: var(--companion-accent-text);
       }
 
       .tertiary {
         background: transparent;
-        color: #717182;
+        color: var(--companion-accent-text);
       }
 
       .status {
@@ -256,7 +263,14 @@ export const TOAST_OVERLAY_STYLES = `
     `;
 
 export const FULLSCREEN_OVERLAY_STYLES = `
-    :host {
+      :host {
+      --companion-primary: #4b5563;
+      --companion-primary-hover: #374151;
+      --companion-soft: #f0f1f4;
+      --companion-soft-hover: #e2e5ea;
+      --companion-accent-text: #4b5563;
+      --companion-contrast-text: #ffffff;
+
       all: initial;
       position: fixed;
       inset: 0;
@@ -310,8 +324,8 @@ export const FULLSCREEN_OVERLAY_STYLES = `
     }
 
     .close:hover:not(:disabled) {
-      background: #e9ebef;
-      color: #030213;
+      background: var(--companion-soft);
+      color: var(--companion-accent-text);
     }
 
     .image-wrap {
@@ -322,7 +336,7 @@ export const FULLSCREEN_OVERLAY_STYLES = `
       justify-content: center;
       margin: 0;
       overflow: hidden;
-      background: #ececf0;
+      background: var(--companion-soft);
     }
 
     .image-wrap::after {
@@ -353,16 +367,19 @@ export const FULLSCREEN_OVERLAY_STYLES = `
       line-height: 1;
     }
 
-    .avatar-violet { background: #f1edff; color: #6d28d9; }
-    .avatar-blue { background: #eaf2ff; color: #1d4ed8; }
-    .avatar-emerald { background: #e7f8ef; color: #047857; }
-    .avatar-rose { background: #fff0f3; color: #be123c; }
-    .avatar-stone { background: #f1f1ef; color: #57534e; }
-    .avatar-cyan { background: #e8f8fb; color: #0e7490; }
-    .avatar-amber { background: #fff7df; color: #b45309; }
-    .avatar-green { background: #ebf8ed; color: #15803d; }
-    .avatar-indigo { background: #eef2ff; color: #4338ca; }
-    .avatar-gray { background: #f0f1f4; color: #4b5563; }
+    .avatar-violet,
+    .avatar-blue,
+    .avatar-emerald,
+    .avatar-rose,
+    .avatar-stone,
+    .avatar-cyan,
+    .avatar-amber,
+    .avatar-green,
+    .avatar-indigo,
+    .avatar-gray {
+      background: var(--companion-soft);
+      color: var(--companion-accent-text);
+    }
 
     .panel-content {
       box-sizing: border-box;
@@ -393,8 +410,8 @@ export const FULLSCREEN_OVERLAY_STYLES = `
       margin: 8px 0 24px;
       padding: 6px 12px;
       border-radius: 8px;
-      background: #ececf0;
-      color: #717182;
+      background: var(--companion-soft);
+      color: var(--companion-accent-text);
       font-size: 12px;
       font-weight: 400;
       line-height: 1.35;
@@ -405,7 +422,7 @@ export const FULLSCREEN_OVERLAY_STYLES = `
       width: 14px;
       height: 14px;
       flex: 0 0 auto;
-      color: #d97706;
+      color: var(--companion-accent-text);
     }
 
     .site-text {
@@ -444,33 +461,33 @@ export const FULLSCREEN_OVERLAY_STYLES = `
     }
 
     .primary {
-      background: #030213;
-      color: #ffffff;
+      background: var(--companion-primary);
+      color: var(--companion-contrast-text);
     }
 
     .primary:hover:not(:disabled) {
-      background: rgba(3, 2, 19, 0.9);
+      background: var(--companion-primary-hover);
     }
 
     .secondary {
-      background: #ececf0;
-      color: #030213;
+      background: var(--companion-soft);
+      color: var(--companion-accent-text);
     }
 
     .secondary:hover:not(:disabled) {
-      background: rgba(236, 236, 240, 0.8);
+      background: var(--companion-soft-hover);
     }
 
     .tertiary {
       min-height: 44px;
       background: transparent;
-      color: #717182;
+      color: var(--companion-accent-text);
       font-size: 14px;
     }
 
     .tertiary:hover:not(:disabled) {
-      background: #e9ebef;
-      color: #030213;
+      background: var(--companion-soft);
+      color: var(--companion-accent-text);
     }
 
     .status {

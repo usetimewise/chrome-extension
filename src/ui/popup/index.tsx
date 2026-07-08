@@ -1,9 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type CSSProperties,
+} from "react";
 import { createRoot } from "react-dom/client";
 import { MESSAGE_TYPES } from "../../lib/constants.js";
 import {
     createFocusCompanionPreview,
+    getFocusCompanionTheme,
     listFocusCompanions,
+    type FocusCompanionTheme,
 } from "../../lib/focus-companions/index.js";
 import {
     createTranslator,
@@ -47,6 +55,15 @@ type QuickBlockState =
     | { status: "saved" }
     | { status: "error"; message: string };
 
+type CompanionThemeStyle = CSSProperties & {
+    "--companion-primary": string;
+    "--companion-primary-hover": string;
+    "--companion-soft": string;
+    "--companion-soft-hover": string;
+    "--companion-accent-text": string;
+    "--companion-contrast-text": string;
+};
+
 const SETTINGS_TABS: Array<{
     id: SettingsTab;
     labelKey: "popup.tabCompanion" | "popup.tabBlocking";
@@ -88,6 +105,19 @@ function buildPreferencesDraft(
             ...(bootstrap?.settings?.disabledDefaultBlockRuleIds || []),
         ],
         language: getBootstrapLanguage(bootstrap),
+    };
+}
+
+function createCompanionThemeStyle(
+    theme: FocusCompanionTheme,
+): CompanionThemeStyle {
+    return {
+        "--companion-primary": theme.primary,
+        "--companion-primary-hover": theme.primaryHover,
+        "--companion-soft": theme.soft,
+        "--companion-soft-hover": theme.softHover,
+        "--companion-accent-text": theme.accentText,
+        "--companion-contrast-text": theme.contrastText,
     };
 }
 
@@ -209,6 +239,13 @@ function SettingsView({
                 }),
             ),
         [language],
+    );
+    const companionThemeStyle = useMemo(
+        () =>
+            createCompanionThemeStyle(
+                getFocusCompanionTheme(draft.selectedCompanionId),
+            ),
+        [draft.selectedCompanionId],
     );
 
     useEffect(() => {
@@ -386,6 +423,7 @@ function SettingsView({
         <main
             className="popup-shell popup-shell-settings"
             aria-label="Settings"
+            style={companionThemeStyle}
         >
             <section className="settings-panel">
                 <header className="settings-header">
@@ -706,6 +744,13 @@ function PopupApp() {
         !currentHost ||
         isCurrentSiteBlocked ||
         quickBlockState.status === "saving";
+    const companionThemeStyle = useMemo(
+        () =>
+            createCompanionThemeStyle(
+                getFocusCompanionTheme(bootstrap?.settings?.selectedCompanionId),
+            ),
+        [bootstrap?.settings?.selectedCompanionId],
+    );
 
     useEffect(
         () => () => {
@@ -833,7 +878,11 @@ function PopupApp() {
     }
 
     return (
-        <main className="popup-shell" aria-label="Focus mode">
+        <main
+            className="popup-shell"
+            aria-label="Focus mode"
+            style={companionThemeStyle}
+        >
             <section className="popup-focus-panel" aria-busy={isLoading}>
                 <header className="popup-focus-header">
                     <p className="popup-kicker">ZalipOff</p>

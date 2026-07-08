@@ -24,6 +24,13 @@ body::before {
 }
 
 .popup-shell {
+    --companion-primary: #4b5563;
+    --companion-primary-hover: #374151;
+    --companion-soft: #f0f1f4;
+    --companion-soft-hover: #e2e5ea;
+    --companion-accent-text: #4b5563;
+    --companion-contrast-text: #ffffff;
+
     display: flex;
     min-height: 320px;
     background: #ffffff;
@@ -82,9 +89,9 @@ body::before {
 }
 
 .settings-icon-button:hover:not(:disabled) {
-    border-color: #c7ccd4;
-    background: #f5f6f8;
-    color: #030213;
+    border-color: var(--companion-primary);
+    background: var(--companion-soft);
+    color: var(--companion-accent-text);
 }
 
 .popup-header-actions {
@@ -138,8 +145,8 @@ body::before {
 
 .language-menu-item:hover,
 .language-menu-item.is-active {
-    background: #f0f1f4;
-    color: #030213;
+    background: var(--companion-soft);
+    color: var(--companion-accent-text);
 }
 
 .popup-kicker {
@@ -171,10 +178,10 @@ body::before {
 .popup-primary-button {
     width: 100%;
     min-height: 44px;
-    border: 1px solid #030213;
+    border: 1px solid var(--companion-primary);
     border-radius: 8px;
-    background: #030213;
-    color: #ffffff;
+    background: var(--companion-primary);
+    color: var(--companion-contrast-text);
     cursor: pointer;
     font: inherit;
     font-size: 14px;
@@ -189,8 +196,8 @@ body::before {
 }
 
 .popup-primary-button:hover:not(:disabled) {
-    background: #1f2937;
-    border-color: #1f2937;
+    background: var(--companion-primary-hover);
+    border-color: var(--companion-primary-hover);
 }
 
 .popup-primary-button.is-danger {
@@ -248,8 +255,9 @@ body::before {
 }
 
 .quick-block-button:hover:not(:disabled) {
-    border-color: #c7ccd4;
-    background: #f5f6f8;
+    border-color: var(--companion-primary);
+    background: var(--companion-soft);
+    color: var(--companion-accent-text);
 }
 
 .quick-block-button:disabled {
@@ -309,7 +317,7 @@ body::before {
 
 .settings-tab.is-active {
     background: #ffffff;
-    color: #030213;
+    color: var(--companion-accent-text);
     box-shadow: 0 1px 2px rgba(3, 2, 19, 0.08);
 }
 
@@ -358,20 +366,17 @@ body::before {
     font: inherit;
     padding: 12px;
     text-align: left;
-    transition:
-        border-color 140ms ease,
-        box-shadow 140ms ease,
-        transform 140ms ease;
+    transition: transform 140ms ease;
 }
 
 .companion-card:hover {
-    border-color: #c7ccd4;
+    border-color: var(--companion-primary);
     box-shadow: 0 8px 18px rgba(3, 2, 19, 0.06);
 }
 
 .companion-card.is-selected {
-    border-color: #030213;
-    box-shadow: 0 0 0 1px #030213;
+    border-color: var(--companion-primary);
+    box-shadow: 0 0 0 1px var(--companion-primary);
 }
 
 .companion-avatar {
@@ -465,8 +470,8 @@ body::before {
     width: 20px;
     height: 20px;
     border-radius: 999px;
-    background: #030213;
-    color: #ffffff;
+    background: var(--companion-primary);
+    color: var(--companion-contrast-text);
 }
 
 .blocked-host-form {
@@ -490,16 +495,16 @@ body::before {
 }
 
 .blocked-host-input:focus {
-    border-color: #030213;
+    border-color: var(--companion-primary);
     outline: none;
 }
 
 .blocked-host-add {
     min-height: 40px;
-    border: 1px solid #030213;
+    border: 1px solid var(--companion-primary);
     border-radius: 8px;
-    background: #030213;
-    color: #ffffff;
+    background: var(--companion-primary);
+    color: var(--companion-contrast-text);
     cursor: pointer;
     font: inherit;
     line-height: 1;

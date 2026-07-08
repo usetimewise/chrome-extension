@@ -1,6 +1,7 @@
 import {
     createFocusCompanionOverlayVariant,
     type FocusCompanionOverlayVariant,
+    type FocusCompanionTheme,
 } from "../../lib/focus-companions/index.js";
 import {
     createTranslator,
@@ -52,6 +53,18 @@ function createStyle(styles: string): HTMLStyleElement {
     const style = document.createElement("style");
     style.textContent = styles;
     return style;
+}
+
+function applyCompanionTheme(
+    host: HTMLElement,
+    theme: FocusCompanionTheme,
+): void {
+    host.style.setProperty("--companion-primary", theme.primary);
+    host.style.setProperty("--companion-primary-hover", theme.primaryHover);
+    host.style.setProperty("--companion-soft", theme.soft);
+    host.style.setProperty("--companion-soft-hover", theme.softHover);
+    host.style.setProperty("--companion-accent-text", theme.accentText);
+    host.style.setProperty("--companion-contrast-text", theme.contrastText);
 }
 
 function appendVisual(
@@ -310,6 +323,7 @@ export async function buildOverlay(
     );
     const host = document.createElement("div");
     host.id = OVERLAY_ID;
+    applyCompanionTheme(host, copyVariant.theme);
 
     const shadow = host.attachShadow({ mode: "open" });
     if (message.mode === "offer" || message.presentation === "soft") {

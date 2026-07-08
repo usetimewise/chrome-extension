@@ -5,6 +5,15 @@ type FocusCompanionCatalogReplica = {
 
 export type FocusCompanionScenarioId = "1" | "2" | "3" | "4" | "5" | "6";
 
+export type FocusCompanionTheme = {
+    primary: string;
+    primaryHover: string;
+    soft: string;
+    softHover: string;
+    accentText: string;
+    contrastText: string;
+};
+
 type FocusCompanionScenarioReplicas = readonly [
     FocusCompanionCatalogReplica,
     ...FocusCompanionCatalogReplica[],
@@ -18,10 +27,110 @@ type FocusCompanionCatalogItem = {
     availability: "free" | "paid";
     avatarText: string;
     colorClass: string;
+    theme: FocusCompanionTheme;
     defaultScenarioId: FocusCompanionScenarioId;
     defaultReplicaIndex: number;
     scenarios: Record<FocusCompanionScenarioId, FocusCompanionScenarioReplicas>;
 };
+
+export const FOCUS_COMPANION_THEMES = {
+    sgt: {
+        primary: "#7a1f2a",
+        primaryHover: "#611920",
+        soft: "#fbeaec",
+        softHover: "#f7d9de",
+        accentText: "#7a1f2a",
+        contrastText: "#ffffff",
+    },
+    hbest: {
+        primary: "#8f6400",
+        primaryHover: "#755100",
+        soft: "#fff5d1",
+        softHover: "#ffedac",
+        accentText: "#8f6400",
+        contrastText: "#ffffff",
+    },
+    sarc: {
+        primary: "#2f686d",
+        primaryHover: "#27585c",
+        soft: "#e4f2f3",
+        softHover: "#d4eaec",
+        accentText: "#2f686d",
+        contrastText: "#ffffff",
+    },
+    zen: {
+        primary: "#5d7348",
+        primaryHover: "#4f623d",
+        soft: "#edf3e8",
+        softHover: "#dfead8",
+        accentText: "#5d7348",
+        contrastText: "#ffffff",
+    },
+    pirate: {
+        primary: "#167577",
+        primaryHover: "#125f61",
+        soft: "#e3f5f5",
+        softHover: "#d2eeee",
+        accentText: "#167577",
+        contrastText: "#ffffff",
+    },
+    butler: {
+        primary: "#7b3142",
+        primaryHover: "#642837",
+        soft: "#fae9ee",
+        softHover: "#f5d8e1",
+        accentText: "#7b3142",
+        contrastText: "#ffffff",
+    },
+    surfer: {
+        primary: "#127c99",
+        primaryHover: "#0f657d",
+        soft: "#e1f6fb",
+        softHover: "#cfedf5",
+        accentText: "#127c99",
+        contrastText: "#ffffff",
+    },
+    ceo: {
+        primary: "#4b5563",
+        primaryHover: "#374151",
+        soft: "#f0f1f4",
+        softHover: "#e2e5ea",
+        accentText: "#4b5563",
+        contrastText: "#ffffff",
+    },
+    coach: {
+        primary: "#4f7d45",
+        primaryHover: "#41683a",
+        soft: "#e9f4e6",
+        softHover: "#dcedd6",
+        accentText: "#4f7d45",
+        contrastText: "#ffffff",
+    },
+    th: {
+        primary: "#657a5f",
+        primaryHover: "#546650",
+        soft: "#eef4eb",
+        softHover: "#e1ecd9",
+        accentText: "#657a5f",
+        contrastText: "#ffffff",
+    },
+    stoic: {
+        primary: "#665a52",
+        primaryHover: "#554a43",
+        soft: "#f0ece8",
+        softHover: "#e4ddd6",
+        accentText: "#665a52",
+        contrastText: "#ffffff",
+    },
+    cowboy: {
+        primary: "#a55321",
+        primaryHover: "#87441b",
+        soft: "#fff0e3",
+        softHover: "#ffe1c9",
+        accentText: "#a55321",
+        contrastText: "#ffffff",
+    },
+} as const satisfies Record<string, FocusCompanionTheme>;
 
 export const FOCUS_COMPANION_CATALOG = {
     sgt: {
@@ -32,6 +141,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "D",
         colorClass: "stone",
+        theme: FOCUS_COMPANION_THEMES.sgt,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -297,6 +407,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "H",
         colorClass: "rose",
+        theme: FOCUS_COMPANION_THEMES.hbest,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -562,6 +673,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "S",
         colorClass: "amber",
+        theme: FOCUS_COMPANION_THEMES.sarc,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -827,6 +939,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "Z",
         colorClass: "indigo",
+        theme: FOCUS_COMPANION_THEMES.zen,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -1092,6 +1205,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "P",
         colorClass: "blue",
+        theme: FOCUS_COMPANION_THEMES.pirate,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -1357,6 +1471,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "B",
         colorClass: "gray",
+        theme: FOCUS_COMPANION_THEMES.butler,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -1622,6 +1737,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "S",
         colorClass: "cyan",
+        theme: FOCUS_COMPANION_THEMES.surfer,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -1887,6 +2003,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "free",
         avatarText: "C",
         colorClass: "violet",
+        theme: FOCUS_COMPANION_THEMES.ceo,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -2152,6 +2269,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "F",
         colorClass: "green",
+        theme: FOCUS_COMPANION_THEMES.coach,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -2417,6 +2535,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "T",
         colorClass: "emerald",
+        theme: FOCUS_COMPANION_THEMES.th,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -2682,6 +2801,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "S",
         colorClass: "stone",
+        theme: FOCUS_COMPANION_THEMES.stoic,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {
@@ -2947,6 +3067,7 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "C",
         colorClass: "amber",
+        theme: FOCUS_COMPANION_THEMES.cowboy,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
         scenarios: {

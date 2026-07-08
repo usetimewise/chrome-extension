@@ -5,6 +5,7 @@ import {
     createFocusCompanionOverlayVariant,
     createFocusCompanionPreview,
     getFocusCompanion,
+    getFocusCompanionTheme,
     isFocusCompanionId,
     listFocusCompanions,
 } from "./focus-companions/index.js";
@@ -20,6 +21,26 @@ test("validates companion ids from the catalog", () => {
 test("falls back to ceo for unknown companion ids", () => {
     assert.equal(getFocusCompanion("unknown").id, "ceo");
     assert.equal(getFocusCompanion(null).id, "ceo");
+});
+
+test("provides theme metadata for every companion", () => {
+    const companions = listFocusCompanions();
+
+    for (const companion of companions) {
+        assert.match(companion.theme.primary, /^#[0-9a-f]{6}$/i);
+        assert.match(companion.theme.primaryHover, /^#[0-9a-f]{6}$/i);
+        assert.match(companion.theme.soft, /^#[0-9a-f]{6}$/i);
+        assert.match(companion.theme.softHover, /^#[0-9a-f]{6}$/i);
+        assert.equal(companion.theme.accentText, companion.theme.primary);
+        assert.equal(companion.theme.contrastText, "#ffffff");
+    }
+});
+
+test("falls back to ceo theme for unknown companion ids", () => {
+    const ceoTheme = getFocusCompanion("ceo").theme;
+
+    assert.deepEqual(getFocusCompanionTheme("unknown"), ceoTheme);
+    assert.deepEqual(getFocusCompanionTheme(null), ceoTheme);
 });
 
 test("lists companions with availability metadata and preview data", () => {
@@ -69,6 +90,7 @@ test("creates deterministic overlay variant with image visual for ceo", () => {
 
     assert.equal(variant.companionId, "ceo");
     assert.equal(variant.scenarioId, "2");
+    assert.deepEqual(variant.theme, getFocusCompanion("ceo").theme);
     assert.equal(
         variant.text,
         "Twelve minutes of TikTok. That's a $40 mistake. Course-correct.",
