@@ -9,6 +9,7 @@ import {
     isFocusCompanionId,
     listFocusCompanions,
 } from "./focus-companions/index.js";
+import { getFocusCompanionReplicaTexts } from "./i18n/focus-companions.js";
 
 test("validates companion ids from the catalog", () => {
     assert.equal(isFocusCompanionId("ceo"), true);
@@ -162,4 +163,11 @@ test("creates localized overlay variant", () => {
         "Десять минут коту под хвост, боец! Глаза на задачу. БЫСТРО.",
     );
     assert.equal(variant.visual.kind, "image");
+});
+
+test("returns replica texts for every supported language", () => {
+    assert.deepEqual(getFocusCompanionReplicaTexts("sgt", "3", 0), {
+        en: "Ten minutes wasted, soldier! Eyes back on the mission. NOW.",
+        ru: "Десять минут коту под хвост, боец! Глаза на задачу. БЫСТРО.",
+    });
 });

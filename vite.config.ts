@@ -66,6 +66,7 @@ export default defineConfig(() => {
     const input = {
         iconPreview: resolve(__dirname, "icon-preview.html"),
         popup: resolve(__dirname, "popup.html"),
+        replicas: resolve(__dirname, "replicas.html"),
         background: resolve(__dirname, "src/background/index.ts"),
     };
 

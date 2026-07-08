@@ -1,0 +1,166 @@
+html,
+body {
+    min-width: 960px;
+    min-height: 100%;
+    margin: 0;
+    background: #f5f6f8;
+    color: #030213;
+    font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.replicas-shell {
+    display: grid;
+    gap: 20px;
+    width: min(1680px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 28px 0;
+}
+
+.replicas-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.replicas-header p,
+.replicas-header h1 {
+    margin: 0;
+}
+
+.replicas-header p {
+    color: #717182;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.replicas-header h1 {
+    margin-top: 4px;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 1.1;
+}
+
+.replicas-header strong {
+    color: #4b5563;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.replicas-table-wrap {
+    overflow: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.replicas-table {
+    width: 100%;
+    min-width: 1200px;
+    border-collapse: collapse;
+}
+
+.replicas-table th,
+.replicas-table td {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.replicas-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f9fafb;
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.replicas-table tbody th {
+    width: 190px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.replicas-table tbody th span,
+.replicas-table tbody th small {
+    display: block;
+}
+
+.replicas-table tbody th small {
+    margin-top: 3px;
+    color: #717182;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.replicas-table td {
+    color: #030213;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.replicas-table td:nth-child(2),
+.replicas-table td:nth-child(3) {
+    width: 72px;
+    color: #4b5563;
+    font-variant-numeric: tabular-nums;
+}
+
+.replicas-table img {
+    display: block;
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+}
+
+.replicas-table tr:last-child th,
+.replicas-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.replicas-translated {
+    min-width: 320px;
+}
+
+.replicas-empty {
+    display: inline-flex;
+    align-items: center;
+    min-height: 96px;
+    color: #717182;
+    font-size: 12px;
+}
+
+@media (max-width: 1040px) {
+    html,
+    body {
+        min-width: 0;
+    }
+
+    .replicas-shell {
+        width: min(100% - 20px, 1680px);
+        padding: 20px 0;
+    }
+}

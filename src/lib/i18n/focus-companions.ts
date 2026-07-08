@@ -1,4 +1,5 @@
 import type { AppLanguage } from "./index.js";
+import { SUPPORTED_LANGUAGES } from "./index.js";
 import type { FocusCompanionScenarioId } from "../focus-companions/catalog.js";
 
 type LocalizedText = {
@@ -3308,6 +3309,19 @@ export function getFocusCompanionReplicaText(
         Object.values(companion.scenarios)[0];
     const replica = scenario[replicaIndex] || scenario[0];
     return getLocalizedText(replica, language);
+}
+
+export function getFocusCompanionReplicaTexts(
+    id: FocusCompanionTranslationId,
+    scenarioId: FocusCompanionScenarioId,
+    replicaIndex: number,
+): Record<AppLanguage, string> {
+    return Object.fromEntries(
+        SUPPORTED_LANGUAGES.map((language) => [
+            language,
+            getFocusCompanionReplicaText(id, scenarioId, replicaIndex, language),
+        ]),
+    ) as Record<AppLanguage, string>;
 }
 
 function getLocalizedText(value: LocalizedText, language: AppLanguage): string {
