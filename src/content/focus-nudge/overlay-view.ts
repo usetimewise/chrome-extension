@@ -306,21 +306,13 @@ function buildFullscreenOverlay(
     return { host, shadow, t };
 }
 
-export async function buildOverlay(
+export function buildOverlayFromVariant(
     message: FocusOverlayMessage,
+    copyVariant: FocusCompanionOverlayVariant,
+    language: AppLanguage,
     callbacks: OverlayViewCallbacks,
-): Promise<BuiltOverlay> {
-    const preferences = await getStoredPreferences();
-    const language: AppLanguage = resolveLanguage(preferences?.language);
+): BuiltOverlay {
     const t = createTranslator(language);
-    const copyVariant = createFocusCompanionOverlayVariant(
-        preferences?.selectedCompanionId,
-        {
-            language,
-            scenarioId: message.scenarioId,
-            resolveAssetUrl: (path) => chrome.runtime.getURL(path),
-        },
-    );
     const host = document.createElement("div");
     host.id = OVERLAY_ID;
     applyCompanionTheme(host, copyVariant.theme);
@@ -331,4 +323,22 @@ export async function buildOverlay(
     }
 
     return buildFullscreenOverlay(host, shadow, message, copyVariant, t, callbacks);
+}
+
+export async function buildOverlay(
+    message: FocusOverlayMessage,
+    callbacks: OverlayViewCallbacks,
+): Promise<BuiltOverlay> {
+    const preferences = await getStoredPreferences();
+    const language: AppLanguage = resolveLanguage(preferences?.language);
+    const copyVariant = createFocusCompanionOverlayVariant(
+        preferences?.selectedCompanionId,
+        {
+            language,
+            scenarioId: message.scenarioId,
+            resolveAssetUrl: (path) => chrome.runtime.getURL(path),
+        },
+    );
+
+    return buildOverlayFromVariant(message, copyVariant, language, callbacks);
 }

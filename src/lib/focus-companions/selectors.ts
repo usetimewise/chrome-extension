@@ -23,6 +23,7 @@ import type {
 type OverlayVariantOptions = {
     language?: AppLanguage;
     scenarioId?: FocusCompanionScenarioId;
+    replicaIndex?: number;
     resolveAssetUrl?: FocusCompanionAssetUrlResolver;
     randomInt?: (maxExclusive: number) => number;
 };
@@ -169,7 +170,10 @@ export function createFocusCompanionOverlayVariant(
         companion.defaultScenarioId ||
         DEFAULT_FOCUS_COMPANION_SCENARIO_ID;
     const replicas = getScenarioReplicas(companion, scenarioId);
-    const replicaIndex = randomInt(replicas.length);
+    const replicaIndex =
+        options.replicaIndex !== undefined
+            ? options.replicaIndex
+            : randomInt(replicas.length);
     const replica = replicas[replicaIndex] || getDefaultReplica(companion);
     const language = options.language || DEFAULT_LANGUAGE;
 

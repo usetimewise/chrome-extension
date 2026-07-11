@@ -129,6 +129,29 @@ test("selects one replica per overlay variant", () => {
     }
 });
 
+test("creates overlay variant for an explicit replica index", () => {
+    const variant = createFocusCompanionOverlayVariant("ceo", {
+        scenarioId: "2",
+        replicaIndex: 4,
+        randomInt: () => {
+            throw new Error("randomInt should not be called");
+        },
+        resolveAssetUrl: (path) => `chrome-extension://${path}`,
+    });
+
+    assert.equal(
+        variant.text,
+        "Top performers don't scroll during sprint hours.",
+    );
+    assert.equal(variant.visual.kind, "image");
+    if (variant.visual.kind === "image") {
+        assert.equal(
+            variant.visual.src,
+            "chrome-extension://images/ceo/ceo-s02-05.avif",
+        );
+    }
+});
+
 test("creates overlay variant for selected scenario", () => {
     const variant = createFocusCompanionOverlayVariant("sgt", {
         scenarioId: "3",
