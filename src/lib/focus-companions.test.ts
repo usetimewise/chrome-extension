@@ -11,6 +11,40 @@ import {
 } from "./focus-companions/index.js";
 import { getFocusCompanionReplicaTexts } from "./i18n/focus-companions.js";
 
+const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+const CSS_COLOR_PATTERN =
+    /^(?:#[0-9a-f]{6}|rgba\(\d{1,3}, \d{1,3}, \d{1,3}, (?:0|1|0?\.\d+)\))$/i;
+
+function getRelativeLuminance(color: string): number {
+    const channels = color
+        .slice(1)
+        .match(/.{2}/g)
+        ?.map((channel) => Number.parseInt(channel, 16) / 255);
+
+    assert.ok(channels);
+
+    const linearChannels = channels.map((channel) =>
+        channel <= 0.04045
+            ? channel / 12.92
+            : ((channel + 0.055) / 1.055) ** 2.4,
+    );
+
+    return (
+        0.2126 * linearChannels[0] +
+        0.7152 * linearChannels[1] +
+        0.0722 * linearChannels[2]
+    );
+}
+
+function getContrastRatio(firstColor: string, secondColor: string): number {
+    const firstLuminance = getRelativeLuminance(firstColor);
+    const secondLuminance = getRelativeLuminance(secondColor);
+    const lighter = Math.max(firstLuminance, secondLuminance);
+    const darker = Math.min(firstLuminance, secondLuminance);
+
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
 test("validates companion ids from the catalog", () => {
     assert.equal(isFocusCompanionId("ceo"), true);
     assert.equal(isFocusCompanionId("sgt"), true);
@@ -26,14 +60,42 @@ test("falls back to ceo for unknown companion ids", () => {
 
 test("provides theme metadata for every companion", () => {
     const companions = listFocusCompanions();
+    const darkPanelCompanionIds = new Set(["sgt", "sarc", "butler", "stoic"]);
 
     for (const companion of companions) {
-        assert.match(companion.theme.primary, /^#[0-9a-f]{6}$/i);
-        assert.match(companion.theme.primaryHover, /^#[0-9a-f]{6}$/i);
-        assert.match(companion.theme.soft, /^#[0-9a-f]{6}$/i);
-        assert.match(companion.theme.softHover, /^#[0-9a-f]{6}$/i);
+        assert.match(companion.theme.primary, HEX_COLOR_PATTERN);
+        assert.match(companion.theme.primaryHover, HEX_COLOR_PATTERN);
+        assert.match(companion.theme.soft, HEX_COLOR_PATTERN);
+        assert.match(companion.theme.softHover, HEX_COLOR_PATTERN);
+        assert.match(
+            companion.theme.panelBackgroundImagePath,
+            new RegExp(
+                `^images/${companion.id}/${companion.id}-panel-background\\.avif$`,
+            ),
+        );
         assert.equal(companion.theme.accentText, companion.theme.primary);
         assert.equal(companion.theme.contrastText, "#ffffff");
+
+        for (const color of Object.values(companion.theme.overlayColors)) {
+            assert.match(color, CSS_COLOR_PATTERN);
+        }
+
+        const expectedTextColor = darkPanelCompanionIds.has(companion.id)
+            ? "#ffffff"
+            : "#000000";
+        assert.equal(companion.theme.overlayColors.text, expectedTextColor);
+        assert.ok(
+            getContrastRatio(
+                companion.theme.overlayColors.primary,
+                companion.theme.overlayColors.primaryText,
+            ) >= 4.5,
+        );
+        assert.ok(
+            getContrastRatio(
+                companion.theme.overlayColors.primaryHover,
+                companion.theme.overlayColors.primaryText,
+            ) >= 4.5,
+        );
     }
 });
 
@@ -92,6 +154,10 @@ test("creates deterministic overlay variant with image visual for ceo", () => {
     assert.equal(variant.companionId, "ceo");
     assert.equal(variant.scenarioId, "2");
     assert.deepEqual(variant.theme, getFocusCompanion("ceo").theme);
+    assert.equal(
+        variant.panelBackgroundImageUrl,
+        "chrome-extension://images/ceo/ceo-panel-background.avif",
+    );
     assert.equal(
         variant.text,
         "Twelve minutes of TikTok. That's a $40 mistake. Course-correct.",

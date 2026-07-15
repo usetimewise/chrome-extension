@@ -181,6 +181,10 @@ export function createFocusCompanionOverlayVariant(
         companionId: companion.id,
         scenarioId,
         theme: companion.theme,
+        panelBackgroundImageUrl: resolvePath(
+            companion.theme.panelBackgroundImagePath,
+            options.resolveAssetUrl,
+        ),
         text: getFocusCompanionReplicaText(
             companion.id,
             scenarioId,

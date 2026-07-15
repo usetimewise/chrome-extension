@@ -2,15 +2,18 @@ import {
     createFocusCompanionOverlayVariant,
     type FocusCompanionOverlayVariant,
     type FocusCompanionTheme,
-} from "../../lib/focus-companions/index.js";
+} from "../../lib/focus-companions";
 import {
     createTranslator,
     resolveLanguage,
     type AppLanguage,
     type Translator,
-} from "../../lib/i18n/index.js";
+} from "../../lib/i18n";
 import { createContentIcon } from "../icon-elements.js";
-import { OVERLAY_ID } from "./constants.js";
+import {
+    IS_SPEECH_BUBBLE_ENABLED,
+    OVERLAY_ID,
+} from "./constants.js";
 import {
     FULLSCREEN_OVERLAY_STYLES,
     TOAST_OVERLAY_STYLES,
@@ -58,13 +61,42 @@ function createStyle(styles: string): HTMLStyleElement {
 function applyCompanionTheme(
     host: HTMLElement,
     theme: FocusCompanionTheme,
+    panelBackgroundImageUrl: string,
 ): void {
-    host.style.setProperty("--companion-primary", theme.primary);
-    host.style.setProperty("--companion-primary-hover", theme.primaryHover);
-    host.style.setProperty("--companion-soft", theme.soft);
-    host.style.setProperty("--companion-soft-hover", theme.softHover);
-    host.style.setProperty("--companion-accent-text", theme.accentText);
-    host.style.setProperty("--companion-contrast-text", theme.contrastText);
+    host.style.setProperty(
+        "--companion-panel-background-image",
+        `url("${panelBackgroundImageUrl}")`,
+    );
+    host.style.setProperty("--overlay-text", theme.overlayColors.text);
+    host.style.setProperty(
+        "--overlay-muted-text",
+        theme.overlayColors.mutedText,
+    );
+    host.style.setProperty("--overlay-primary", theme.overlayColors.primary);
+    host.style.setProperty(
+        "--overlay-primary-hover",
+        theme.overlayColors.primaryHover,
+    );
+    host.style.setProperty(
+        "--overlay-primary-text",
+        theme.overlayColors.primaryText,
+    );
+    host.style.setProperty(
+        "--overlay-secondary-text",
+        theme.overlayColors.secondaryText,
+    );
+    host.style.setProperty(
+        "--overlay-secondary-border",
+        theme.overlayColors.secondaryBorder,
+    );
+    host.style.setProperty(
+        "--overlay-control-hover",
+        theme.overlayColors.controlHover,
+    );
+    host.style.setProperty(
+        "--overlay-danger-text",
+        theme.overlayColors.dangerText,
+    );
 }
 
 function appendVisual(
@@ -108,6 +140,17 @@ function buildSiteBadge(host: string, iconSize: number): HTMLDivElement {
     siteText.textContent = host;
     site.append(siteIcon, siteText);
     return site;
+}
+
+function buildTitleContent(title: HTMLElement): HTMLElement {
+    if (!IS_SPEECH_BUBBLE_ENABLED) {
+        return title;
+    }
+
+    const speech = document.createElement("div");
+    speech.className = "speech";
+    speech.append(title);
+    return speech;
 }
 
 function buildToastOverlay(
@@ -164,7 +207,7 @@ function buildToastOverlay(
     title.textContent =
         message.mode === "offer" ? message.message : copyVariant.text;
 
-    copy.append(title, buildSiteBadge(message.host, 12));
+    copy.append(buildTitleContent(title), buildSiteBadge(message.host, 12));
 
     const closeButton = document.createElement("button");
     closeButton.className = "close";
@@ -298,7 +341,12 @@ function buildFullscreenOverlay(
 
     const panelContent = document.createElement("div");
     panelContent.className = "panel-content";
-    panelContent.append(title, buildSiteBadge(message.host, 14), actions, status);
+    panelContent.append(
+        buildTitleContent(title),
+        buildSiteBadge(message.host, 14),
+        actions,
+        status,
+    );
 
     panel.append(closeButton, imageWrap, panelContent);
     shadow.append(style, panel);
@@ -315,7 +363,11 @@ export function buildOverlayFromVariant(
     const t = createTranslator(language);
     const host = document.createElement("div");
     host.id = OVERLAY_ID;
-    applyCompanionTheme(host, copyVariant.theme);
+    applyCompanionTheme(
+        host,
+        copyVariant.theme,
+        copyVariant.panelBackgroundImageUrl,
+    );
 
     const shadow = host.attachShadow({ mode: "open" });
     if (message.mode === "offer" || message.presentation === "soft") {

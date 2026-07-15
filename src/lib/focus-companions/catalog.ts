@@ -5,14 +5,52 @@ type FocusCompanionCatalogReplica = {
 
 export type FocusCompanionScenarioId = "1" | "2" | "3" | "4" | "5" | "6";
 
+export type FocusCompanionOverlayColors = {
+    text: string;
+    mutedText: string;
+    primary: string;
+    primaryHover: string;
+    primaryText: string;
+    secondaryText: string;
+    secondaryBorder: string;
+    controlHover: string;
+    dangerText: string;
+};
+
 export type FocusCompanionTheme = {
     primary: string;
     primaryHover: string;
     soft: string;
     softHover: string;
+    panelBackgroundImagePath: string;
     accentText: string;
     contrastText: string;
+    overlayColors: FocusCompanionOverlayColors;
 };
+
+const DARK_PANEL_OVERLAY_COLORS = {
+    text: "#ffffff",
+    mutedText: "#f3f4f6",
+    primary: "#ffffff",
+    primaryHover: "#e5e7eb",
+    primaryText: "#000000",
+    secondaryText: "#ffffff",
+    secondaryBorder: "#ffffff",
+    controlHover: "rgba(255, 255, 255, 0.18)",
+    dangerText: "#ffffff",
+} as const satisfies FocusCompanionOverlayColors;
+
+const LIGHT_PANEL_OVERLAY_COLORS = {
+    text: "#000000",
+    mutedText: "#000000",
+    primary: "#000000",
+    primaryHover: "#030712",
+    primaryText: "#ffffff",
+    secondaryText: "#000000",
+    secondaryBorder: "#000000",
+    controlHover: "rgba(17, 24, 39, 0.12)",
+    dangerText: "#000000",
+} as const satisfies FocusCompanionOverlayColors;
 
 type FocusCompanionScenarioReplicas = readonly [
     FocusCompanionCatalogReplica,
@@ -39,96 +77,120 @@ export const FOCUS_COMPANION_THEMES = {
         primaryHover: "#611920",
         soft: "#fbeaec",
         softHover: "#f7d9de",
+        panelBackgroundImagePath: "images/sgt/sgt-panel-background.avif",
         accentText: "#7a1f2a",
         contrastText: "#ffffff",
+        overlayColors: DARK_PANEL_OVERLAY_COLORS,
     },
     hbest: {
         primary: "#8f6400",
         primaryHover: "#755100",
         soft: "#fff5d1",
         softHover: "#ffedac",
+        panelBackgroundImagePath: "images/hbest/hbest-panel-background.avif",
         accentText: "#8f6400",
         contrastText: "#ffffff",
+        overlayColors: LIGHT_PANEL_OVERLAY_COLORS,
     },
     sarc: {
         primary: "#2f686d",
         primaryHover: "#27585c",
         soft: "#e4f2f3",
         softHover: "#d4eaec",
+        panelBackgroundImagePath: "images/sarc/sarc-panel-background.avif",
         accentText: "#2f686d",
         contrastText: "#ffffff",
+        overlayColors: DARK_PANEL_OVERLAY_COLORS,
     },
     zen: {
         primary: "#5d7348",
         primaryHover: "#4f623d",
         soft: "#edf3e8",
         softHover: "#dfead8",
+        panelBackgroundImagePath: "images/zen/zen-panel-background.avif",
         accentText: "#5d7348",
         contrastText: "#ffffff",
+        overlayColors: LIGHT_PANEL_OVERLAY_COLORS,
     },
     pirate: {
         primary: "#167577",
         primaryHover: "#125f61",
         soft: "#e3f5f5",
         softHover: "#d2eeee",
+        panelBackgroundImagePath: "images/pirate/pirate-panel-background.avif",
         accentText: "#167577",
         contrastText: "#ffffff",
+        overlayColors: LIGHT_PANEL_OVERLAY_COLORS,
     },
     butler: {
         primary: "#7b3142",
         primaryHover: "#642837",
         soft: "#fae9ee",
         softHover: "#f5d8e1",
+        panelBackgroundImagePath: "images/butler/butler-panel-background.avif",
         accentText: "#7b3142",
         contrastText: "#ffffff",
+        overlayColors: DARK_PANEL_OVERLAY_COLORS,
     },
     surfer: {
         primary: "#127c99",
         primaryHover: "#0f657d",
         soft: "#e1f6fb",
         softHover: "#cfedf5",
+        panelBackgroundImagePath: "images/surfer/surfer-panel-background.avif",
         accentText: "#127c99",
         contrastText: "#ffffff",
+        overlayColors: LIGHT_PANEL_OVERLAY_COLORS,
     },
     ceo: {
         primary: "#4b5563",
         primaryHover: "#374151",
         soft: "#f0f1f4",
         softHover: "#e2e5ea",
+        panelBackgroundImagePath: "images/ceo/ceo-panel-background.avif",
         accentText: "#4b5563",
         contrastText: "#ffffff",
+        overlayColors: LIGHT_PANEL_OVERLAY_COLORS,
     },
     coach: {
         primary: "#4f7d45",
         primaryHover: "#41683a",
         soft: "#e9f4e6",
         softHover: "#dcedd6",
+        panelBackgroundImagePath: "images/coach/coach-panel-background.avif",
         accentText: "#4f7d45",
         contrastText: "#ffffff",
+        overlayColors: LIGHT_PANEL_OVERLAY_COLORS,
     },
     th: {
         primary: "#657a5f",
         primaryHover: "#546650",
         soft: "#eef4eb",
         softHover: "#e1ecd9",
+        panelBackgroundImagePath: "images/th/th-panel-background.avif",
         accentText: "#657a5f",
         contrastText: "#ffffff",
+        overlayColors: LIGHT_PANEL_OVERLAY_COLORS,
     },
     stoic: {
         primary: "#665a52",
         primaryHover: "#554a43",
         soft: "#f0ece8",
         softHover: "#e4ddd6",
+        panelBackgroundImagePath: "images/stoic/stoic-panel-background.avif",
         accentText: "#665a52",
         contrastText: "#ffffff",
+        overlayColors: DARK_PANEL_OVERLAY_COLORS,
     },
     cowboy: {
         primary: "#a55321",
         primaryHover: "#87441b",
         soft: "#fff0e3",
         softHover: "#ffe1c9",
+        panelBackgroundImagePath: "images/cowboy/cowboy-panel-background.avif",
         accentText: "#a55321",
         contrastText: "#ffffff",
+        overlayColors: LIGHT_PANEL_OVERLAY_COLORS,
     },
 } as const satisfies Record<string, FocusCompanionTheme>;
 

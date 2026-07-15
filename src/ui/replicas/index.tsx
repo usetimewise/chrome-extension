@@ -35,8 +35,18 @@ type ReplicaRow = {
 
 const DEBUG_HOST = "debug.zalipoff.local";
 const DEBUG_SESSION_ID = "replicas-debug-session";
+type ThemeSwatchKey = keyof Pick<
+    FocusCompanionTheme,
+    | "primary"
+    | "primaryHover"
+    | "soft"
+    | "softHover"
+    | "accentText"
+    | "contrastText"
+>;
+
 const THEME_SWATCHES: readonly {
-    key: keyof FocusCompanionTheme;
+    key: ThemeSwatchKey;
     label: string;
 }[] = [
     { key: "primary", label: "Primary" },
