@@ -1,4 +1,5 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
+import { IS_BACKEND_INTEGRATION_ENABLED } from "../../lib/app-settings.js";
 import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
 import {
     markFocusNudgeNotificationShown,
@@ -157,7 +158,7 @@ export async function evaluateFocusNudgeNotification(
         },
         disabledDefaultBlockRuleIds: settings.disabledDefaultBlockRuleIds,
         apiBaseUrl: settings.apiBaseUrl,
-        allowNetworkLookup: true,
+        allowNetworkLookup: IS_BACKEND_INTEGRATION_ENABLED,
     });
     devDebugLog("focusNudge.decision", {
         action: decision.action,

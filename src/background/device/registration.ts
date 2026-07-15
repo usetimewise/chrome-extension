@@ -1,4 +1,5 @@
 import { registerDevice } from "../../lib/api/devices.js";
+import { IS_BACKEND_INTEGRATION_ENABLED } from "../../lib/app-settings.js";
 import {
     getDeviceState,
     resetDeviceRegistration,
@@ -20,8 +21,12 @@ function isDeviceRegistrationMismatch(error: unknown): boolean {
 export async function ensureDeviceRegistration(
     force = false,
 ): Promise<DeviceState> {
-    const settings = await getSettings();
     const deviceState = await getDeviceState();
+    if (!IS_BACKEND_INTEGRATION_ENABLED) {
+        return deviceState;
+    }
+
+    const settings = await getSettings();
     if (deviceState.deviceId && !force) {
         return deviceState;
     }
@@ -50,6 +55,10 @@ export async function ensureDeviceRegistration(
 export async function withRegisteredDevice<T>(
     action: (settings: Settings, deviceState: DeviceState) => Promise<T>,
 ): Promise<T> {
+    if (!IS_BACKEND_INTEGRATION_ENABLED) {
+        throw new Error("Backend integration is disabled");
+    }
+
     let settings = await getSettings();
     let deviceState = await ensureDeviceRegistration();
 

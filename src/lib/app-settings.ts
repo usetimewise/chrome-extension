@@ -1,5 +1,9 @@
 import type { Settings } from "./types.js";
 
+// Temporary release switch. Keep backend clients intact so the integration can
+// be restored without changing the local extension flows.
+export const IS_BACKEND_INTEGRATION_ENABLED = false;
+
 export const APP_SETTINGS: Settings = {
     apiBaseUrl: "http://80.74.24.127:8081",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",

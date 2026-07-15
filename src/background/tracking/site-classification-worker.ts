@@ -1,4 +1,5 @@
 import { classifySites } from "../../lib/api/site-rules.js";
+import { IS_BACKEND_INTEGRATION_ENABLED } from "../../lib/app-settings.js";
 import {
     clearSiteClassification,
     ensureSiteClassificationPending,
@@ -32,8 +33,12 @@ function shouldSkipClassification(host: string, settings: Settings): boolean {
 }
 
 export async function scheduleSiteClassificationAlarm(): Promise<void> {
-    const nextRetryAt = await getNextClassificationRetryAt();
     await chrome.alarms.clear(SITE_CLASSIFICATION_RETRY_ALARM);
+    if (!IS_BACKEND_INTEGRATION_ENABLED) {
+        return;
+    }
+
+    const nextRetryAt = await getNextClassificationRetryAt();
     if (nextRetryAt === null) {
         return;
     }
@@ -46,7 +51,7 @@ export async function ensureClassificationForHost(
     context: BackgroundRuntimeContext,
     host: string | null | undefined,
 ): Promise<void> {
-    if (!host) {
+    if (!IS_BACKEND_INTEGRATION_ENABLED || !host) {
         return;
     }
 
@@ -71,6 +76,10 @@ export async function ensureClassificationForHost(
 export function processSiteClassificationQueue(
     context: BackgroundRuntimeContext,
 ): Promise<void> {
+    if (!IS_BACKEND_INTEGRATION_ENABLED) {
+        return Promise.resolve();
+    }
+
     if (!activeClassificationRun) {
         activeClassificationRun = processSiteClassificationQueueNow(
             context,
@@ -85,6 +94,10 @@ export function processSiteClassificationQueue(
 export async function retrySiteClassificationsNow(
     context: BackgroundRuntimeContext,
 ): Promise<number> {
+    if (!IS_BACKEND_INTEGRATION_ENABLED) {
+        return 0;
+    }
+
     if (!activeClassificationRun) {
         activeClassificationRun = processSiteClassificationQueueNow(
             context,

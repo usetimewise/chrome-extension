@@ -1,4 +1,5 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
+import { IS_BACKEND_INTEGRATION_ENABLED } from "../../lib/app-settings.js";
 import { createTranslator } from "../../lib/i18n/index.js";
 import {
     resolveFocusBlockSeverity,
@@ -165,18 +166,21 @@ export function createBackgroundMessageListener(
                         message.category,
                         message.excluded,
                     );
-                    void withRegisteredDevice(async (settings, deviceState) =>
-                        updateSiteRule(
-                            settings.apiBaseUrl,
-                            deviceState.deviceId,
-                            {
-                                host: message.host,
-                                category: message.category,
-                                excluded: message.excluded,
-                            },
-                        ),
-                    );
-                    if (message.host) {
+                    if (IS_BACKEND_INTEGRATION_ENABLED) {
+                        void withRegisteredDevice(
+                            async (settings, deviceState) =>
+                                updateSiteRule(
+                                    settings.apiBaseUrl,
+                                    deviceState.deviceId,
+                                    {
+                                        host: message.host,
+                                        category: message.category,
+                                        excluded: message.excluded,
+                                    },
+                                ),
+                        );
+                    }
+                    if (IS_BACKEND_INTEGRATION_ENABLED && message.host) {
                         void ensureClassificationForHost(context, message.host);
                         void processSiteClassificationQueue(context);
                     }

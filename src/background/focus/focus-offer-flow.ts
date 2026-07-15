@@ -1,4 +1,5 @@
 import { MESSAGE_TYPES } from "../../lib/constants.js";
+import { IS_BACKEND_INTEGRATION_ENABLED } from "../../lib/app-settings.js";
 import { devDebugLog, devDebugWarn } from "../../lib/dev-debug.js";
 import { getFocusOfferEligibility } from "../../lib/focus-offer-eligibility.js";
 import { createTranslator } from "../../lib/i18n/index.js";
@@ -80,7 +81,7 @@ export async function evaluateFocusOffer(
         },
         disabledDefaultBlockRuleIds: settings.disabledDefaultBlockRuleIds,
         apiBaseUrl: settings.apiBaseUrl,
-        allowNetworkLookup: true,
+        allowNetworkLookup: IS_BACKEND_INTEGRATION_ENABLED,
     });
     if (decision.action !== "distracting") {
         devDebugLog("focusOffer.allow", { reason: decision.reason });
