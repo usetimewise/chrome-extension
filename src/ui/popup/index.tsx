@@ -436,7 +436,11 @@ function SettingsView({
                         <AppIcon name="back" />
                     </button>
                     <div>
-                        <p className="popup-kicker">ZalipOff</p>
+                        <img
+                            className="popup-brand-logo"
+                            src="/logo.svg"
+                            alt="ZalipOff"
+                        />
                         <h1 className="settings-title">
                             {t("popup.settingsTitle")}
                         </h1>
@@ -885,7 +889,11 @@ function PopupApp() {
         >
             <section className="popup-focus-panel" aria-busy={isLoading}>
                 <header className="popup-focus-header">
-                    <p className="popup-kicker">ZalipOff</p>
+                    <img
+                        className="popup-brand-logo"
+                        src="/logo.svg"
+                        alt="ZalipOff"
+                    />
                     <div className="popup-header-actions">
                         <LanguagePicker
                             language={language}

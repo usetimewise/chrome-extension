@@ -149,14 +149,10 @@ body::before {
     color: var(--companion-accent-text);
 }
 
-.popup-kicker {
-    margin: 0;
-    color: #717182;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    line-height: 1.2;
-    text-transform: uppercase;
+.popup-brand-logo {
+    display: block;
+    width: 92px;
+    height: auto;
 }
 
 .popup-focus-title {
