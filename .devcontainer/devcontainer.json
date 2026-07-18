@@ -1,0 +1,28 @@
+{
+    "name": "zalipoff-extension",
+    "image": "mcr.microsoft.com/devcontainers/javascript-node:24-bookworm",
+    "init": true,
+    "remoteUser": "node",
+    "updateRemoteUserUID": true,
+    "containerEnv": {
+        "CODEX_HOME": "/home/node/.codex"
+    },
+    "mounts": [
+        "source=zalipoff-extension-codex,target=/home/node/.codex,type=volume",
+        "source=zalipoff-extension-node-modules,target=${containerWorkspaceFolder}/node_modules,type=volume"
+    ],
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
+    "waitFor": "postCreateCommand",
+    "hostRequirements": {
+        "cpus": 2,
+        "memory": "4gb",
+        "storage": "8gb"
+    },
+    "customizations": {
+        "jetbrains": {
+            "settings": {
+                "com.intellij:app:HttpConfigurable.use_proxy_pac": true
+            }
+        }
+    }
+}
