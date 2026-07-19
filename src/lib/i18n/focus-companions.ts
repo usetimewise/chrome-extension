@@ -312,11 +312,11 @@ const FOCUS_COMPANION_TRANSLATIONS = {
             "1": [
                 {
                     en: "OKAY OKAY OKAY let's GO bestie!! New day, fresh slate.",
-                    ru: "ОКЕЙ ОКЕЙ ОКЕЙ погнали, кореш!! Новый день, чистый лист."
+                    ru: "ОКЕЙ ОКЕЙ ОКЕЙ погнали, бро!! Новый день, чистый лист."
                 },
                 {
                     en: "Morning legend! Pick your main quest and let's run it.",
-                    ru: "Утро, легенда! Выбери главный квест — гоним."
+                    ru: "Доброе утро, легенда! Выбери главный квест и погнали."
                 },
                 {
                     en: "We are LOCKED IN today. You and me. Let's eat.",
@@ -328,11 +328,11 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Day 1 of being the version of you that ships.",
-                    ru: "День 1 версии тебя, которая доставляет."
+                    ru: "Первый день новой версии тебя"
                 },
                 {
                     en: "Bestie just BELIEVES in you today. Show up for me.",
-                    ru: "Кореш просто ВЕРИТ в тебя. Покажи себя."
+                    ru: "Бро просто ВЕРИТ в тебя. Покажи себя."
                 },
                 {
                     en: "First task energy: pick something small, win fast.",
@@ -340,7 +340,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "We don't doomscroll mornings. We BUILD mornings.",
-                    ru: "Мы не скроллим утрами. Мы СТРОИМ утрами."
+                    ru: "Мы не скроллим утром. Мы утром СТРОИМ ."
                 },
                 {
                     en: "You woke up and chose impact today. Love that for us.",
@@ -348,7 +348,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Open the tab that scares you. Bestie's got your back.",
-                    ru: "Открой вкладку, которая пугает. Кореш с тобой."
+                    ru: "Открой вкладку, которая пугает. Бести с тобой."
                 }
             ],
             "2": [
@@ -584,11 +584,11 @@ const FOCUS_COMPANION_TRANSLATIONS = {
             "1": [
                 {
                     en: "Wow, a whole new day. Imagine if you used it.",
-                    ru: "Ого, целый новый день. Представь, если ты его потратишь."
+                    ru: "Ого, целый новый день. Представь, если ты его запорешь."
                 },
                 {
                     en: "Coffee acquired. Productivity: pending verification.",
-                    ru: "Кофе получен. Продуктивность: ожидает проверки."
+                    ru: "Кофе выпит, но стал ли ты продуктивнее - не известно"
                 },
                 {
                     en: "Let me guess: 'just gonna check email first.' Bold strategy.",
@@ -596,11 +596,11 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Welcome to another opportunity to disappoint your todo list.",
-                    ru: "Добро в очередную возможность разочаровать тудушку."
+                    ru: "Добро пожаловать в очередную возможность разочаровать тудушку."
                 },
                 {
                     en: "Look at you, opening the laptop. The bar is in hell.",
-                    ru: "Глянь, открыл ноут. Планка в аду."
+                    ru: "Глянь, открыл ноут. Прыгнул выше головы"
                 },
                 {
                     en: "Day starts now. Or in 20 minutes when you actually start.",
@@ -856,11 +856,11 @@ const FOCUS_COMPANION_TRANSLATIONS = {
             "1": [
                 {
                     en: "Morning. One breath. One intention. Begin.",
-                    ru: "Утро. Один вдох. Одно намерение. Начинай."
+                    ru: "Доброе утро. Один вдох. Одно намерение. Начинай."
                 },
                 {
                     en: "Today is a blank scroll. What will you write first?",
-                    ru: "Сегодня — чистый свиток. Что напишешь первым?"
+                    ru: "Сегодня — чистый лист. Что ты напишешь на нём первым?"
                 },
                 {
                     en: "Do not chase the day. Greet it.",
@@ -868,15 +868,15 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Choose one task. Make it the day's center.",
-                    ru: "Выбери одну задачу. Сделай её центром дня."
+                    ru: "Выбери одну задачу. Сделай её главным делом дня."
                 },
                 {
                     en: "The first hour shapes the rest. Tend it with care.",
-                    ru: "Первый час задаёт остальные. Возделывай с заботой."
+                    ru: "Первый час задаёт тон всему дню. Проведи его осознанно."
                 },
                 {
                     en: "Begin small. Smallness compounds.",
-                    ru: "Начни с малого. Малое складывается."
+                    ru: "Начни с малого. Маленькими шагами можно дойти далеко"
                 },
                 {
                     en: "Inbox is noise. The work is silence.",
@@ -888,7 +888,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "You owe today nothing but presence.",
-                    ru: "Сегодняшнему дню ты должен лишь присутствие."
+                    ru: "Сегодня ты ничего не должен — только быть в моменте."
                 },
                 {
                     en: "Walk into your work the way you walk into a temple.",
@@ -1128,7 +1128,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
             "1": [
                 {
                     en: "Mornin', matey! Sails up, course set. Where we sailin' today?",
-                    ru: "Утро, морячок! Паруса вверх, курс задан. Куда плывём?"
+                    ru: "Доброе утро, морячок! Паруса вверх, курс задан. Куда плывём?"
                 },
                 {
                     en: "Wake yer crew, the day's a-callin'. Treasure won't dig itself.",
@@ -1136,7 +1136,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Open the map. Pick the X. Set the heading.",
-                    ru: "Открывай карту. Выбирай X. Задавай курс."
+                    ru: "Открывай карту. Выбирай координаты. Задавай курс."
                 },
                 {
                     en: "Sun's up, grog's poured. To the work, ye scallywag!",
@@ -1148,7 +1148,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "No driftin' today. We sail with intent.",
-                    ru: "Никакого дрейфа. Плывём с намерением."
+                    ru: "Сегодня не плывём по течению. Идём чётко по курсу."
                 },
                 {
                     en: "Tides won't wait. Neither will yer todo list.",
@@ -1404,11 +1404,11 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "If I may, the morning is finest spent on the principal task.",
-                    ru: "Если позволите — утро лучше всего на главную задачу."
+                    ru: "Если позволите — утро лучше всего потратить на главную задачу."
                 },
                 {
                     en: "Coffee has been arranged. Productivity is now expected.",
-                    ru: "Кофе подан. Продуктивность ожидаема."
+                    ru: "Кофе подан. Ожидается продуктивность."
                 },
                 {
                     en: "The inbox shall keep. The work, however, will not.",
@@ -1416,27 +1416,27 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "One does feel the day improves when one begins with purpose.",
-                    ru: "Замечено: день идёт лучше, если начат с намерения."
+                    ru: "Замечено: день идёт лучше, если начат осознанно."
                 },
                 {
                     en: "I have taken the liberty of suggesting: pick one task first.",
-                    ru: "Позволил себе совет: выбери сперва одну задачу."
+                    ru: "Позволю себе дать вам совет: выберите сперва одну задачу."
                 },
                 {
                     en: "Today's first hour is rather sacred. Treat it accordingly.",
-                    ru: "Первый час сегодня — священный. Соответствуй."
+                    ru: "Первый час сегодня — священный. Соответствуйте."
                 },
                 {
                     en: "Shall we proceed, or would sir prefer to scroll? Quite.",
-                    ru: "Приступим, или сэр желает поскроллить? Понятно."
+                    ru: "Приступим, или сэр желает поскроллить?"
                 },
                 {
                     en: "A gentleman finishes what he begins. Best begin, then.",
-                    ru: "Джентльмен заканчивает начатое. Стало быть, начнём."
+                    ru: "Джентльмен всегда заканчивает начатое. Стало быть, начнём."
                 },
                 {
                     en: "Mind on the work, sir. The day awaits your attention.",
-                    ru: "Ум на работу, сэр. День ждёт вашего внимания."
+                    ru: "Сосредоточьтесь на деле, сэр. День ждёт вашего внимания."
                 }
             ],
             "2": [
@@ -1672,7 +1672,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
             "1": [
                 {
                     en: "Yo dude, fresh day, clean lineup. Let's catch it.",
-                    ru: "Йоу чувак, свежий день, чистый сет. Ловим."
+                    ru: "Йоу чувак, новый день, свежий план. Не упусти момент"
                 },
                 {
                     en: "The morning's calling, bro. Pick your wave.",
@@ -1680,7 +1680,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Coffee in, brain on. Stoked yet? You should be.",
-                    ru: "Кофе в, мозг включён. Угараешь? Должен."
+                    ru: "Кофе выпит, мозг включён. Уже заряжен? А должен бы."
                 },
                 {
                     en: "No rush, man, but the first task ain't gonna paddle itself.",
@@ -1688,23 +1688,23 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Today's session looks clean. Don't kook it.",
-                    ru: "Сегодняшний сейшн чистый. Не накосячь."
+                    ru: "Сегодня волны отличные. Только не облажайся"
                 },
                 {
                     en: "Just one solid wave to start, dude. Find it. Ride it.",
-                    ru: "Одна нормальная волна для старта. Найди. Прокатись."
+                    ru: "Всего одна нормальная волна для старта. Найди ее. Прокатись."
                 },
                 {
                     en: "Forget the inbox, brah. Work first, scroll later.",
-                    ru: "Забей на почту, бра. Сначала работа, потом скролл."
+                    ru: "Забей на почту, бро. Сначала работа, потом скролл."
                 },
                 {
                     en: "Pick your line, commit, paddle hard. Same as life.",
-                    ru: "Выбери линию, коммить, греби сильнее. Как в жизни."
+                    ru: "Выбери волну, решись, греби сильнее. Как в жизни."
                 },
                 {
                     en: "Easy energy, deep focus. That's the move.",
-                    ru: "Лёгкая энергия, глубокий фокус. Вот ход."
+                    ru: "Лёгкая энергия, глубокий фокус. Вот что нужно."
                 },
                 {
                     en: "Morning's prime, dude. Don't waste it on news.",
@@ -1944,35 +1944,36 @@ const FOCUS_COMPANION_TRANSLATIONS = {
             "1": [
                 {
                     en: "Day one mode. Define today's top KPI. Execute against it.",
-                    ru: "Режим дня. Определи топ-KPI. Выполняй против него."
+                    ru: "Режим дня. Определи KPI. Работай на результат."
                 },
                 {
                     en: "Open the tracker. Set a goal. Optimize for output.",
-                    ru: "Открой трекер. Поставь цель. Оптимизируй на результат."
+                    ru: "Открой трекер. Поставь цель. Оптимизируй работу для максимального результата."
                 },
                 {
                     en: "First task = highest-leverage. Start there. No discussion.",
-                    ru: "Первая задача = с наибольшим рычагом. Стартуй. Без обсуждений."
+                    ru: "Первая задача - та, что даст наибольший результат. Стартуй. Без обсуждений."
                 },
                 {
                     en: "Inbox triage later. Deep work first. Standard protocol.",
-                    ru: "Сортировка почты — позже. Сначала глубокая работа. Стандарт."
+                    ru: "Сортировка почты — позже. Сначала глубокая работа. Стандартный регламент."
                 },
                 {
                     en: "A players don't warm up for an hour. Ship something by 10am.",
-                    ru: "Топ-перформеры не разогреваются час. Доставь что-то к 10."
+                    ru: "Топ-перформеры не разогреваются час. Выдай что-то к 10."
                 },
                 {
                     en: "Today is a deliverable. What are you shipping?",
-                    ru: "Сегодня — это deliverable. Что ты доставишь?"
+                    ru: "Сегодня от тебя нужен конкретный результат. Что ты доведёшь до конца?"
                 },
                 {
                     en: "Block the calendar. Protect your focus window. Non-negotiable.",
-                    ru: "Заблокируй календарь. Защити окно фокуса. Не обсуждается."
+                    ru: "Забронируй слот в календаре под продуктивность. Защити свое окно концентрации. Не обсуждается.
+"
                 },
                 {
                     en: "Single most important task. Identify. Execute. Repeat.",
-                    ru: "Самая важная задача. Идентифицируй. Выполни. Повтори."
+                    ru: "Одна самая важная задача. Определи её. Выполни. Повтори."
                 },
                 {
                     en: "Your day is your portfolio. Curate it deliberately.",
@@ -2228,11 +2229,11 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Hustle from the snap. No warm-up plays today.",
-                    ru: "Хастл с самого начала. Никаких разогревочных розыгрышей."
+                    ru: "Включайся на полную с самого начала. Сегодня без разминочных заходов"
                 },
                 {
                     en: "You're starting QB. Your call. Run the play.",
-                    ru: "Ты стартовый QB. Твой выбор. Запускай комбинацию."
+                    ru: "Ты — капитан команды. Решение за тобой. Разыгрывай комбинацию."
                 },
                 {
                     en: "I want EFFORT. I want FOCUS. I want OUTPUT. Now.",
@@ -2244,7 +2245,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Coffee's in. Now show me what you got.",
-                    ru: "Кофе внутри. Покажи, что у тебя есть."
+                    ru: "Кофе ты выпил. А теперь покажи, на что ты способен."
                 },
                 {
                     en: "The opponent doesn't sleep in. Neither do you.",
@@ -2252,7 +2253,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Today's the game. Yesterday's tape doesn't matter. PLAY.",
-                    ru: "Сегодня — игра. Вчерашняя плёнка не важна. ИГРАЙ."
+                    ru: "Сегодня — новая игра. Вчерашние ошибки не важны. ИГРАЙ."
                 }
             ],
             "2": [
@@ -2500,11 +2501,11 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Be gentle with the start. Mornings hold tender energy.",
-                    ru: "Будь мягок со стартом. Утро держит нежную энергию."
+                    ru: "Начинай бережно. Утро несёт в себе хрупкую энергию."
                 },
                 {
                     en: "What would feel kind to your future self today?",
-                    ru: "Что было бы добрым к твоему будущему я сегодня?"
+                    ru: "Что ты можешь сделать сегодня, чтобы твой будущий «я» был тебе благодарен?"
                 },
                 {
                     en: "Setting one intention is enough. The rest can unfold.",
@@ -2516,7 +2517,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "You're allowed to begin slowly. That's a valid pace.",
-                    ru: "Ты вправе начинать медленно. Это валидный темп."
+                    ru: "Ты вправе начинать медленно. Это приемлимый темп."
                 },
                 {
                     en: "What's one small win you'd appreciate by lunch?",
@@ -2760,11 +2761,11 @@ const FOCUS_COMPANION_TRANSLATIONS = {
             "1": [
                 {
                     en: "The day is yours, briefly. Use it before it uses you.",
-                    ru: "День — твой, ненадолго. Используй его, пока он не использовал тебя."
+                    ru: "День — твой, но ненадолго. Используй его, пока он не использовал тебя."
                 },
                 {
                     en: "Begin as if death were watching. Then act with care.",
-                    ru: "Начни так, будто смерть смотрит. И действуй с заботой."
+                    ru: "Начни так, будто смерть наблюдает за тобой. А затем действуй осознанно."
                 },
                 {
                     en: "The only morning you have is this one. Honor it.",
@@ -3044,7 +3045,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "First task of the day is the lead horse. Get 'er movin'.",
-                    ru: "Первая задача дня — главная лошадь. Дай ей хода."
+                    ru: "Первая задача дня — ведущая лошадь. Пора ее оседлать"
                 },
                 {
                     en: "Don't dawdle, partner. Daylight's burnin'.",
