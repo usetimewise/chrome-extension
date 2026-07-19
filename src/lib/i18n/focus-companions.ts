@@ -1968,8 +1968,7 @@ const FOCUS_COMPANION_TRANSLATIONS = {
                 },
                 {
                     en: "Block the calendar. Protect your focus window. Non-negotiable.",
-                    ru: "Забронируй слот в календаре под продуктивность. Защити свое окно концентрации. Не обсуждается.
-"
+                    ru: "Забронируй слот в календаре под продуктивность. Защити свое окно концентрации. Не обсуждается."
                 },
                 {
                     en: "Single most important task. Identify. Execute. Repeat.",
