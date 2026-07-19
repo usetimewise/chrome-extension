@@ -7,6 +7,7 @@
         "build": "vite build",
         "images:avif": "node scripts/convert-png-to-avif.mjs",
         "images:avif:archive-png": "node scripts/convert-png-to-avif.mjs --archive-png logs/png-images",
+        "images:remove-backgrounds": "python3 scripts/remove-backgrounds-to-avif.py",
         "lint": "eslint .",
         "typecheck": "tsc --noEmit",
         "test": "tsx --test src/lib/*.test.ts src/lib/urlDecision/*.test.ts"

@@ -1,6 +1,9 @@
 {
     "name": "zalipoff-extension",
-    "image": "mcr.microsoft.com/devcontainers/javascript-node:24-bookworm",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
     "init": true,
     "remoteUser": "node",
     "updateRemoteUserUID": true,
