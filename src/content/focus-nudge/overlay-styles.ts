@@ -12,6 +12,38 @@ const DEFAULT_THEME_CUSTOM_PROPERTIES = `
       --overlay-secondary-border: #000000;
       --overlay-control-hover: rgba(17, 24, 39, 0.12);
       --overlay-danger-text: #000000;
+      --scene-backdrop-base: #713244;
+      --scene-backdrop-deep: #2b1720;
+      --scene-backdrop-highlight: #a95d6d;
+      --scene-light: rgba(255, 210, 183, 0.38);
+      --scene-shadow: rgba(21, 8, 13, 0.78);
+      --scene-character-width: 118%;
+      --scene-character-max-width: 320px;
+      --scene-character-offset-x: 0%;
+      --scene-character-offset-y: 0%;
+      --scene-foot-anchor-x: 50%;
+      --scene-foot-anchor-y: 89.5%;
+      --scene-glow-x: 50%;
+      --scene-glow-y: 38%;
+      --scene-floor-shadow-width: 68%;
+      --scene-floor-shadow-height: 7%;
+      --scene-floor-shadow-offset-x: -8%;
+      --scene-floor-shadow-offset-y: 1.2%;
+      --scene-floor-shadow-blur: 10px;
+      --scene-floor-shadow-skew: -10deg;
+      --scene-floor-shadow-opacity: 0.34;
+      --scene-contact-shadow-width: 25%;
+      --scene-contact-shadow-height: 2.8%;
+      --scene-contact-shadow-offset-x: 0%;
+      --scene-contact-shadow-offset-y: 0.4%;
+      --scene-contact-shadow-blur: 4px;
+      --scene-contact-shadow-opacity: 0.58;
+      --scene-surface-shadow-width: 46%;
+      --scene-surface-shadow-height: 28%;
+      --scene-surface-shadow-x: 20%;
+      --scene-surface-shadow-y: 90%;
+      --scene-surface-shadow-blur: 18px;
+      --scene-surface-shadow-opacity: 0.26;
 `;
 
 const SHARED_HOST_DECLARATIONS = `
@@ -41,6 +73,115 @@ const SHARED_VISUAL_STYLES = `
       background-position: left top;
       background-repeat: no-repeat;
       background-size: auto 100%;
+    }
+
+    :host([data-companion-visual="scene"]) .content,
+    :host([data-companion-visual="scene"]) .panel-content {
+      background: transparent;
+    }
+
+    .scene {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(to bottom, transparent 58%, color-mix(in srgb, var(--scene-backdrop-deep) 42%, transparent)),
+        radial-gradient(circle at 28% 42%, color-mix(in srgb, var(--scene-backdrop-highlight) 44%, transparent) 0, transparent 46%),
+        linear-gradient(120deg, var(--scene-backdrop-base), color-mix(in srgb, var(--scene-backdrop-base) 88%, var(--scene-backdrop-deep)) 58%, var(--scene-backdrop-deep));
+      pointer-events: none;
+    }
+
+    .scene::before {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      content: "";
+      background: radial-gradient(ellipse at center, transparent 54%, rgba(18, 6, 11, 0.2));
+    }
+
+    .scene::after {
+      position: absolute;
+      z-index: 1;
+      top: var(--scene-surface-shadow-y);
+      left: var(--scene-surface-shadow-x);
+      width: var(--scene-surface-shadow-width);
+      height: var(--scene-surface-shadow-height);
+      border-radius: 50%;
+      content: "";
+      background: radial-gradient(ellipse at center, var(--scene-shadow), transparent 72%);
+      opacity: var(--scene-surface-shadow-opacity);
+      filter: blur(var(--scene-surface-shadow-blur));
+      transform: translate(-50%, -50%);
+    }
+
+    .scene-stage {
+      position: absolute;
+      z-index: 2;
+      inset: 0 auto 0 0;
+      width: 43%;
+    }
+
+    .scene-light {
+      position: absolute;
+      top: var(--scene-glow-y);
+      left: var(--scene-glow-x);
+      width: 94%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--scene-light), transparent 67%);
+      filter: blur(10px);
+      transform: translate(-50%, -50%);
+    }
+
+    .scene-character {
+      position: absolute;
+      bottom: var(--scene-character-offset-y);
+      left: calc(50% + var(--scene-character-offset-x));
+      width: min(clamp(118px, var(--scene-character-width), 320px), var(--scene-character-max-width));
+      aspect-ratio: 1;
+      transform: translateX(-50%);
+    }
+
+    .scene-character-floor-shadow,
+    .scene-character-contact-shadow {
+      position: absolute;
+      border-radius: 50%;
+      background: var(--scene-shadow);
+    }
+
+    .scene-character-floor-shadow {
+      z-index: 1;
+      top: calc(var(--scene-foot-anchor-y) + var(--scene-floor-shadow-offset-y));
+      left: calc(var(--scene-foot-anchor-x) + var(--scene-floor-shadow-offset-x));
+      width: var(--scene-floor-shadow-width);
+      height: var(--scene-floor-shadow-height);
+      opacity: var(--scene-floor-shadow-opacity);
+      filter: blur(var(--scene-floor-shadow-blur));
+      transform: translate(-50%, -50%) skewX(var(--scene-floor-shadow-skew));
+    }
+
+    .scene-character-contact-shadow {
+      z-index: 2;
+      top: calc(var(--scene-foot-anchor-y) + var(--scene-contact-shadow-offset-y));
+      left: calc(var(--scene-foot-anchor-x) + var(--scene-contact-shadow-offset-x));
+      width: var(--scene-contact-shadow-width);
+      height: var(--scene-contact-shadow-height);
+      opacity: var(--scene-contact-shadow-opacity);
+      filter: blur(var(--scene-contact-shadow-blur));
+      transform: translate(-50%, -50%);
+    }
+
+    .scene-character-image {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center bottom;
+      filter: saturate(0.94) contrast(1.025) brightness(0.985);
     }
 `;
 
@@ -203,6 +344,8 @@ ${SHARED_COMPONENT_STYLES}
     }
 
     .header {
+      position: relative;
+      z-index: 1;
       display: flex;
       align-items: stretch;
       width: 100%;
@@ -231,6 +374,10 @@ ${SHARED_COMPONENT_STYLES}
       display: flex;
       flex-direction: column;
       padding: 13px 13px 12px 15px;
+    }
+
+    .toast.scene-shell .content {
+      margin-left: 148px;
     }
 
     .top-row {
@@ -356,6 +503,14 @@ ${SHARED_COMPONENT_STYLES}
         padding-left: 12px;
       }
 
+      .toast.scene-shell .content {
+        margin-left: 112px;
+      }
+
+      .toast.scene-shell .scene-character {
+        --scene-character-max-width: 150px;
+      }
+
       .speech {
         padding: 8px;
       }
@@ -453,6 +608,8 @@ ${SHARED_COMPONENT_STYLES}
     }
 
     .panel-content {
+      position: relative;
+      z-index: 1;
       box-sizing: border-box;
       min-width: 0;
       flex: 1 1 auto;
@@ -460,6 +617,15 @@ ${SHARED_COMPONENT_STYLES}
       flex-direction: column;
       justify-content: center;
       padding: 48px 28px 28px 34px;
+    }
+
+    .panel.scene-shell {
+      display: block;
+    }
+
+    .panel.scene-shell .panel-content {
+      min-height: 360px;
+      margin-left: 43%;
     }
 
     .speech {
@@ -584,6 +750,21 @@ ${SHARED_COMPONENT_STYLES}
 
       .panel-content {
         padding: 26px 20px 20px;
+      }
+
+      .panel.scene-shell .scene-stage {
+        width: 100%;
+        height: 190px;
+      }
+
+      .panel.scene-shell .scene-character {
+        --scene-character-max-width: 184px;
+      }
+
+      .panel.scene-shell .panel-content {
+        min-height: 0;
+        margin-top: 190px;
+        margin-left: 0;
       }
 
       .speech {

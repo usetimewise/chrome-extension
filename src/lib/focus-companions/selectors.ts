@@ -8,10 +8,12 @@ import {
     getFocusCompanionReplicaText,
     getFocusCompanionText,
 } from "../i18n/focus-companions.js";
+import { getFocusCompanionScene } from "./scenes.js";
 import type {
     FocusCompanion,
     FocusCompanionAssetUrlResolver,
     FocusCompanionId,
+    FocusCompanionOverlayVisual,
     FocusCompanionOverlayVariant,
     FocusCompanionPreview,
     FocusCompanionReplica,
@@ -82,6 +84,32 @@ function createReplicaVisual(
         src: resolvePath(replica.imagePath, resolveAssetUrl),
         alt: getFocusCompanionText(companion.id, "name", language),
     };
+}
+
+function createOverlayVisual(
+    companion: FocusCompanion,
+    scenarioId: FocusCompanionScenarioId,
+    replica: FocusCompanionReplica,
+    language: AppLanguage,
+    resolveAssetUrl?: FocusCompanionAssetUrlResolver,
+): FocusCompanionOverlayVisual {
+    const scene = getFocusCompanionScene(companion.id, scenarioId);
+
+    if (scene && "imagePath" in replica) {
+        return {
+            kind: "scene",
+            characterSrc: resolvePath(replica.imagePath, resolveAssetUrl),
+            alt: getFocusCompanionText(companion.id, "name", language),
+            scene,
+        };
+    }
+
+    return createReplicaVisual(
+        companion,
+        replica,
+        language,
+        resolveAssetUrl,
+    );
 }
 
 function getScenarioReplicas(
@@ -191,8 +219,9 @@ export function createFocusCompanionOverlayVariant(
             replicaIndex,
             language,
         ),
-        visual: createReplicaVisual(
+        visual: createOverlayVisual(
             companion,
+            scenarioId,
             replica,
             language,
             options.resolveAssetUrl,

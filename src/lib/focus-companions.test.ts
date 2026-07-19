@@ -240,6 +240,55 @@ test("creates overlay variant for selected scenario", () => {
     }
 });
 
+test("creates unified alpha scenes for every butler scenario one replica", () => {
+    for (let replicaIndex = 0; replicaIndex < 10; replicaIndex += 1) {
+        const variant = createFocusCompanionOverlayVariant("butler", {
+            scenarioId: "1",
+            replicaIndex,
+            resolveAssetUrl: (path) => `chrome-extension://${path}`,
+        });
+
+        assert.equal(variant.visual.kind, "scene");
+        if (variant.visual.kind === "scene") {
+            assert.equal(
+                variant.visual.characterSrc,
+                `chrome-extension://images/alpha/butler/butler-s01-${String(replicaIndex + 1).padStart(2, "0")}.avif`,
+            );
+            assert.equal(variant.visual.alt, "British Butler");
+            assert.equal(
+                variant.visual.scene.tuning.floorShadowOpacity > 0,
+                true,
+            );
+            assert.equal(
+                variant.visual.scene.tuning.contactShadowOpacity > 0,
+                true,
+            );
+            assert.equal(
+                variant.visual.scene.tuning.surfaceShadowOpacity > 0,
+                true,
+            );
+            assert.match(
+                variant.visual.scene.palette.backdropBase,
+                HEX_COLOR_PATTERN,
+            );
+        }
+    }
+});
+
+test("keeps legacy image visuals outside butler scenario one", () => {
+    const butlerScenarioTwo = createFocusCompanionOverlayVariant("butler", {
+        scenarioId: "2",
+        replicaIndex: 0,
+    });
+    const ceoScenarioOne = createFocusCompanionOverlayVariant("ceo", {
+        scenarioId: "1",
+        replicaIndex: 0,
+    });
+
+    assert.equal(butlerScenarioTwo.visual.kind, "image");
+    assert.equal(ceoScenarioOne.visual.kind, "image");
+});
+
 test("creates localized overlay variant", () => {
     const variant = createFocusCompanionOverlayVariant("sgt", {
         language: "ru",

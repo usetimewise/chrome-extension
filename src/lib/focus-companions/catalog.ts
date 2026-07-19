@@ -1540,43 +1540,43 @@ export const FOCUS_COMPANION_CATALOG = {
             "1": [
                 {
                     text: "A new day, sir. Shall we attend to it directly?",
-                    imagePath: "images/butler/butler-s01-01.avif"
+                    imagePath: "images/alpha/butler/butler-s01-01.avif"
                 },
                 {
                     text: "If I may, the morning is finest spent on the principal task.",
-                    imagePath: "images/butler/butler-s01-02.avif"
+                    imagePath: "images/alpha/butler/butler-s01-02.avif"
                 },
                 {
                     text: "Coffee has been arranged. Productivity is now expected.",
-                    imagePath: "images/butler/butler-s01-03.avif"
+                    imagePath: "images/alpha/butler/butler-s01-03.avif"
                 },
                 {
                     text: "The inbox shall keep. The work, however, will not.",
-                    imagePath: "images/butler/butler-s01-04.avif"
+                    imagePath: "images/alpha/butler/butler-s01-04.avif"
                 },
                 {
                     text: "One does feel the day improves when one begins with purpose.",
-                    imagePath: "images/butler/butler-s01-05.avif"
+                    imagePath: "images/alpha/butler/butler-s01-05.avif"
                 },
                 {
                     text: "I have taken the liberty of suggesting: pick one task first.",
-                    imagePath: "images/butler/butler-s01-06.avif"
+                    imagePath: "images/alpha/butler/butler-s01-06.avif"
                 },
                 {
                     text: "Today's first hour is rather sacred. Treat it accordingly.",
-                    imagePath: "images/butler/butler-s01-07.avif"
+                    imagePath: "images/alpha/butler/butler-s01-07.avif"
                 },
                 {
                     text: "Shall we proceed, or would sir prefer to scroll? Quite.",
-                    imagePath: "images/butler/butler-s01-08.avif"
+                    imagePath: "images/alpha/butler/butler-s01-08.avif"
                 },
                 {
                     text: "A gentleman finishes what he begins. Best begin, then.",
-                    imagePath: "images/butler/butler-s01-09.avif"
+                    imagePath: "images/alpha/butler/butler-s01-09.avif"
                 },
                 {
                     text: "Mind on the work, sir. The day awaits your attention.",
-                    imagePath: "images/butler/butler-s01-10.avif"
+                    imagePath: "images/alpha/butler/butler-s01-10.avif"
                 }
             ],
             "2": [

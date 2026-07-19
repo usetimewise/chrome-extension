@@ -5,8 +5,11 @@ import os
 import shutil
 import subprocess
 import tempfile
+import threading
+import time
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Sequence
+from typing import Iterator, Sequence
 
 
 AVIFENC_ARGS = (
@@ -53,6 +56,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Reprocess AVIF files that already exist",
     )
+    parser.add_argument(
+        "--heartbeat",
+        type=int,
+        default=15,
+        help="Seconds between progress messages during long operations (default: 15)",
+    )
     return parser.parse_args()
 
 
@@ -62,6 +71,15 @@ def collect_png_files(input_directory: Path) -> list[Path]:
         for path in input_directory.rglob("*")
         if path.is_file() and path.suffix.lower() == ".png"
     )
+
+
+def output_path_for(
+    input_file: Path,
+    input_directory: Path,
+    output_directory: Path,
+) -> Path:
+    relative_path = input_file.relative_to(input_directory)
+    return (output_directory / relative_path).with_suffix(".avif")
 
 
 def encode_avif(input_file: Path, output_file: Path) -> None:
@@ -77,39 +95,116 @@ def encode_avif(input_file: Path, output_file: Path) -> None:
         temporary_output.unlink(missing_ok=True)
 
 
+def format_duration(seconds: float) -> str:
+    rounded_seconds = max(0, round(seconds))
+    hours, remainder = divmod(rounded_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    if hours:
+        return f"{hours}h {minutes:02d}m {seconds:02d}s"
+
+    if minutes:
+        return f"{minutes}m {seconds:02d}s"
+
+    return f"{seconds}s"
+
+
+@contextmanager
+def heartbeat(label: str, interval_seconds: int) -> Iterator[None]:
+    started_at = time.monotonic()
+    is_finished = threading.Event()
+
+    def report_progress() -> None:
+        while not is_finished.wait(interval_seconds):
+            elapsed = format_duration(time.monotonic() - started_at)
+            print(f"  still {label} ({elapsed} elapsed)", flush=True)
+
+    thread = threading.Thread(target=report_progress, daemon=True)
+    thread.start()
+
+    try:
+        yield
+    finally:
+        is_finished.set()
+        thread.join()
+
+
 def process_files(
     files: Sequence[Path],
     input_directory: Path,
     output_directory: Path,
     overwrite: bool,
+    heartbeat_interval: int,
 ) -> None:
     from PIL import Image
     from rembg import new_session, remove
 
-    session = new_session(
-        "birefnet-general",
-        providers=["CPUExecutionProvider"],
+    pending_files = [
+        input_file
+        for input_file in files
+        if overwrite
+        or not output_path_for(input_file, input_directory, output_directory).exists()
+    ]
+    skipped_count = len(files) - len(pending_files)
+
+    print(
+        f"Ready: {len(pending_files)} file(s) pending, "
+        f"{skipped_count} already completed",
+        flush=True,
     )
+
+    if not pending_files:
+        return
+
+    print("Loading birefnet-general model...", flush=True)
+    with heartbeat("loading model", heartbeat_interval):
+        session = new_session(
+            "birefnet-general",
+            providers=["CPUExecutionProvider"],
+        )
+    print("Model loaded", flush=True)
+
+    batch_started_at = time.monotonic()
 
     with tempfile.TemporaryDirectory(prefix="rembg-alpha-") as temporary_directory:
         temporary_png = Path(temporary_directory) / "frame.png"
 
-        for index, input_file in enumerate(files, start=1):
+        for index, input_file in enumerate(pending_files, start=1):
             relative_path = input_file.relative_to(input_directory)
-            output_file = (output_directory / relative_path).with_suffix(".avif")
-
-            if output_file.exists() and not overwrite:
-                print(f"[{index}/{len(files)}] skip {relative_path}", flush=True)
-                continue
-
+            output_file = output_path_for(
+                input_file,
+                input_directory,
+                output_directory,
+            )
             output_file.parent.mkdir(parents=True, exist_ok=True)
+            file_started_at = time.monotonic()
 
-            with Image.open(input_file) as image:
-                remove(image, session=session).save(temporary_png, format="PNG")
+            print(
+                f"[{index}/{len(pending_files)}] removing background: {relative_path}",
+                flush=True,
+            )
 
+            with heartbeat("removing background", heartbeat_interval):
+                with Image.open(input_file) as image:
+                    remove(image, session=session).save(temporary_png, format="PNG")
+
+            print(f"[{index}/{len(pending_files)}] encoding AVIF", flush=True)
             encode_avif(temporary_png, output_file)
             temporary_png.unlink(missing_ok=True)
-            print(f"[{index}/{len(files)}] done {relative_path}", flush=True)
+
+            elapsed = time.monotonic() - batch_started_at
+            average = elapsed / index
+            remaining = average * (len(pending_files) - index)
+            file_elapsed = time.monotonic() - file_started_at
+            print(
+                f"[{index}/{len(pending_files)}] done in "
+                f"{format_duration(file_elapsed)}; average "
+                f"{format_duration(average)}; ETA {format_duration(remaining)}",
+                flush=True,
+            )
+
+    total_elapsed = format_duration(time.monotonic() - batch_started_at)
+    print(f"Completed {len(pending_files)} file(s) in {total_elapsed}", flush=True)
 
 
 def main() -> None:
@@ -117,6 +212,9 @@ def main() -> None:
 
     if args.threads < 1:
         raise ValueError("--threads must be at least 1")
+
+    if args.heartbeat < 1:
+        raise ValueError("--heartbeat must be at least 1")
 
     input_directory = args.input.resolve()
     output_directory = args.output.resolve()
@@ -146,6 +244,7 @@ def main() -> None:
         input_directory=input_directory,
         output_directory=output_directory,
         overwrite=args.overwrite,
+        heartbeat_interval=args.heartbeat,
     )
 
 

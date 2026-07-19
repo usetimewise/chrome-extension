@@ -1,6 +1,7 @@
 import {
     createFocusCompanionOverlayVariant,
     type FocusCompanionOverlayVariant,
+    type FocusCompanionScene,
     type FocusCompanionTheme,
 } from "../../lib/focus-companions";
 import {
@@ -99,17 +100,175 @@ function applyCompanionTheme(
     );
 }
 
+function toPercent(value: number): string {
+    return `${(value * 100).toString()}%`;
+}
+
+function applySceneTheme(host: HTMLElement, scene: FocusCompanionScene): void {
+    const { palette, tuning } = scene;
+
+    host.dataset.companionVisual = "scene";
+    host.style.setProperty("--scene-backdrop-base", palette.backdropBase);
+    host.style.setProperty("--scene-backdrop-deep", palette.backdropDeep);
+    host.style.setProperty(
+        "--scene-backdrop-highlight",
+        palette.backdropHighlight,
+    );
+    host.style.setProperty("--scene-light", palette.light);
+    host.style.setProperty("--scene-shadow", palette.shadow);
+    host.style.setProperty(
+        "--scene-character-width",
+        toPercent(tuning.characterWidth),
+    );
+    host.style.setProperty(
+        "--scene-character-offset-x",
+        toPercent(tuning.characterOffsetX),
+    );
+    host.style.setProperty(
+        "--scene-character-offset-y",
+        toPercent(tuning.characterOffsetY),
+    );
+    host.style.setProperty("--scene-glow-x", toPercent(tuning.glowX));
+    host.style.setProperty("--scene-glow-y", toPercent(tuning.glowY));
+    host.style.setProperty(
+        "--scene-foot-anchor-x",
+        toPercent(tuning.footAnchorX),
+    );
+    host.style.setProperty(
+        "--scene-foot-anchor-y",
+        toPercent(tuning.footAnchorY),
+    );
+    host.style.setProperty(
+        "--scene-floor-shadow-width",
+        toPercent(tuning.floorShadowWidth),
+    );
+    host.style.setProperty(
+        "--scene-floor-shadow-height",
+        toPercent(tuning.floorShadowHeight),
+    );
+    host.style.setProperty(
+        "--scene-floor-shadow-offset-x",
+        toPercent(tuning.floorShadowOffsetX),
+    );
+    host.style.setProperty(
+        "--scene-floor-shadow-offset-y",
+        toPercent(tuning.floorShadowOffsetY),
+    );
+    host.style.setProperty(
+        "--scene-floor-shadow-blur",
+        `${tuning.floorShadowBlur.toString()}px`,
+    );
+    host.style.setProperty(
+        "--scene-floor-shadow-skew",
+        `${tuning.floorShadowSkew.toString()}deg`,
+    );
+    host.style.setProperty(
+        "--scene-floor-shadow-opacity",
+        tuning.floorShadowOpacity.toString(),
+    );
+    host.style.setProperty(
+        "--scene-contact-shadow-width",
+        toPercent(tuning.contactShadowWidth),
+    );
+    host.style.setProperty(
+        "--scene-contact-shadow-height",
+        toPercent(tuning.contactShadowHeight),
+    );
+    host.style.setProperty(
+        "--scene-contact-shadow-offset-x",
+        toPercent(tuning.contactShadowOffsetX),
+    );
+    host.style.setProperty(
+        "--scene-contact-shadow-offset-y",
+        toPercent(tuning.contactShadowOffsetY),
+    );
+    host.style.setProperty(
+        "--scene-contact-shadow-blur",
+        `${tuning.contactShadowBlur.toString()}px`,
+    );
+    host.style.setProperty(
+        "--scene-contact-shadow-opacity",
+        tuning.contactShadowOpacity.toString(),
+    );
+    host.style.setProperty(
+        "--scene-surface-shadow-width",
+        toPercent(tuning.surfaceShadowWidth),
+    );
+    host.style.setProperty(
+        "--scene-surface-shadow-height",
+        toPercent(tuning.surfaceShadowHeight),
+    );
+    host.style.setProperty(
+        "--scene-surface-shadow-x",
+        toPercent(tuning.surfaceShadowX),
+    );
+    host.style.setProperty(
+        "--scene-surface-shadow-y",
+        toPercent(tuning.surfaceShadowY),
+    );
+    host.style.setProperty(
+        "--scene-surface-shadow-blur",
+        `${tuning.surfaceShadowBlur.toString()}px`,
+    );
+    host.style.setProperty(
+        "--scene-surface-shadow-opacity",
+        tuning.surfaceShadowOpacity.toString(),
+    );
+}
+
+function appendSceneVisual(
+    container: HTMLElement,
+    visual: Extract<FocusCompanionOverlayVariant["visual"], { kind: "scene" }>,
+    isDecorative: boolean,
+): void {
+    const scene = document.createElement("div");
+    scene.className = "scene";
+    if (isDecorative) {
+        scene.setAttribute("aria-hidden", "true");
+    } else {
+        scene.setAttribute("role", "img");
+        scene.setAttribute("aria-label", visual.alt);
+    }
+
+    const stage = document.createElement("div");
+    stage.className = "scene-stage";
+    const light = document.createElement("div");
+    light.className = "scene-light";
+    const character = document.createElement("div");
+    character.className = "scene-character";
+    const floorShadow = document.createElement("div");
+    floorShadow.className = "scene-character-floor-shadow";
+    const contactShadow = document.createElement("div");
+    contactShadow.className = "scene-character-contact-shadow";
+    const characterImage = document.createElement("img");
+    characterImage.className = "scene-character-image";
+    characterImage.src = visual.characterSrc;
+    characterImage.alt = "";
+    characterImage.loading = "eager";
+    characterImage.decoding = "async";
+    character.append(floorShadow, contactShadow, characterImage);
+    stage.append(light, character);
+    scene.append(stage);
+    container.append(scene);
+}
+
 function appendVisual(
     container: HTMLElement,
     visual: FocusCompanionOverlayVariant["visual"],
     imageClassName: string,
     textClassName: string,
+    isDecorative = false,
 ): void {
+    if (visual.kind === "scene") {
+        appendSceneVisual(container, visual, isDecorative);
+        return;
+    }
+
     if (visual.kind === "image") {
         const image = document.createElement("img");
         image.className = imageClassName;
         image.src = visual.src;
-        image.alt = visual.alt;
+        image.alt = isDecorative ? "" : visual.alt;
         image.loading = "eager";
         image.decoding = "async";
         container.append(image);
@@ -167,6 +326,11 @@ function buildToastOverlay(
     toast.className = "toast";
     toast.setAttribute("role", "status");
     toast.setAttribute("aria-live", "polite");
+    const isScene = copyVariant.visual.kind === "scene";
+    if (copyVariant.visual.kind === "scene") {
+        toast.classList.add("scene-shell");
+        appendSceneVisual(toast, copyVariant.visual, true);
+    }
 
     const progress = document.createElement("div");
     progress.className = "progress";
@@ -180,17 +344,8 @@ function buildToastOverlay(
 
     const thumb = document.createElement("div");
     thumb.className = "thumb";
-    if (copyVariant.visual.kind === "image") {
-        const image = document.createElement("img");
-        image.className = "thumb-image";
-        image.src = copyVariant.visual.src;
-        image.alt = "";
-        image.loading = "eager";
-        image.decoding = "async";
-        thumb.append(image);
-    } else {
-        thumb.textContent = copyVariant.visual.text;
-        thumb.setAttribute("aria-label", copyVariant.visual.label);
+    if (!isScene) {
+        appendVisual(thumb, copyVariant.visual, "thumb-image", "avatar", true);
     }
 
     const content = document.createElement("div");
@@ -274,7 +429,11 @@ function buildToastOverlay(
 
     topRow.append(copy, closeButton);
     content.append(topRow, actions);
-    header.append(thumb, content);
+    if (isScene) {
+        header.append(content);
+    } else {
+        header.append(thumb, content);
+    }
     toast.append(progress, header);
     shadow.append(style, toast);
     return { host, shadow, t };
@@ -295,6 +454,11 @@ function buildFullscreenOverlay(
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-modal", "true");
     panel.setAttribute("aria-labelledby", "zalipoff-focus-overlay-title");
+    const isScene = copyVariant.visual.kind === "scene";
+    if (copyVariant.visual.kind === "scene") {
+        panel.classList.add("scene-shell");
+        appendSceneVisual(panel, copyVariant.visual, false);
+    }
 
     const closeButton = document.createElement("button");
     closeButton.className = "close";
@@ -307,7 +471,9 @@ function buildFullscreenOverlay(
 
     const imageWrap = document.createElement("div");
     imageWrap.className = "image-wrap";
-    appendVisual(imageWrap, copyVariant.visual, "image", "avatar");
+    if (!isScene) {
+        appendVisual(imageWrap, copyVariant.visual, "image", "avatar");
+    }
 
     const title = document.createElement("h1");
     title.className = "title";
@@ -348,7 +514,11 @@ function buildFullscreenOverlay(
         status,
     );
 
-    panel.append(closeButton, imageWrap, panelContent);
+    if (isScene) {
+        panel.append(closeButton, panelContent);
+    } else {
+        panel.append(closeButton, imageWrap, panelContent);
+    }
     shadow.append(style, panel);
 
     return { host, shadow, t };
@@ -368,6 +538,9 @@ export function buildOverlayFromVariant(
         copyVariant.theme,
         copyVariant.panelBackgroundImageUrl,
     );
+    if (copyVariant.visual.kind === "scene") {
+        applySceneTheme(host, copyVariant.visual.scene);
+    }
 
     const shadow = host.attachShadow({ mode: "open" });
     if (message.mode === "offer" || message.presentation === "soft") {

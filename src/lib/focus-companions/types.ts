@@ -48,6 +48,57 @@ export type FocusCompanionVisual =
           label: string;
       };
 
+export type FocusCompanionScenePalette = {
+    backdropBase: string;
+    backdropDeep: string;
+    backdropHighlight: string;
+    light: string;
+    shadow: string;
+};
+
+export type FocusCompanionSceneTuning = {
+    characterWidth: number;
+    characterOffsetX: number;
+    characterOffsetY: number;
+    footAnchorX: number;
+    footAnchorY: number;
+    glowX: number;
+    glowY: number;
+    floorShadowWidth: number;
+    floorShadowHeight: number;
+    floorShadowOffsetX: number;
+    floorShadowOffsetY: number;
+    floorShadowBlur: number;
+    floorShadowSkew: number;
+    floorShadowOpacity: number;
+    contactShadowWidth: number;
+    contactShadowHeight: number;
+    contactShadowOffsetX: number;
+    contactShadowOffsetY: number;
+    contactShadowBlur: number;
+    contactShadowOpacity: number;
+    surfaceShadowWidth: number;
+    surfaceShadowHeight: number;
+    surfaceShadowX: number;
+    surfaceShadowY: number;
+    surfaceShadowBlur: number;
+    surfaceShadowOpacity: number;
+};
+
+export type FocusCompanionScene = {
+    palette: FocusCompanionScenePalette;
+    tuning: FocusCompanionSceneTuning;
+};
+
+export type FocusCompanionOverlayVisual =
+    | FocusCompanionVisual
+    | {
+          kind: "scene";
+          characterSrc: string;
+          alt: string;
+          scene: FocusCompanionScene;
+      };
+
 export type FocusCompanionPreview = {
     id: FocusCompanionId;
     name: string;
@@ -63,7 +114,7 @@ export type FocusCompanionOverlayVariant = {
     theme: FocusCompanionTheme;
     panelBackgroundImageUrl: string;
     text: string;
-    visual: FocusCompanionVisual;
+    visual: FocusCompanionOverlayVisual;
 };
 
 export type FocusCompanionAssetUrlResolver = (path: string) => string;
