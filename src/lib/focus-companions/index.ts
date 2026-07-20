@@ -1,5 +1,6 @@
 export { DEFAULT_FOCUS_COMPANION_ID } from "./catalog.js";
 export {
+    createFocusCompanionAvatar,
     createFocusCompanionOverlayVariant,
     createFocusCompanionPreview,
     getFocusCompanion,
@@ -9,6 +10,8 @@ export {
 } from "./selectors.js";
 export type {
     FocusCompanion,
+    FocusCompanionAvatar,
+    FocusCompanionAvatarConfig,
     FocusCompanionAssetUrlResolver,
     FocusCompanionAvailability,
     FocusCompanionId,

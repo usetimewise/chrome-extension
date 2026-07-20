@@ -11,6 +11,7 @@ import {
 import { getFocusCompanionScene } from "./scenes.js";
 import type {
     FocusCompanion,
+    FocusCompanionAvatar,
     FocusCompanionAssetUrlResolver,
     FocusCompanionId,
     FocusCompanionOverlayVisual,
@@ -179,6 +180,22 @@ export function createFocusCompanionPreview(
             language,
             options.resolveAssetUrl,
         ),
+    };
+}
+
+export function createFocusCompanionAvatar(
+    id: string | null | undefined,
+    options: PreviewOptions = {},
+): FocusCompanionAvatar {
+    const companion = getFocusCompanion(id);
+    const language = options.language || DEFAULT_LANGUAGE;
+    const { imagePath, ...crop } = companion.avatar;
+
+    return {
+        src: resolvePath(imagePath, options.resolveAssetUrl),
+        alt: getFocusCompanionText(companion.id, "name", language),
+        crop,
+        palette: getFocusCompanionScene(companion.id, "1").palette,
     };
 }
 

@@ -100,6 +100,74 @@ body::before {
     gap: 8px;
 }
 
+.companion-avatar-button {
+    position: relative;
+    display: inline-flex;
+    width: 52px;
+    height: 52px;
+    flex: 0 0 auto;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background:
+        linear-gradient(
+            to bottom,
+            transparent 58%,
+            color-mix(
+                in srgb,
+                var(--avatar-backdrop-deep) 42%,
+                transparent
+            )
+        ),
+        radial-gradient(
+            circle at 28% 42%,
+            color-mix(
+                    in srgb,
+                    var(--avatar-backdrop-highlight) 44%,
+                    transparent
+                )
+                0,
+            transparent 46%
+        ),
+        linear-gradient(
+            120deg,
+            var(--avatar-backdrop-base),
+            color-mix(
+                    in srgb,
+                    var(--avatar-backdrop-base) 88%,
+                    var(--avatar-backdrop-deep)
+                )
+                58%,
+            var(--avatar-backdrop-deep)
+        );
+    cursor: pointer;
+    padding: 0;
+    transition:
+        border-color 140ms ease,
+        box-shadow 140ms ease,
+        transform 140ms ease;
+}
+
+.companion-avatar-button:hover {
+    border-color: var(--companion-primary);
+    box-shadow: 0 0 0 2px var(--companion-soft);
+    transform: translateY(-1px);
+}
+
+.companion-avatar-button img {
+    position: absolute;
+    top: calc(50% + var(--avatar-image-offset-y));
+    left: calc(50% + var(--avatar-image-offset-x));
+    display: block;
+    width: var(--avatar-image-scale);
+    height: var(--avatar-image-scale);
+    max-width: none;
+    object-fit: contain;
+    object-position: center;
+    filter: saturate(0.94) contrast(1.025) brightness(0.985);
+    transform: translate(-50%, -50%);
+}
+
 .language-picker {
     position: relative;
     display: inline-flex;
@@ -352,7 +420,7 @@ body::before {
     position: relative;
     display: grid;
     min-height: 178px;
-    grid-template-rows: auto auto auto 1fr;
+    grid-template-rows: auto auto 1fr;
     gap: 4px;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
@@ -444,7 +512,6 @@ body::before {
     line-height: 1.25;
 }
 
-.companion-role,
 .companion-description {
     display: block;
     color: #717182;

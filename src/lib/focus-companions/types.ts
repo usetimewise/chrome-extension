@@ -1,11 +1,13 @@
 import type {
     FOCUS_COMPANION_CATALOG,
+    FocusCompanionAvatarConfig,
     FocusCompanionOverlayColors,
     FocusCompanionTheme,
     FocusCompanionScenarioId,
 } from "./catalog.js";
 
 export type {
+    FocusCompanionAvatarConfig,
     FocusCompanionOverlayColors,
     FocusCompanionScenarioId,
     FocusCompanionTheme,
@@ -29,6 +31,7 @@ export type FocusCompanion = {
     availability: FocusCompanionAvailability;
     avatarText: string;
     colorClass: string;
+    avatar: FocusCompanionAvatarConfig;
     theme: FocusCompanionTheme;
     defaultScenarioId: FocusCompanionScenarioId;
     defaultReplicaIndex: number;
@@ -106,6 +109,13 @@ export type FocusCompanionPreview = {
     description: string;
     availability: FocusCompanionAvailability;
     visual: FocusCompanionVisual;
+};
+
+export type FocusCompanionAvatar = {
+    src: string;
+    alt: string;
+    crop: Omit<FocusCompanionAvatarConfig, "imagePath">;
+    palette: FocusCompanionScenePalette;
 };
 
 export type FocusCompanionOverlayVariant = {

@@ -3,6 +3,13 @@ type FocusCompanionCatalogReplica = {
     imagePath: string;
 };
 
+export type FocusCompanionAvatarConfig = {
+    imagePath: string;
+    scale: number;
+    offsetX: number;
+    offsetY: number;
+};
+
 export type FocusCompanionScenarioId = "1" | "2" | "3" | "4" | "5" | "6";
 
 export type FocusCompanionOverlayColors = {
@@ -64,6 +71,7 @@ type FocusCompanionCatalogItem = {
     availability: "free" | "paid";
     avatarText: string;
     colorClass: string;
+    avatar: FocusCompanionAvatarConfig;
     theme: FocusCompanionTheme;
     defaultScenarioId: FocusCompanionScenarioId;
     defaultReplicaIndex: number;
@@ -190,6 +198,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "D",
         colorClass: "stone",
+        avatar: {
+            imagePath: "images/alpha/sgt/sgt-s01-01.avif",
+            scale: 1.35,
+            offsetX: 0,
+            offsetY: 0.29,
+        },
         theme: FOCUS_COMPANION_THEMES.sgt,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -456,6 +470,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "H",
         colorClass: "rose",
+        avatar: {
+            imagePath: "images/alpha/hbest/hbest-s01-01.avif",
+            scale: 1.45,
+            offsetX: 0,
+            offsetY: 0.27,
+        },
         theme: FOCUS_COMPANION_THEMES.hbest,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -722,6 +742,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "S",
         colorClass: "amber",
+        avatar: {
+            imagePath: "images/alpha/sarc/sarc-s01-01.avif",
+            scale: 1.45,
+            offsetX: 0,
+            offsetY: 0.23,
+        },
         theme: FOCUS_COMPANION_THEMES.sarc,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -988,6 +1014,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "Z",
         colorClass: "indigo",
+        avatar: {
+            imagePath: "images/alpha/zen/zen-s01-01.avif",
+            scale: 1.45,
+            offsetX: 0,
+            offsetY: 0.28,
+        },
         theme: FOCUS_COMPANION_THEMES.zen,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -1254,6 +1286,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "P",
         colorClass: "blue",
+        avatar: {
+            imagePath: "images/alpha/pirate/pirate-s01-01.avif",
+            scale: 1.3,
+            offsetX: 0,
+            offsetY: 0.27,
+        },
         theme: FOCUS_COMPANION_THEMES.pirate,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -1520,6 +1558,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "B",
         colorClass: "gray",
+        avatar: {
+            imagePath: "images/alpha/butler/butler-s01-01.avif",
+            scale: 1.45,
+            offsetX: 0,
+            offsetY: 0.22,
+        },
         theme: FOCUS_COMPANION_THEMES.butler,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -1786,6 +1830,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "S",
         colorClass: "cyan",
+        avatar: {
+            imagePath: "images/alpha/surfer/surfer-s01-01.avif",
+            scale: 1.55,
+            offsetX: 0,
+            offsetY: 0.23,
+        },
         theme: FOCUS_COMPANION_THEMES.surfer,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -2052,6 +2102,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "free",
         avatarText: "C",
         colorClass: "violet",
+        avatar: {
+            imagePath: "images/alpha/ceo/ceo-s01-01.avif",
+            scale: 1.55,
+            offsetX: 0,
+            offsetY: 0.27,
+        },
         theme: FOCUS_COMPANION_THEMES.ceo,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -2318,6 +2374,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "F",
         colorClass: "green",
+        avatar: {
+            imagePath: "images/alpha/coach/coach-s01-01.avif",
+            scale: 1.45,
+            offsetX: 0,
+            offsetY: 0.28,
+        },
         theme: FOCUS_COMPANION_THEMES.coach,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -2584,6 +2646,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "T",
         colorClass: "emerald",
+        avatar: {
+            imagePath: "images/alpha/th/th-s01-01.avif",
+            scale: 1.45,
+            offsetX: 0,
+            offsetY: 0.21,
+        },
         theme: FOCUS_COMPANION_THEMES.th,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -2850,6 +2918,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "S",
         colorClass: "stone",
+        avatar: {
+            imagePath: "images/alpha/stoic/stoic-s01-01.avif",
+            scale: 1.45,
+            offsetX: 0,
+            offsetY: 0.2,
+        },
         theme: FOCUS_COMPANION_THEMES.stoic,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,
@@ -3116,6 +3190,12 @@ export const FOCUS_COMPANION_CATALOG = {
         availability: "paid",
         avatarText: "C",
         colorClass: "amber",
+        avatar: {
+            imagePath: "images/alpha/cowboy/cowboy-s01-01.avif",
+            scale: 1.35,
+            offsetX: -0.02,
+            offsetY: 0.28,
+        },
         theme: FOCUS_COMPANION_THEMES.cowboy,
         defaultScenarioId: "2",
         defaultReplicaIndex: 2,

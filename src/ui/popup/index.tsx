@@ -8,6 +8,7 @@ import {
 import { createRoot } from "react-dom/client";
 import { MESSAGE_TYPES } from "../../lib/constants.js";
 import {
+    createFocusCompanionAvatar,
     createFocusCompanionPreview,
     getFocusCompanionTheme,
     listFocusCompanions,
@@ -64,6 +65,15 @@ type CompanionThemeStyle = CSSProperties & {
     "--companion-contrast-text": string;
 };
 
+type CompanionAvatarStyle = CSSProperties & {
+    "--avatar-backdrop-base": string;
+    "--avatar-backdrop-deep": string;
+    "--avatar-backdrop-highlight": string;
+    "--avatar-image-scale": string;
+    "--avatar-image-offset-x": string;
+    "--avatar-image-offset-y": string;
+};
+
 const SETTINGS_TABS: Array<{
     id: SettingsTab;
     labelKey: "popup.tabCompanion" | "popup.tabBlocking";
@@ -118,6 +128,19 @@ function createCompanionThemeStyle(
         "--companion-soft-hover": theme.softHover,
         "--companion-accent-text": theme.accentText,
         "--companion-contrast-text": theme.contrastText,
+    };
+}
+
+function createCompanionAvatarStyle(
+    avatar: ReturnType<typeof createFocusCompanionAvatar>,
+): CompanionAvatarStyle {
+    return {
+        "--avatar-backdrop-base": avatar.palette.backdropBase,
+        "--avatar-backdrop-deep": avatar.palette.backdropDeep,
+        "--avatar-backdrop-highlight": avatar.palette.backdropHighlight,
+        "--avatar-image-scale": `${(avatar.crop.scale * 100).toString()}%`,
+        "--avatar-image-offset-x": `${(avatar.crop.offsetX * 100).toString()}%`,
+        "--avatar-image-offset-y": `${(avatar.crop.offsetY * 100).toString()}%`,
     };
 }
 
@@ -189,12 +212,14 @@ function SettingsView({
     language,
     t,
     onBack,
+    onCompanionSelected,
     onSaved,
 }: {
     bootstrap: BootstrapResponse | null;
     language: AppLanguage;
     t: Translator;
     onBack: () => void;
+    onCompanionSelected: () => void;
     onSaved: (bootstrap: BootstrapResponse) => void;
 }) {
     const [activeTab, setActiveTab] = useState<SettingsTab>("companion");
@@ -212,6 +237,8 @@ function SettingsView({
     const draftRef = useRef(draft);
     const pendingPreferencesRef = useRef<UserPreferences | null>(null);
     const isSavingPreferencesRef = useRef(false);
+    const shouldReturnAfterSaveRef = useRef(false);
+    const selectedCompanionCardRef = useRef<HTMLButtonElement | null>(null);
     const savedStatusTimerRef = useRef<number | null>(null);
     const blockRules = useMemo(() => {
         return buildLocalBlockRules({
@@ -258,6 +285,18 @@ function SettingsView({
         setDraft(bootstrapPreferences);
         initializedFromBootstrapRef.current = true;
     }, [bootstrap]);
+
+    useEffect(() => {
+        if (activeTab !== "companion") {
+            return;
+        }
+
+        selectedCompanionCardRef.current?.scrollIntoView({
+            behavior: "auto",
+            block: "center",
+            inline: "nearest",
+        });
+    }, [activeTab, draft.selectedCompanionId]);
 
     useEffect(
         () => () => {
@@ -307,8 +346,14 @@ function SettingsView({
                 }
             }
 
-            showSavedStatus();
+            if (shouldReturnAfterSaveRef.current) {
+                shouldReturnAfterSaveRef.current = false;
+                onCompanionSelected();
+            } else {
+                showSavedStatus();
+            }
         } catch (error) {
+            shouldReturnAfterSaveRef.current = false;
             setSaveState({
                 status: "error",
                 message: getErrorMessage(error, t("popup.saveSettingsError")),
@@ -320,13 +365,13 @@ function SettingsView({
 
     function applyPreferencesChange(
         updater: (current: UserPreferences) => UserPreferences,
-    ) {
+    ): boolean {
         if (!bootstrap) {
             setSaveState({
                 status: "error",
                 message: t("popup.saveSettingsError"),
             });
-            return;
+            return false;
         }
 
         const nextPreferences = updater(draftRef.current);
@@ -334,6 +379,7 @@ function SettingsView({
         pendingPreferencesRef.current = nextPreferences;
         setDraft(nextPreferences);
         void flushPreferencesQueue();
+        return true;
     }
 
     function handleAddBlockedHost() {
@@ -478,6 +524,12 @@ function SettingsView({
                                 {companionPreviews.map((companion) => (
                                     <button
                                         key={companion.id}
+                                        ref={
+                                            draft.selectedCompanionId ===
+                                            companion.id
+                                                ? selectedCompanionCardRef
+                                                : undefined
+                                        }
                                         className={
                                             draft.selectedCompanionId ===
                                             companion.id
@@ -486,13 +538,18 @@ function SettingsView({
                                         }
                                         type="button"
                                         onClick={() => {
-                                            applyPreferencesChange(
-                                                (current) => ({
-                                                    ...current,
-                                                    selectedCompanionId:
-                                                        companion.id,
-                                                }),
+                                            const isSelectionQueued =
+                                                applyPreferencesChange(
+                                                    (current) => ({
+                                                        ...current,
+                                                        selectedCompanionId:
+                                                            companion.id,
+                                                    }),
                                             );
+                                            if (isSelectionQueued) {
+                                                shouldReturnAfterSaveRef.current =
+                                                    true;
+                                            }
                                         }}
                                     >
                                         <span
@@ -515,9 +572,6 @@ function SettingsView({
                                         </span>
                                         <span className="companion-name">
                                             {companion.name}
-                                        </span>
-                                        <span className="companion-role">
-                                            {companion.role}
                                         </span>
                                         <span className="companion-description">
                                             {companion.description}
@@ -755,6 +809,21 @@ function PopupApp() {
             ),
         [bootstrap?.settings?.selectedCompanionId],
     );
+    const companionAvatar = useMemo(
+        () =>
+            createFocusCompanionAvatar(
+                bootstrap?.settings?.selectedCompanionId,
+                {
+                    language,
+                    resolveAssetUrl: (path) => chrome.runtime.getURL(path),
+                },
+            ),
+        [bootstrap?.settings?.selectedCompanionId, language],
+    );
+    const companionAvatarStyle = useMemo(
+        () => createCompanionAvatarStyle(companionAvatar),
+        [companionAvatar],
+    );
 
     useEffect(
         () => () => {
@@ -874,6 +943,7 @@ function PopupApp() {
                 language={language}
                 t={t}
                 onBack={() => setView("focus")}
+                onCompanionSelected={() => setView("focus")}
                 onSaved={(nextBootstrap) => {
                     applyBootstrap(nextBootstrap);
                 }}
@@ -913,6 +983,17 @@ function PopupApp() {
                             aria-label={t("popup.openSettings")}
                         >
                             <AppIcon name="settings" />
+                        </button>
+                        <button
+                            className="companion-avatar-button"
+                            type="button"
+                            onClick={() => setView("settings")}
+                            aria-label={t("popup.openCompanionPicker", {
+                                name: companionAvatar.alt,
+                            })}
+                            style={companionAvatarStyle}
+                        >
+                            <img src={companionAvatar.src} alt="" />
                         </button>
                     </div>
                 </header>

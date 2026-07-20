@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+    createFocusCompanionAvatar,
     createFocusCompanionOverlayVariant,
     createFocusCompanionPreview,
     getFocusCompanion,
@@ -137,6 +138,31 @@ test("creates localized companion preview", () => {
         preview.description,
         "Поддерживающий и устойчивый. Называет паттерн и мягко перенаправляет.",
     );
+});
+
+test("creates configured s01-01 avatars for every companion", () => {
+    for (const companion of listFocusCompanions()) {
+        const avatar = createFocusCompanionAvatar(companion.id, {
+            resolveAssetUrl: (path) => `chrome-extension://${path}`,
+        });
+
+        assert.equal(
+            avatar.src,
+            `chrome-extension://images/alpha/${companion.id}/${companion.id}-s01-01.avif`,
+        );
+        assert.equal(avatar.alt, companion.name);
+        assert.ok(avatar.crop.scale > 1);
+        assert.match(avatar.palette.backdropBase, HEX_COLOR_PATTERN);
+        assert.match(avatar.palette.backdropDeep, HEX_COLOR_PATTERN);
+        assert.match(avatar.palette.backdropHighlight, HEX_COLOR_PATTERN);
+    }
+});
+
+test("falls back to the configured ceo avatar", () => {
+    const avatar = createFocusCompanionAvatar("unknown");
+
+    assert.equal(avatar.src, "images/alpha/ceo/ceo-s01-01.avif");
+    assert.equal(avatar.alt, "Corporate CEO");
 });
 
 test("creates deterministic overlay scene for ceo", () => {
