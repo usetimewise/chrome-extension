@@ -38,3 +38,14 @@ test("translates messages with interpolation", () => {
         "2 sites in the list",
     );
 });
+
+test("translates the already blocked site hint", () => {
+    assert.equal(
+        translate("en", "popup.quickBlockAlreadyBlockedHint"),
+        "You can unblock this site in Settings.",
+    );
+    assert.equal(
+        translate("ru", "popup.quickBlockAlreadyBlockedHint"),
+        "Разблокировать сайт можно в настройках.",
+    );
+});

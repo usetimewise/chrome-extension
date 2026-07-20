@@ -283,7 +283,7 @@ body::before {
 .quick-block-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
+    align-items: start;
     gap: 10px;
     min-height: 38px;
     border-top: 1px solid #eef0f3;
@@ -295,8 +295,17 @@ body::before {
     color: #4b5563;
     font-size: 13px;
     line-height: 1.35;
+    padding-top: 8px;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.quick-block-action {
+    display: flex;
+    max-width: 176px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
 }
 
 .quick-block-button {
@@ -327,6 +336,14 @@ body::before {
 .quick-block-button:disabled {
     cursor: default;
     opacity: 0.62;
+}
+
+.quick-block-hint {
+    margin: 0;
+    color: #6b7280;
+    font-size: 10px;
+    line-height: 1.35;
+    text-align: center;
 }
 
 .popup-shell-settings {

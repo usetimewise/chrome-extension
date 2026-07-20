@@ -1028,18 +1028,25 @@ function PopupApp() {
                         <span className="quick-block-host" title={currentHost}>
                             {currentHost}
                         </span>
-                        <button
-                            className="quick-block-button"
-                            type="button"
-                            onClick={() => void handleQuickBlockSite()}
-                            disabled={isQuickBlockDisabled}
-                        >
-                            {quickBlockState.status === "saving"
-                                ? t("popup.quickBlockSaving")
-                                : isCurrentSiteBlocked
-                                  ? t("popup.quickBlockAlreadyBlocked")
-                                  : t("popup.quickBlockButton")}
-                        </button>
+                        <div className="quick-block-action">
+                            <button
+                                className="quick-block-button"
+                                type="button"
+                                onClick={() => void handleQuickBlockSite()}
+                                disabled={isQuickBlockDisabled}
+                            >
+                                {quickBlockState.status === "saving"
+                                    ? t("popup.quickBlockSaving")
+                                    : isCurrentSiteBlocked
+                                      ? t("popup.quickBlockAlreadyBlocked")
+                                      : t("popup.quickBlockButton")}
+                            </button>
+                            {isCurrentSiteBlocked ? (
+                                <p className="quick-block-hint">
+                                    {t("popup.quickBlockAlreadyBlockedHint")}
+                                </p>
+                            ) : null}
+                        </div>
                     </div>
                 ) : null}
 

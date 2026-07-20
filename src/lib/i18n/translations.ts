@@ -34,6 +34,8 @@ export const EN_MESSAGES = {
     "popup.openCompanionPicker": "Choose companion. Current: {name}",
     "popup.openSettings": "Open settings",
     "popup.quickBlockAlreadyBlocked": "Site already blocked",
+    "popup.quickBlockAlreadyBlockedHint":
+        "You can unblock this site in Settings.",
     "popup.quickBlockButton": "Block site",
     "popup.quickBlockError": "Could not block this site",
     "popup.quickBlockSaved": "Site added to blocking",
@@ -107,6 +109,8 @@ export const RU_MESSAGES: Partial<Record<TranslationKey, string>> = {
     "popup.openCompanionPicker": "Выбрать персонажа. Сейчас: {name}",
     "popup.openSettings": "Открыть настройки",
     "popup.quickBlockAlreadyBlocked": "Сайт уже в блокировке",
+    "popup.quickBlockAlreadyBlockedHint":
+        "Разблокировать сайт можно в настройках.",
     "popup.quickBlockButton": "Заблокировать сайт",
     "popup.quickBlockError": "Не удалось заблокировать сайт",
     "popup.quickBlockSaved": "Сайт добавлен в блокировку",
