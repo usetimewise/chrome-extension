@@ -52,8 +52,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("images/alpha"),
-        help="Destination AVIF directory (default: images/alpha)",
+        default=Path("public/images/alpha"),
+        help="Destination AVIF directory (default: public/images/alpha)",
     )
     parser.add_argument(
         "--threads",

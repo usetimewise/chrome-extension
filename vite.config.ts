@@ -1,6 +1,6 @@
 import react from "@vitejs/plugin-react";
 import { build as buildWithEsbuild } from "esbuild";
-import { cpSync, mkdirSync } from "node:fs";
+import { copyFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 
@@ -9,20 +9,17 @@ const CONTENT_SCRIPT_INPUTS = {
     "focus-nudge": "src/content/focus-nudge/index.ts",
 } as const;
 
-function copyExtensionStatic(): Plugin {
+function copyExtensionManifest(): Plugin {
     return {
-        name: "copy-extension-static",
+        name: "copy-extension-manifest",
         closeBundle() {
             const root = process.cwd();
             const outDir = resolve(root, "dist");
             mkdirSync(outDir, { recursive: true });
-            cpSync(
+            copyFileSync(
                 resolve(root, "manifest.json"),
                 resolve(outDir, "manifest.json"),
             );
-            cpSync(resolve(root, "images"), resolve(outDir, "images"), {
-                recursive: true,
-            });
         },
     };
 }
@@ -66,7 +63,7 @@ export default defineConfig(() => {
     };
 
     return {
-        plugins: [react(), copyExtensionStatic(), bundleContentScripts()],
+        plugins: [react(), copyExtensionManifest(), bundleContentScripts()],
         build: {
             outDir: "dist",
             emptyOutDir: true,

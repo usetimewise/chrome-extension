@@ -15,7 +15,7 @@ const AVIFENC_ARGS = [
     "all",
 ];
 
-const DEFAULT_INPUT_DIR = "images";
+const DEFAULT_INPUT_DIR = "public/images";
 
 function parseArgs(argv) {
     const options = {
