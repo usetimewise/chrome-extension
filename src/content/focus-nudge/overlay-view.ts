@@ -59,12 +59,7 @@ function createStyle(styles: string): HTMLStyleElement {
 function applyCompanionTheme(
     host: HTMLElement,
     theme: FocusCompanionTheme,
-    panelBackgroundImageUrl: string,
 ): void {
-    host.style.setProperty(
-        "--companion-panel-background-image",
-        `url("${panelBackgroundImageUrl}")`,
-    );
     host.style.setProperty("--overlay-text", theme.overlayColors.text);
     host.style.setProperty(
         "--overlay-muted-text",
@@ -104,7 +99,6 @@ function toPercent(value: number): string {
 function applySceneTheme(host: HTMLElement, scene: FocusCompanionScene): void {
     const { palette, tuning } = scene;
 
-    host.dataset.companionVisual = "scene";
     host.style.setProperty("--scene-backdrop-base", palette.backdropBase);
     host.style.setProperty("--scene-backdrop-deep", palette.backdropDeep);
     host.style.setProperty(
@@ -249,39 +243,6 @@ function appendSceneVisual(
     container.append(scene);
 }
 
-function appendVisual(
-    container: HTMLElement,
-    visual: FocusCompanionOverlayVariant["visual"],
-    imageClassName: string,
-    textClassName: string,
-    isDecorative = false,
-): void {
-    if (visual.kind === "scene") {
-        appendSceneVisual(container, visual, isDecorative);
-        return;
-    }
-
-    if (visual.kind === "image") {
-        const image = document.createElement("img");
-        image.className = imageClassName;
-        image.src = visual.src;
-        image.alt = isDecorative ? "" : visual.alt;
-        image.loading = "eager";
-        image.decoding = "async";
-        container.append(image);
-        return;
-    }
-
-    const textVisual = document.createElement("div");
-    textVisual.className =
-        textClassName === "avatar"
-            ? `avatar avatar-${visual.colorClass}`
-            : textClassName;
-    textVisual.setAttribute("aria-label", visual.label);
-    textVisual.textContent = visual.text;
-    container.append(textVisual);
-}
-
 function buildSiteBadge(host: string, iconSize: number): HTMLDivElement {
     const site = document.createElement("div");
     site.className = "site";
@@ -333,11 +294,7 @@ function buildToastOverlay(
     toast.className = "toast";
     toast.setAttribute("role", "status");
     toast.setAttribute("aria-live", "polite");
-    const isScene = copyVariant.visual.kind === "scene";
-    if (copyVariant.visual.kind === "scene") {
-        toast.classList.add("scene-shell");
-        appendSceneVisual(toast, copyVariant.visual, true);
-    }
+    appendSceneVisual(toast, copyVariant.visual, true);
 
     const progress = document.createElement("div");
     progress.className = "progress";
@@ -348,12 +305,6 @@ function buildToastOverlay(
 
     const header = document.createElement("div");
     header.className = "header";
-
-    const thumb = document.createElement("div");
-    thumb.className = "thumb";
-    if (!isScene) {
-        appendVisual(thumb, copyVariant.visual, "thumb-image", "avatar", true);
-    }
 
     const content = document.createElement("div");
     content.className = "content";
@@ -369,12 +320,8 @@ function buildToastOverlay(
     title.textContent =
         message.mode === "offer" ? message.message : copyVariant.text;
 
-    const speechBubbleSrc =
-        copyVariant.visual.kind === "scene"
-            ? copyVariant.visual.speechBubbleSrc
-            : undefined;
     copy.append(
-        buildTitleContent(title, speechBubbleSrc),
+        buildTitleContent(title, copyVariant.visual.speechBubbleSrc),
         buildSiteBadge(message.host, 12),
     );
 
@@ -443,11 +390,7 @@ function buildToastOverlay(
 
     topRow.append(copy, closeButton);
     content.append(topRow, actions);
-    if (isScene) {
-        header.append(content);
-    } else {
-        header.append(thumb, content);
-    }
+    header.append(content);
     toast.append(progress, header);
     shadow.append(style, toast);
     return { host, shadow, t };
@@ -468,11 +411,7 @@ function buildFullscreenOverlay(
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-modal", "true");
     panel.setAttribute("aria-labelledby", "zalipoff-focus-overlay-title");
-    const isScene = copyVariant.visual.kind === "scene";
-    if (copyVariant.visual.kind === "scene") {
-        panel.classList.add("scene-shell");
-        appendSceneVisual(panel, copyVariant.visual, false);
-    }
+    appendSceneVisual(panel, copyVariant.visual, false);
 
     const closeButton = document.createElement("button");
     closeButton.className = "close";
@@ -482,12 +421,6 @@ function buildFullscreenOverlay(
     closeButton.addEventListener("click", () =>
         callbacks.closeCurrentTab(shadow, t),
     );
-
-    const imageWrap = document.createElement("div");
-    imageWrap.className = "image-wrap";
-    if (!isScene) {
-        appendVisual(imageWrap, copyVariant.visual, "image", "avatar");
-    }
 
     const title = document.createElement("h1");
     title.className = "title";
@@ -521,22 +454,14 @@ function buildFullscreenOverlay(
 
     const panelContent = document.createElement("div");
     panelContent.className = "panel-content";
-    const speechBubbleSrc =
-        copyVariant.visual.kind === "scene"
-            ? copyVariant.visual.speechBubbleSrc
-            : undefined;
     panelContent.append(
-        buildTitleContent(title, speechBubbleSrc),
+        buildTitleContent(title, copyVariant.visual.speechBubbleSrc),
         buildSiteBadge(message.host, 14),
         actions,
         status,
     );
 
-    if (isScene) {
-        panel.append(closeButton, panelContent);
-    } else {
-        panel.append(closeButton, imageWrap, panelContent);
-    }
+    panel.append(closeButton, panelContent);
     shadow.append(style, panel);
 
     return { host, shadow, t };
@@ -551,14 +476,8 @@ export function buildOverlayFromVariant(
     const t = createTranslator(language);
     const host = document.createElement("div");
     host.id = OVERLAY_ID;
-    applyCompanionTheme(
-        host,
-        copyVariant.theme,
-        copyVariant.panelBackgroundImageUrl,
-    );
-    if (copyVariant.visual.kind === "scene") {
-        applySceneTheme(host, copyVariant.visual.scene);
-    }
+    applyCompanionTheme(host, copyVariant.theme);
+    applySceneTheme(host, copyVariant.visual.scene);
 
     const shadow = host.attachShadow({ mode: "open" });
     if (message.mode === "offer" || message.presentation === "soft") {

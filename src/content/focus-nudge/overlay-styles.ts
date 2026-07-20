@@ -1,8 +1,6 @@
 import { TOAST_AUTO_DISMISS_MS } from "./constants";
 
 const DEFAULT_THEME_CUSTOM_PROPERTIES = `
-      --companion-panel-background-color: #8a8a8a;
-      --companion-panel-background-image: none;
       --overlay-text: #000000;
       --overlay-muted-text: #000000;
       --overlay-primary: #000000;
@@ -22,7 +20,7 @@ const DEFAULT_THEME_CUSTOM_PROPERTIES = `
       --scene-character-offset-x: 0%;
       --scene-character-offset-y: 0%;
       --scene-foot-anchor-x: 50%;
-      --scene-foot-anchor-y: 89.5%;
+      --scene-foot-anchor-y: 92%;
       --scene-glow-x: 50%;
       --scene-glow-y: 38%;
       --scene-floor-shadow-width: 68%;
@@ -57,26 +55,8 @@ const SHARED_HOST_DECLARATIONS = `
 `;
 
 const SHARED_VISUAL_STYLES = `
-    .thumb-image,
-    .image {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: top right;
-    }
-
     .content,
     .panel-content {
-      background-color: var(--companion-panel-background-color);
-      background-image: var(--companion-panel-background-image);
-      background-position: left top;
-      background-repeat: no-repeat;
-      background-size: auto 100%;
-    }
-
-    :host([data-companion-visual="scene"]) .content,
-    :host([data-companion-visual="scene"]) .panel-content {
       background: transparent;
     }
 
@@ -338,7 +318,7 @@ ${SHARED_COMPONENT_STYLES}
       overflow: hidden;
       border: 1px solid color-mix(in srgb, var(--overlay-secondary-border) 25%, transparent);
       border-radius: 12px;
-      background: var(--companion-panel-background-color);
+      background: var(--scene-backdrop-base);
       color: var(--overlay-text);
     }
 
@@ -368,22 +348,6 @@ ${SHARED_COMPONENT_STYLES}
       min-height: 168px;
     }
 
-    .thumb {
-      position: relative;
-      flex: 0 0 148px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 148px;
-      min-height: 168px;
-      overflow: hidden;
-      background: var(--companion-panel-background-color);
-      color: var(--overlay-text);
-      font-size: 32px;
-      font-weight: 700;
-      line-height: 1;
-    }
-
     .content {
       min-width: 0;
       flex: 1 1 auto;
@@ -392,7 +356,7 @@ ${SHARED_COMPONENT_STYLES}
       padding: 13px 13px 12px 15px;
     }
 
-    .toast.scene-shell .content {
+    .toast .content {
       margin-left: 148px;
     }
 
@@ -495,21 +459,15 @@ ${SHARED_COMPONENT_STYLES}
         min-height: 158px;
       }
 
-      .thumb {
-        flex-basis: 112px;
-        width: 112px;
-        min-height: 158px;
-      }
-
       .content {
         padding-left: 12px;
       }
 
-      .toast.scene-shell .content {
+      .toast .content {
         margin-left: 112px;
       }
 
-      .toast.scene-shell .scene-character {
+      .toast .scene-character {
         --scene-character-max-width: 150px;
       }
 
@@ -552,7 +510,7 @@ ${SHARED_COMPONENT_STYLES}
       padding: 0;
       border: 1px solid color-mix(in srgb, var(--overlay-secondary-border) 25%, transparent);
       border-radius: 14px;
-      background: var(--companion-panel-background-color);
+      background: var(--scene-backdrop-base);
       color: var(--overlay-text);
       text-align: left;
       animation: panel-zoom-in 300ms ease-out both;
@@ -568,43 +526,6 @@ ${SHARED_COMPONENT_STYLES}
       border-radius: 7px;
     }
 
-    .image-wrap {
-      position: relative;
-      flex: 0 0 43%;
-      display: flex;
-      align-items: stretch;
-      justify-content: center;
-      min-width: 0;
-      margin: 0;
-      overflow: hidden;
-      background: var(--companion-panel-background-color);
-    }
-
-    .avatar {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      min-height: 360px;
-      font-size: 64px;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .avatar-violet,
-    .avatar-blue,
-    .avatar-emerald,
-    .avatar-rose,
-    .avatar-stone,
-    .avatar-cyan,
-    .avatar-amber,
-    .avatar-green,
-    .avatar-indigo,
-    .avatar-gray {
-      background: var(--companion-panel-background-color);
-      color: var(--overlay-text);
-    }
-
     .panel-content {
       position: relative;
       z-index: 1;
@@ -617,11 +538,11 @@ ${SHARED_COMPONENT_STYLES}
       padding: 48px 28px 28px 34px;
     }
 
-    .panel.scene-shell {
+    .panel {
       display: block;
     }
 
-    .panel.scene-shell .panel-content {
+    .panel .panel-content {
       min-height: 360px;
       margin-left: 43%;
     }
@@ -714,38 +635,23 @@ ${SHARED_COMPONENT_STYLES}
         min-height: 0;
         max-height: calc(100vh - 24px);
         overflow-y: auto;
-        background: var(--companion-panel-background-color);
-      }
-
-      .image-wrap {
-        flex: 0 0 190px;
-        min-height: 190px;
-      }
-
-      .image,
-      .avatar {
-        min-height: 190px;
-      }
-
-      .image {
-        height: 190px;
-        object-position: right 22%;
+        background: var(--scene-backdrop-base);
       }
 
       .panel-content {
         padding: 26px 20px 20px;
       }
 
-      .panel.scene-shell .scene-stage {
+      .panel .scene-stage {
         width: 100%;
         height: 190px;
       }
 
-      .panel.scene-shell .scene-character {
+      .panel .scene-character {
         --scene-character-max-width: 184px;
       }
 
-      .panel.scene-shell .panel-content {
+      .panel .panel-content {
         min-height: 0;
         margin-top: 190px;
         margin-left: 0;

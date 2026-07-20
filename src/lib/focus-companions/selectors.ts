@@ -95,24 +95,16 @@ function createOverlayVisual(
 ): FocusCompanionOverlayVisual {
     const scene = getFocusCompanionScene(companion.id, scenarioId);
 
-    if (scene && "imagePath" in replica) {
-        return {
-            kind: "scene",
-            characterSrc: resolvePath(replica.imagePath, resolveAssetUrl),
-            speechBubbleSrc: scene.speechBubbleImagePath
-                ? resolvePath(scene.speechBubbleImagePath, resolveAssetUrl)
-                : undefined,
-            alt: getFocusCompanionText(companion.id, "name", language),
-            scene,
-        };
-    }
-
-    return createReplicaVisual(
-        companion,
-        replica,
-        language,
-        resolveAssetUrl,
-    );
+    return {
+        kind: "scene",
+        characterSrc: resolvePath(replica.imagePath, resolveAssetUrl),
+        speechBubbleSrc: resolvePath(
+            scene.speechBubbleImagePath,
+            resolveAssetUrl,
+        ),
+        alt: getFocusCompanionText(companion.id, "name", language),
+        scene,
+    };
 }
 
 function getScenarioReplicas(
@@ -212,10 +204,6 @@ export function createFocusCompanionOverlayVariant(
         companionId: companion.id,
         scenarioId,
         theme: companion.theme,
-        panelBackgroundImageUrl: resolvePath(
-            companion.theme.panelBackgroundImagePath,
-            options.resolveAssetUrl,
-        ),
         text: getFocusCompanionReplicaText(
             companion.id,
             scenarioId,

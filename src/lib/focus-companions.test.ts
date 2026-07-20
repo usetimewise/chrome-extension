@@ -67,12 +67,6 @@ test("provides theme metadata for every companion", () => {
         assert.match(companion.theme.primaryHover, HEX_COLOR_PATTERN);
         assert.match(companion.theme.soft, HEX_COLOR_PATTERN);
         assert.match(companion.theme.softHover, HEX_COLOR_PATTERN);
-        assert.match(
-            companion.theme.panelBackgroundImagePath,
-            new RegExp(
-                `^images/${companion.id}/${companion.id}-panel-background\\.avif$`,
-            ),
-        );
         assert.equal(companion.theme.accentText, companion.theme.primary);
         assert.equal(companion.theme.contrastText, "#ffffff");
 
@@ -127,7 +121,7 @@ test("lists companions with availability metadata and preview data", () => {
     if (preview.visual.kind === "image") {
         assert.equal(
             preview.visual.src,
-            "chrome-extension://images/ceo/ceo-s02-03.avif",
+            "chrome-extension://images/alpha/ceo/ceo-s02-03.avif",
         );
     }
 });
@@ -145,7 +139,7 @@ test("creates localized companion preview", () => {
     );
 });
 
-test("creates deterministic overlay variant with image visual for ceo", () => {
+test("creates deterministic overlay scene for ceo", () => {
     const variant = createFocusCompanionOverlayVariant("ceo", {
         randomInt: () => 1,
         resolveAssetUrl: (path) => `chrome-extension://${path}`,
@@ -155,20 +149,14 @@ test("creates deterministic overlay variant with image visual for ceo", () => {
     assert.equal(variant.scenarioId, "2");
     assert.deepEqual(variant.theme, getFocusCompanion("ceo").theme);
     assert.equal(
-        variant.panelBackgroundImageUrl,
-        "chrome-extension://images/ceo/ceo-panel-background.avif",
-    );
-    assert.equal(
         variant.text,
         "Twelve minutes of TikTok. That's a $40 mistake. Course-correct.",
     );
-    assert.equal(variant.visual.kind, "image");
-    if (variant.visual.kind === "image") {
-        assert.equal(
-            variant.visual.src,
-            "chrome-extension://images/ceo/ceo-s02-02.avif",
-        );
-    }
+    assert.equal(variant.visual.kind, "scene");
+    assert.equal(
+        variant.visual.characterSrc,
+        "chrome-extension://images/alpha/ceo/ceo-s02-02.avif",
+    );
 });
 
 test("selects one replica per overlay variant", () => {
@@ -186,13 +174,11 @@ test("selects one replica per overlay variant", () => {
         variant.text,
         "You're optimizing for dopamine, not impact. Switch.",
     );
-    assert.equal(variant.visual.kind, "image");
-    if (variant.visual.kind === "image") {
-        assert.equal(
-            variant.visual.src,
-            "chrome-extension://images/ceo/ceo-s02-04.avif",
-        );
-    }
+    assert.equal(variant.visual.kind, "scene");
+    assert.equal(
+        variant.visual.characterSrc,
+        "chrome-extension://images/alpha/ceo/ceo-s02-04.avif",
+    );
 });
 
 test("creates overlay variant for an explicit replica index", () => {
@@ -209,13 +195,11 @@ test("creates overlay variant for an explicit replica index", () => {
         variant.text,
         "Top performers don't scroll during sprint hours.",
     );
-    assert.equal(variant.visual.kind, "image");
-    if (variant.visual.kind === "image") {
-        assert.equal(
-            variant.visual.src,
-            "chrome-extension://images/ceo/ceo-s02-05.avif",
-        );
-    }
+    assert.equal(variant.visual.kind, "scene");
+    assert.equal(
+        variant.visual.characterSrc,
+        "chrome-extension://images/alpha/ceo/ceo-s02-05.avif",
+    );
 });
 
 test("creates overlay variant for selected scenario", () => {
@@ -231,66 +215,52 @@ test("creates overlay variant for selected scenario", () => {
         variant.text,
         "Ten minutes wasted, soldier! Eyes back on the mission. NOW.",
     );
-    assert.equal(variant.visual.kind, "image");
-    if (variant.visual.kind === "image") {
-        assert.equal(
-            variant.visual.src,
-            "chrome-extension://images/sgt/sgt-s03-01.avif",
-        );
-    }
+    assert.equal(variant.visual.kind, "scene");
+    assert.equal(
+        variant.visual.characterSrc,
+        "chrome-extension://images/alpha/sgt/sgt-s03-01.avif",
+    );
 });
 
-test("creates unified alpha scenes for every butler scenario one replica", () => {
-    for (let replicaIndex = 0; replicaIndex < 10; replicaIndex += 1) {
-        const variant = createFocusCompanionOverlayVariant("butler", {
-            scenarioId: "1",
-            replicaIndex,
-            resolveAssetUrl: (path) => `chrome-extension://${path}`,
-        });
+test("creates unified alpha scenes for every companion replica", () => {
+    const scenarioIds = ["1", "2", "3", "4", "5", "6"] as const;
 
-        assert.equal(variant.visual.kind, "scene");
-        if (variant.visual.kind === "scene") {
-            assert.equal(
-                variant.visual.characterSrc,
-                `chrome-extension://images/alpha/butler/butler-s01-${String(replicaIndex + 1).padStart(2, "0")}.avif`,
-            );
-            assert.equal(
-                variant.visual.speechBubbleSrc,
-                "chrome-extension://images/speech-bubble.svg",
-            );
-            assert.equal(variant.visual.alt, "British Butler");
-            assert.equal(
-                variant.visual.scene.tuning.floorShadowOpacity > 0,
-                true,
-            );
-            assert.equal(
-                variant.visual.scene.tuning.contactShadowOpacity > 0,
-                true,
-            );
-            assert.equal(
-                variant.visual.scene.tuning.surfaceShadowOpacity > 0,
-                true,
-            );
-            assert.match(
-                variant.visual.scene.palette.backdropBase,
-                HEX_COLOR_PATTERN,
-            );
+    for (const companion of listFocusCompanions()) {
+        for (const scenarioId of scenarioIds) {
+            for (let replicaIndex = 0; replicaIndex < 10; replicaIndex += 1) {
+                const variant = createFocusCompanionOverlayVariant(
+                    companion.id,
+                    {
+                        scenarioId,
+                        replicaIndex,
+                        resolveAssetUrl: (path) =>
+                            `chrome-extension://${path}`,
+                    },
+                );
+
+                assert.equal(variant.visual.kind, "scene");
+                assert.equal(
+                    variant.visual.characterSrc,
+                    `chrome-extension://images/alpha/${companion.id}/${companion.id}-s${scenarioId.padStart(2, "0")}-${String(replicaIndex + 1).padStart(2, "0")}.avif`,
+                );
+                assert.equal(
+                    variant.visual.speechBubbleSrc,
+                    "chrome-extension://images/speech-bubble.svg",
+                );
+                assert.ok(variant.visual.scene.tuning.floorShadowOpacity > 0);
+                assert.ok(
+                    variant.visual.scene.tuning.contactShadowOpacity > 0,
+                );
+                assert.ok(
+                    variant.visual.scene.tuning.surfaceShadowOpacity > 0,
+                );
+                assert.match(
+                    variant.visual.scene.palette.backdropBase,
+                    HEX_COLOR_PATTERN,
+                );
+            }
         }
     }
-});
-
-test("keeps legacy image visuals outside butler scenario one", () => {
-    const butlerScenarioTwo = createFocusCompanionOverlayVariant("butler", {
-        scenarioId: "2",
-        replicaIndex: 0,
-    });
-    const ceoScenarioOne = createFocusCompanionOverlayVariant("ceo", {
-        scenarioId: "1",
-        replicaIndex: 0,
-    });
-
-    assert.equal(butlerScenarioTwo.visual.kind, "image");
-    assert.equal(ceoScenarioOne.visual.kind, "image");
 });
 
 test("creates localized overlay variant", () => {
@@ -304,7 +274,7 @@ test("creates localized overlay variant", () => {
         variant.text,
         "Десять минут коту под хвост, боец! Глаза на задачу. БЫСТРО.",
     );
-    assert.equal(variant.visual.kind, "image");
+    assert.equal(variant.visual.kind, "scene");
 });
 
 test("returns replica texts for every supported language", () => {
