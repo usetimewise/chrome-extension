@@ -33,7 +33,7 @@ import {
 } from "../../lib/site-block-rules.js";
 import type { BootstrapResponse, UserPreferences } from "../../lib/types.js";
 import { getErrorMessage } from "../../lib/utils.js";
-import { AppIcon, type AppIconName } from "../icons/index.js";
+import { AppIcon } from "../icons/index.js";
 import { usePopupBootstrap } from "./hooks/use-popup-bootstrap.js";
 
 type FocusActionState =
@@ -41,8 +41,8 @@ type FocusActionState =
     | { status: "loading"; label: string }
     | { status: "error"; message: string };
 
-type PopupView = "focus" | "settings";
-type SettingsTab = "companion" | "blocking";
+type PopupView = "focus" | "settings" | "companion";
+type PreferencesPage = Exclude<PopupView, "focus">;
 
 type SettingsSaveState =
     | { status: "idle" }
@@ -73,15 +73,6 @@ type CompanionAvatarStyle = CSSProperties & {
     "--avatar-image-offset-x": string;
     "--avatar-image-offset-y": string;
 };
-
-const SETTINGS_TABS: Array<{
-    id: SettingsTab;
-    labelKey: "popup.tabCompanion" | "popup.tabBlocking";
-    icon: AppIconName;
-}> = [
-    { id: "companion", labelKey: "popup.tabCompanion", icon: "companion" },
-    { id: "blocking", labelKey: "popup.tabBlocking", icon: "blocking" },
-];
 
 const LANGUAGE_OPTIONS: Array<{
     language: AppLanguage;
@@ -207,7 +198,8 @@ function LanguagePicker({
     );
 }
 
-function SettingsView({
+function PreferencesView({
+    page,
     bootstrap,
     language,
     t,
@@ -215,6 +207,7 @@ function SettingsView({
     onCompanionSelected,
     onSaved,
 }: {
+    page: PreferencesPage;
     bootstrap: BootstrapResponse | null;
     language: AppLanguage;
     t: Translator;
@@ -222,7 +215,6 @@ function SettingsView({
     onCompanionSelected: () => void;
     onSaved: (bootstrap: BootstrapResponse) => void;
 }) {
-    const [activeTab, setActiveTab] = useState<SettingsTab>("companion");
     const [draft, setDraft] = useState<UserPreferences>(() =>
         buildPreferencesDraft(bootstrap),
     );
@@ -287,7 +279,7 @@ function SettingsView({
     }, [bootstrap]);
 
     useEffect(() => {
-        if (activeTab !== "companion") {
+        if (page !== "companion") {
             return;
         }
 
@@ -296,7 +288,7 @@ function SettingsView({
             block: "center",
             inline: "nearest",
         });
-    }, [activeTab, draft.selectedCompanionId]);
+    }, [page, draft.selectedCompanionId]);
 
     useEffect(
         () => () => {
@@ -468,7 +460,11 @@ function SettingsView({
     return (
         <main
             className="popup-shell popup-shell-settings"
-            aria-label="Settings"
+            aria-label={
+                page === "companion"
+                    ? t("popup.tabCompanion")
+                    : t("popup.settingsTitle")
+            }
             style={companionThemeStyle}
         >
             <section className="settings-panel">
@@ -488,34 +484,15 @@ function SettingsView({
                             alt="ZalipOff"
                         />
                         <h1 className="settings-title">
-                            {t("popup.settingsTitle")}
+                            {page === "companion"
+                                ? t("popup.tabCompanion")
+                                : t("popup.settingsTitle")}
                         </h1>
                     </div>
                 </header>
 
-                <nav
-                    className="settings-tabs"
-                    aria-label={t("popup.settingsSections")}
-                >
-                    {SETTINGS_TABS.map((tab) => (
-                        <button
-                            key={tab.id}
-                            className={
-                                activeTab === tab.id
-                                    ? "settings-tab is-active"
-                                    : "settings-tab"
-                            }
-                            type="button"
-                            onClick={() => setActiveTab(tab.id)}
-                        >
-                            <AppIcon name={tab.icon} size={15} />
-                            {t(tab.labelKey)}
-                        </button>
-                    ))}
-                </nav>
-
                 <div className="settings-content">
-                    {activeTab === "companion" ? (
+                    {page === "companion" ? (
                         <div className="settings-section">
                             <p className="settings-copy">
                                 {t("popup.companionCopy")}
@@ -595,7 +572,7 @@ function SettingsView({
                         </div>
                     ) : null}
 
-                    {activeTab === "blocking" ? (
+                    {page === "settings" ? (
                         <div className="settings-section">
                             <p className="settings-copy">
                                 {t("popup.blockingCopy")}
@@ -936,9 +913,10 @@ function PopupApp() {
         }
     }
 
-    if (view === "settings") {
+    if (view !== "focus") {
         return (
-            <SettingsView
+            <PreferencesView
+                page={view}
                 bootstrap={bootstrap}
                 language={language}
                 t={t}
@@ -987,7 +965,7 @@ function PopupApp() {
                         <button
                             className="companion-avatar-button"
                             type="button"
-                            onClick={() => setView("settings")}
+                            onClick={() => setView("companion")}
                             aria-label={t("popup.openCompanionPicker", {
                                 name: companionAvatar.alt,
                             })}

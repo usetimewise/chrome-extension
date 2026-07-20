@@ -81,7 +81,6 @@ body::before {
 }
 
 .settings-icon-button svg,
-.settings-tab svg,
 .companion-check svg,
 .blocked-host-add svg,
 .blocked-host-row button svg {
@@ -365,41 +364,6 @@ body::before {
     font-weight: 600;
     letter-spacing: 0;
     line-height: 1.2;
-}
-
-.settings-tabs {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
-    margin: 14px 20px 0;
-    padding: 4px;
-    border-radius: 8px;
-    background: #f0f1f4;
-}
-
-.settings-tab {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    min-width: 0;
-    min-height: 34px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: #5d6472;
-    cursor: pointer;
-    font: inherit;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.2;
-    padding: 8px 6px;
-}
-
-.settings-tab.is-active {
-    background: #ffffff;
-    color: var(--companion-accent-text);
-    box-shadow: 0 1px 2px rgba(3, 2, 19, 0.08);
 }
 
 .settings-content {
