@@ -99,6 +99,9 @@ function createOverlayVisual(
         return {
             kind: "scene",
             characterSrc: resolvePath(replica.imagePath, resolveAssetUrl),
+            speechBubbleSrc: scene.speechBubbleImagePath
+                ? resolvePath(scene.speechBubbleImagePath, resolveAssetUrl)
+                : undefined,
             alt: getFocusCompanionText(companion.id, "name", language),
             scene,
         };

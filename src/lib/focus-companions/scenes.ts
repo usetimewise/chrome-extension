@@ -9,6 +9,7 @@ import type {
 type FocusCompanionSceneDefinition = {
     palette: FocusCompanionScenePalette;
     tuning?: Partial<FocusCompanionSceneTuning>;
+    speechBubbleImagePath?: string;
 };
 
 const DEFAULT_SCENE_TUNING: FocusCompanionSceneTuning = {
@@ -48,6 +49,7 @@ const FOCUS_COMPANION_SCENES: Partial<
 > = {
     butler: {
         "1": {
+            speechBubbleImagePath: "images/speech-bubble.svg",
             palette: {
                 backdropBase: "#713244",
                 backdropDeep: "#2b1720",
@@ -72,6 +74,7 @@ export function getFocusCompanionScene(
 
     return {
         palette: definition.palette,
+        speechBubbleImagePath: definition.speechBubbleImagePath,
         tuning: {
             ...DEFAULT_SCENE_TUNING,
             ...definition.tuning,

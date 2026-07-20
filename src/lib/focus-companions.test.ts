@@ -254,6 +254,10 @@ test("creates unified alpha scenes for every butler scenario one replica", () =>
                 variant.visual.characterSrc,
                 `chrome-extension://images/alpha/butler/butler-s01-${String(replicaIndex + 1).padStart(2, "0")}.avif`,
             );
+            assert.equal(
+                variant.visual.speechBubbleSrc,
+                "chrome-extension://images/speech-bubble.svg",
+            );
             assert.equal(variant.visual.alt, "British Butler");
             assert.equal(
                 variant.visual.scene.tuning.floorShadowOpacity > 0,

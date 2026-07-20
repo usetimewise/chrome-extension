@@ -19,17 +19,17 @@
 
 # Live-проверки Chrome extension
 
-Для live-проверок расширения используй Chromium-Gost, а не стандартный Chrome DevTools MCP-браузер.
+Для live-проверок расширения используй Chromium, а не стандартный Chrome DevTools MCP-браузер.
 
 Причины:
 * браузер, которым управляет `chrome-devtools` MCP, запускается с `--disable-extensions`, поэтому расширение там не загрузится;
 * Google Chrome на этой машине игнорирует `--load-extension` для unpacked extension и пишет в логах `--load-extension is not allowed in Google Chrome, ignoring`;
-* Chromium-Gost корректно загружает unpacked extension из `dist` и доступен по `/Applications/Chromium-Gost.app/Contents/MacOS/Chromium-Gost`.
+* Chromium-Gost корректно загружает unpacked extension из `dist` и доступен по `/Applications/Chromium.app/Contents/MacOS/Chromium`.
 
 Рабочий запуск для live smoke:
 
 ```bash
-/Applications/Chromium-Gost.app/Contents/MacOS/Chromium-Gost \
+/Applications/Chromium.app/Contents/MacOS/Chromium \
   --user-data-dir=/tmp/zalipoff-extension-live-test \
   --load-extension=/Users/ikochergin/work/time-wise-tracker-chrome/extension/dist \
   --disable-extensions-except=/Users/ikochergin/work/time-wise-tracker-chrome/extension/dist \

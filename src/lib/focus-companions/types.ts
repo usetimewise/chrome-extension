@@ -88,6 +88,7 @@ export type FocusCompanionSceneTuning = {
 export type FocusCompanionScene = {
     palette: FocusCompanionScenePalette;
     tuning: FocusCompanionSceneTuning;
+    speechBubbleImagePath?: string;
 };
 
 export type FocusCompanionOverlayVisual =
@@ -95,6 +96,7 @@ export type FocusCompanionOverlayVisual =
     | {
           kind: "scene";
           characterSrc: string;
+          speechBubbleSrc?: string;
           alt: string;
           scene: FocusCompanionScene;
       };

@@ -11,10 +11,7 @@ import {
     type Translator,
 } from "../../lib/i18n";
 import { createContentIcon } from "../icon-elements.js";
-import {
-    IS_SPEECH_BUBBLE_ENABLED,
-    OVERLAY_ID,
-} from "./constants.js";
+import { OVERLAY_ID } from "./constants.js";
 import {
     FULLSCREEN_OVERLAY_STYLES,
     TOAST_OVERLAY_STYLES,
@@ -301,14 +298,24 @@ function buildSiteBadge(host: string, iconSize: number): HTMLDivElement {
     return site;
 }
 
-function buildTitleContent(title: HTMLElement): HTMLElement {
-    if (!IS_SPEECH_BUBBLE_ENABLED) {
+function buildTitleContent(
+    title: HTMLElement,
+    speechBubbleSrc?: string,
+): HTMLElement {
+    if (!speechBubbleSrc) {
         return title;
     }
 
     const speech = document.createElement("div");
     speech.className = "speech";
-    speech.append(title);
+    const speechBubble = document.createElement("div");
+    speechBubble.className = "speech-bubble-image";
+    speechBubble.style.setProperty(
+        "--speech-bubble-image",
+        `url("${speechBubbleSrc}")`,
+    );
+    speechBubble.setAttribute("aria-hidden", "true");
+    speech.append(speechBubble, title);
     return speech;
 }
 
@@ -362,7 +369,14 @@ function buildToastOverlay(
     title.textContent =
         message.mode === "offer" ? message.message : copyVariant.text;
 
-    copy.append(buildTitleContent(title), buildSiteBadge(message.host, 12));
+    const speechBubbleSrc =
+        copyVariant.visual.kind === "scene"
+            ? copyVariant.visual.speechBubbleSrc
+            : undefined;
+    copy.append(
+        buildTitleContent(title, speechBubbleSrc),
+        buildSiteBadge(message.host, 12),
+    );
 
     const closeButton = document.createElement("button");
     closeButton.className = "close";
@@ -507,8 +521,12 @@ function buildFullscreenOverlay(
 
     const panelContent = document.createElement("div");
     panelContent.className = "panel-content";
+    const speechBubbleSrc =
+        copyVariant.visual.kind === "scene"
+            ? copyVariant.visual.speechBubbleSrc
+            : undefined;
     panelContent.append(
-        buildTitleContent(title),
+        buildTitleContent(title, speechBubbleSrc),
         buildSiteBadge(message.host, 14),
         actions,
         status,

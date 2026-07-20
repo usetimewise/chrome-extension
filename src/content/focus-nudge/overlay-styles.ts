@@ -189,16 +189,32 @@ const SHARED_SPEECH_STYLES = `
     .speech {
       position: relative;
       box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       width: 100%;
-      border: 2px solid var(--overlay-secondary-border);
-      background: var(--overlay-control-hover);
+      aspect-ratio: 461.929 / 271.476;
+      padding: 12% 6% 8% 18%;
     }
 
-    .speech::before {
+    .speech-bubble-image {
       position: absolute;
-      content: "";
-      background: var(--overlay-control-hover);
-      transform: translateY(-50%) rotate(45deg);
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: var(--overlay-text);
+      -webkit-mask: var(--speech-bubble-image) center / contain no-repeat;
+      mask: var(--speech-bubble-image) center / contain no-repeat;
+      pointer-events: none;
+    }
+
+    .speech .title {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      text-align: center;
+      text-shadow: 0 1px 2px rgba(18, 6, 11, 0.72);
     }
 
     .title {
@@ -392,20 +408,6 @@ ${SHARED_COMPONENT_STYLES}
       flex: 1 1 auto;
     }
 
-    .speech {
-      padding: 9px 10px;
-      border-radius: 14px;
-    }
-
-    .speech::before {
-      top: 50%;
-      left: -8px;
-      width: 12px;
-      height: 12px;
-      border-bottom: 2px solid var(--overlay-secondary-border);
-      border-left: 2px solid var(--overlay-secondary-border);
-    }
-
     .title {
       font-size: 13px;
       font-weight: 600;
@@ -509,10 +511,6 @@ ${SHARED_COMPONENT_STYLES}
 
       .toast.scene-shell .scene-character {
         --scene-character-max-width: 150px;
-      }
-
-      .speech {
-        padding: 8px;
       }
 
       .actions {
@@ -626,20 +624,6 @@ ${SHARED_COMPONENT_STYLES}
     .panel.scene-shell .panel-content {
       min-height: 360px;
       margin-left: 43%;
-    }
-
-    .speech {
-      padding: 20px 22px;
-      border-radius: 24px;
-    }
-
-    .speech::before {
-      top: 50%;
-      left: -11px;
-      width: 17px;
-      height: 17px;
-      border-bottom: 2px solid var(--overlay-secondary-border);
-      border-left: 2px solid var(--overlay-secondary-border);
     }
 
     .title {
@@ -765,20 +749,6 @@ ${SHARED_COMPONENT_STYLES}
         min-height: 0;
         margin-top: 190px;
         margin-left: 0;
-      }
-
-      .speech {
-        padding: 16px 18px;
-        border-radius: 20px;
-      }
-
-      .speech::before {
-        top: -11px;
-        left: 50%;
-        border: 0;
-        border-top: 2px solid var(--overlay-secondary-border);
-        border-left: 2px solid var(--overlay-secondary-border);
-        transform: translateX(-50%) rotate(45deg);
       }
 
       .title {
