@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import {
@@ -32,6 +33,14 @@ type ReplicaRow = {
     texts: Record<AppLanguage, string>;
 };
 
+type ReplicaGroup = {
+    companionId: FocusCompanionId;
+    companionName: string;
+    description: string;
+    imagePath: string;
+    rows: ReplicaRow[];
+};
+
 const DEBUG_HOST = "debug.zalipoff.local";
 const DEBUG_SESSION_ID = "replicas-debug-session";
 type ThemeSwatchKey = keyof Pick<
@@ -56,29 +65,38 @@ const THEME_SWATCHES: readonly {
     { key: "contrastText", label: "Contrast text" },
 ];
 
-function buildReplicaRows(companions: readonly FocusCompanion[]): ReplicaRow[] {
-    return companions.flatMap((companion) => {
+function buildReplicaGroups(
+    companions: readonly FocusCompanion[],
+): ReplicaGroup[] {
+    return companions.map((companion) => {
         const scenarioEntries = Object.entries(companion.scenarios) as Array<
             [FocusCompanionScenarioId, readonly FocusCompanionReplica[]]
         >;
 
-        return scenarioEntries.flatMap(([scenarioId, replicas]) =>
-            replicas.map((replica, replicaIndex) => ({
-                key: `${companion.id}-${scenarioId}-${replicaIndex}`,
-                companionId: companion.id,
-                companionName: companion.name,
-                scenarioId,
-                replicaNumber: replicaIndex + 1,
-                replicaIndex,
-                imagePath: "imagePath" in replica ? replica.imagePath : null,
-                theme: companion.theme,
-                texts: getFocusCompanionReplicaTexts(
-                    companion.id,
+        return {
+            companionId: companion.id,
+            companionName: companion.name,
+            description: companion.description,
+            imagePath: companion.avatar.imagePath,
+            rows: scenarioEntries.flatMap(([scenarioId, replicas]) =>
+                replicas.map((replica, replicaIndex) => ({
+                    key: `${companion.id}-${scenarioId}-${replicaIndex}`,
+                    companionId: companion.id,
+                    companionName: companion.name,
                     scenarioId,
+                    replicaNumber: replicaIndex + 1,
                     replicaIndex,
-                ),
-            })),
-        );
+                    imagePath:
+                        "imagePath" in replica ? replica.imagePath : null,
+                    theme: companion.theme,
+                    texts: getFocusCompanionReplicaTexts(
+                        companion.id,
+                        scenarioId,
+                        replicaIndex,
+                    ),
+                })),
+            ),
+        };
     });
 }
 
@@ -128,7 +146,28 @@ function showReplicaPreview(
 }
 
 function ReplicasApp() {
-    const rows = buildReplicaRows(listFocusCompanions());
+    const groups = buildReplicaGroups(listFocusCompanions());
+    const rowsCount = groups.reduce(
+        (total, group) => total + group.rows.length,
+        0,
+    );
+    const [collapsedCompanionIds, setCollapsedCompanionIds] = useState<
+        ReadonlySet<FocusCompanionId>
+    >(() => new Set(groups.map((group) => group.companionId)));
+
+    function handleGroupToggle(companionId: FocusCompanionId): void {
+        setCollapsedCompanionIds((currentIds) => {
+            const nextIds = new Set(currentIds);
+
+            if (nextIds.has(companionId)) {
+                nextIds.delete(companionId);
+            } else {
+                nextIds.add(companionId);
+            }
+
+            return nextIds;
+        });
+    }
 
     return (
         <main className="replicas-shell">
@@ -137,16 +176,15 @@ function ReplicasApp() {
                     <p>ZalipOff Debug</p>
                     <h1>Replicas</h1>
                 </div>
-                <strong>{rows.length} rows</strong>
+                <strong>
+                    {groups.length} characters · {rowsCount} rows
+                </strong>
             </header>
 
             <div className="replicas-table-wrap">
                 <table className="replicas-table">
                     <thead>
                         <tr>
-                            <th scope="col">Character</th>
-                            <th scope="col">Scenario</th>
-                            <th scope="col">Index</th>
                             <th scope="col">Image</th>
                             <th scope="col">Preview</th>
                             {SUPPORTED_LANGUAGES.map((language) => (
@@ -156,94 +194,151 @@ function ReplicasApp() {
                             ))}
                         </tr>
                     </thead>
-                    <tbody>
-                        {rows.map((row) => (
-                            <tr key={row.key}>
-                                <th scope="row">
-                                    <span>{row.companionName}</span>
-                                    <small>{row.companionId}</small>
-                                </th>
-                                <td>{row.scenarioId}</td>
-                                <td>{row.replicaNumber}</td>
-                                <td>
-                                    {row.imagePath ? (
-                                        <img
-                                            src={resolveImagePath(row.imagePath)}
-                                            alt={`${row.companionName}, scenario ${row.scenarioId}, replica ${row.replicaNumber}`}
-                                            loading="lazy"
-                                        />
-                                    ) : (
-                                        <span className="replicas-empty">
-                                            No image
-                                        </span>
-                                    )}
-                                </td>
-                                <td>
-                                    <div className="replicas-preview-cell">
-                                        <div
-                                            className="replicas-swatches"
-                                            aria-label={`${row.companionName} theme colors`}
-                                        >
-                                            {THEME_SWATCHES.map((swatch) => {
-                                                const color =
-                                                    row.theme[swatch.key];
+                    {groups.map((group) => {
+                        const isCollapsed = collapsedCompanionIds.has(
+                            group.companionId,
+                        );
 
-                                                return (
-                                                    <span
-                                                        className="replicas-swatch"
-                                                        key={swatch.key}
-                                                        title={`${swatch.label}: ${color}`}
-                                                        aria-label={`${swatch.label}: ${color}`}
-                                                        style={{
-                                                            backgroundColor:
-                                                                color,
-                                                        }}
-                                                    />
-                                                );
-                                            })}
-                                        </div>
-                                        <div className="replicas-preview-actions">
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    showReplicaPreview(
-                                                        row,
-                                                        "soft",
-                                                    )
-                                                }
-                                            >
-                                                Soft
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    showReplicaPreview(
-                                                        row,
-                                                        "strict",
-                                                    )
-                                                }
-                                            >
-                                                Hard
-                                            </button>
-                                        </div>
-                                    </div>
-                                </td>
-                                {SUPPORTED_LANGUAGES.map((language) => (
-                                    <td
-                                        key={language}
-                                        lang={language}
-                                        className={
-                                            language === DEFAULT_LANGUAGE
-                                                ? undefined
-                                                : "replicas-translated"
+                        return (
+                            <tbody key={group.companionId}>
+                                <tr className="replicas-group-row">
+                                    <th
+                                        scope="rowgroup"
+                                        colSpan={
+                                            2 + SUPPORTED_LANGUAGES.length
                                         }
                                     >
-                                        {row.texts[language]}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
-                    </tbody>
+                                        <button
+                                            type="button"
+                                            aria-expanded={!isCollapsed}
+                                            onClick={() =>
+                                                handleGroupToggle(
+                                                    group.companionId,
+                                                )
+                                            }
+                                        >
+                                            <span
+                                                className="replicas-group-chevron"
+                                                aria-hidden="true"
+                                            />
+                                            <img
+                                                className="replicas-group-image"
+                                                src={resolveImagePath(
+                                                    group.imagePath,
+                                                )}
+                                                alt=""
+                                                loading="lazy"
+                                            />
+                                            <span className="replicas-group-title">
+                                                {group.companionName}
+                                                <small>
+                                                    {group.companionId}
+                                                </small>
+                                            </span>
+                                            <span className="replicas-group-description">
+                                                {group.description}
+                                            </span>
+                                            <span className="replicas-group-count">
+                                                {group.rows.length} replicas
+                                            </span>
+                                        </button>
+                                    </th>
+                                </tr>
+                                {!isCollapsed &&
+                                    group.rows.map((row) => (
+                                        <tr key={row.key}>
+                                            <td>
+                                                {row.imagePath ? (
+                                                    <img
+                                                        src={resolveImagePath(
+                                                            row.imagePath,
+                                                        )}
+                                                        alt={`${row.companionName}, scenario ${row.scenarioId}, replica ${row.replicaNumber}`}
+                                                        loading="lazy"
+                                                    />
+                                                ) : (
+                                                    <span className="replicas-empty">
+                                                        No image
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <div className="replicas-preview-cell">
+                                                    <div
+                                                        className="replicas-swatches"
+                                                        aria-label={`${row.companionName} theme colors`}
+                                                    >
+                                                        {THEME_SWATCHES.map(
+                                                            (swatch) => {
+                                                                const color =
+                                                                    row.theme[
+                                                                        swatch.key
+                                                                    ];
+
+                                                                return (
+                                                                    <span
+                                                                        className="replicas-swatch"
+                                                                        key={
+                                                                            swatch.key
+                                                                        }
+                                                                        title={`${swatch.label}: ${color}`}
+                                                                        aria-label={`${swatch.label}: ${color}`}
+                                                                        style={{
+                                                                            backgroundColor:
+                                                                                color,
+                                                                        }}
+                                                                    />
+                                                                );
+                                                            },
+                                                        )}
+                                                    </div>
+                                                    <div className="replicas-preview-actions">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                showReplicaPreview(
+                                                                    row,
+                                                                    "soft",
+                                                                )
+                                                            }
+                                                        >
+                                                            Soft
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                showReplicaPreview(
+                                                                    row,
+                                                                    "strict",
+                                                                )
+                                                            }
+                                                        >
+                                                            Hard
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            {SUPPORTED_LANGUAGES.map(
+                                                (language) => (
+                                                    <td
+                                                        key={language}
+                                                        lang={language}
+                                                        className={
+                                                            language ===
+                                                            DEFAULT_LANGUAGE
+                                                                ? undefined
+                                                                : "replicas-translated"
+                                                        }
+                                                    >
+                                                        {row.texts[language]}
+                                                    </td>
+                                                ),
+                                            )}
+                                        </tr>
+                                    ))}
+                            </tbody>
+                        );
+                    })}
                 </table>
             </div>
         </main>
