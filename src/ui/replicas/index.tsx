@@ -1,12 +1,11 @@
 import { createRoot } from "react-dom/client";
 
 import {
-    buildOverlayFromVariant,
+    buildOverlay,
     type OverlayViewCallbacks,
 } from "../../content/focus-nudge/overlay-view.js";
 import { OVERLAY_ID } from "../../content/focus-nudge/constants.js";
 import {
-    createFocusCompanionOverlayVariant,
     listFocusCompanions,
     type FocusCompanion,
     type FocusCompanionId,
@@ -106,13 +105,7 @@ function showReplicaPreview(
     presentation: "soft" | "strict",
 ): void {
     removePreviewOverlay();
-    const copyVariant = createFocusCompanionOverlayVariant(row.companionId, {
-        language: DEFAULT_LANGUAGE,
-        scenarioId: row.scenarioId,
-        replicaIndex: row.replicaIndex,
-        resolveAssetUrl: resolveImagePath,
-    });
-    const overlay = buildOverlayFromVariant(
+    const overlay = buildOverlay(
         {
             mode: "block",
             sessionId: DEBUG_SESSION_ID,
@@ -122,9 +115,13 @@ function showReplicaPreview(
             presentation,
             scenarioId: row.scenarioId,
         },
-        copyVariant,
-        DEFAULT_LANGUAGE,
         buildPreviewCallbacks(),
+        {
+            companionId: row.companionId,
+            language: DEFAULT_LANGUAGE,
+            replicaIndex: row.replicaIndex,
+            resolveAssetUrl: resolveImagePath,
+        },
     );
 
     document.documentElement.append(overlay.host);

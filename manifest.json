@@ -31,7 +31,10 @@
     ],
     "web_accessible_resources": [
         {
-            "resources": ["images/*/*.avif"],
+            "resources": [
+                "images/*/*.avif",
+                "images/speech-bubble.svg"
+            ],
             "matches": ["http://*/*", "https://*/*"]
         }
     ],

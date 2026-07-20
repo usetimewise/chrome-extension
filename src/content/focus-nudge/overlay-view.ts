@@ -1,5 +1,7 @@
 import {
     createFocusCompanionOverlayVariant,
+    type FocusCompanionAssetUrlResolver,
+    type FocusCompanionId,
     type FocusCompanionOverlayVariant,
     type FocusCompanionScene,
     type FocusCompanionTheme,
@@ -48,6 +50,13 @@ export type BuiltOverlay = {
     host: HTMLDivElement;
     shadow: ShadowRoot;
     t: Translator;
+};
+
+export type OverlayBuildConfig = {
+    companionId?: FocusCompanionId;
+    language: AppLanguage;
+    replicaIndex?: number;
+    resolveAssetUrl: FocusCompanionAssetUrlResolver;
 };
 
 function createStyle(styles: string): HTMLStyleElement {
@@ -467,7 +476,7 @@ function buildFullscreenOverlay(
     return { host, shadow, t };
 }
 
-export function buildOverlayFromVariant(
+function buildOverlayFromVariant(
     message: FocusOverlayMessage,
     copyVariant: FocusCompanionOverlayVariant,
     language: AppLanguage,
@@ -487,20 +496,39 @@ export function buildOverlayFromVariant(
     return buildFullscreenOverlay(host, shadow, message, copyVariant, t, callbacks);
 }
 
-export async function buildOverlay(
+export function buildOverlay(
+    message: FocusOverlayMessage,
+    callbacks: OverlayViewCallbacks,
+    config: OverlayBuildConfig,
+): BuiltOverlay {
+    const copyVariant = createFocusCompanionOverlayVariant(
+        config.companionId,
+        {
+            language: config.language,
+            scenarioId: message.scenarioId,
+            replicaIndex: config.replicaIndex,
+            resolveAssetUrl: config.resolveAssetUrl,
+        },
+    );
+
+    return buildOverlayFromVariant(
+        message,
+        copyVariant,
+        config.language,
+        callbacks,
+    );
+}
+
+export async function buildRuntimeOverlay(
     message: FocusOverlayMessage,
     callbacks: OverlayViewCallbacks,
 ): Promise<BuiltOverlay> {
     const preferences = await getStoredPreferences();
     const language: AppLanguage = resolveLanguage(preferences?.language);
-    const copyVariant = createFocusCompanionOverlayVariant(
-        preferences?.selectedCompanionId,
-        {
-            language,
-            scenarioId: message.scenarioId,
-            resolveAssetUrl: (path) => chrome.runtime.getURL(path),
-        },
-    );
 
-    return buildOverlayFromVariant(message, copyVariant, language, callbacks);
+    return buildOverlay(message, callbacks, {
+        companionId: preferences?.selectedCompanionId,
+        language,
+        resolveAssetUrl: (path) => chrome.runtime.getURL(path),
+    });
 }

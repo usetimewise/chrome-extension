@@ -11,7 +11,10 @@ import {
     FOCUS_BLOCKER_RELEASE_EVENT, TOAST_AUTO_DISMISS_MS,
     OVERLAY_ID,
 } from "./constants.js";
-import { buildOverlay, type OverlayViewCallbacks } from "./overlay-view.js";
+import {
+    buildRuntimeOverlay,
+    type OverlayViewCallbacks,
+} from "./overlay-view.js";
 import { focusNudgeState } from "./state.js";
 import type {
     FocusOverlayBlockMessage,
@@ -142,7 +145,7 @@ export async function showFocusOverlay(
     } else {
         engageFocusBlocker();
     }
-    const overlay = await buildOverlay(message, buildViewCallbacks());
+    const overlay = await buildRuntimeOverlay(message, buildViewCallbacks());
     if (
         focusNudgeState.overlayRequestId !== requestId ||
         focusNudgeState.activeOverlayKey !== key
