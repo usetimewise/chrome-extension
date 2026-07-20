@@ -63,7 +63,10 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(255, 211, 183, 0.32)",
             shadow: "rgba(24, 8, 11, 0.78)",
         },
-        tuning: { characterWidth: 1.12, footAnchorY: 0.94 },
+        tuning: { characterWidth: 1.12, footAnchorY: 0.937 },
+        scenarios: {
+            "6": { tuning: { footAnchorY: 0.923 } },
+        },
     },
     hbest: {
         palette: {
@@ -73,7 +76,7 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(255, 250, 214, 0.54)",
             shadow: "rgba(80, 49, 5, 0.68)",
         },
-        tuning: { characterWidth: 1.24, footAnchorY: 0.94 },
+        tuning: { characterWidth: 1.24, footAnchorY: 0.934 },
     },
     sarc: {
         palette: {
@@ -83,7 +86,7 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(202, 246, 240, 0.38)",
             shadow: "rgba(8, 38, 42, 0.72)",
         },
-        tuning: { characterWidth: 1.18, footAnchorY: 0.945 },
+        tuning: { characterWidth: 1.18, footAnchorY: 0.922 },
     },
     zen: {
         palette: {
@@ -93,7 +96,7 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(247, 255, 225, 0.48)",
             shadow: "rgba(42, 64, 32, 0.66)",
         },
-        tuning: { characterWidth: 1.18, footAnchorY: 0.925 },
+        tuning: { characterWidth: 1.18, footAnchorY: 0.908 },
     },
     pirate: {
         palette: {
@@ -103,7 +106,7 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(218, 255, 244, 0.44)",
             shadow: "rgba(5, 48, 53, 0.7)",
         },
-        tuning: { characterWidth: 1.14, footAnchorY: 0.925 },
+        tuning: { characterWidth: 1.14, footAnchorY: 0.91 },
     },
     butler: {
         palette: {
@@ -113,7 +116,7 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(255, 210, 183, 0.38)",
             shadow: "rgba(21, 8, 13, 0.78)",
         },
-        tuning: { footAnchorY: 0.895 },
+        tuning: { footAnchorY: 0.896 },
     },
     surfer: {
         palette: {
@@ -123,7 +126,7 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(239, 255, 248, 0.48)",
             shadow: "rgba(15, 79, 98, 0.66)",
         },
-        tuning: { characterWidth: 1.16, footAnchorY: 0.92 },
+        tuning: { characterWidth: 1.16, footAnchorY: 0.907 },
     },
     ceo: {
         palette: {
@@ -133,7 +136,7 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(255, 246, 226, 0.44)",
             shadow: "rgba(37, 47, 59, 0.64)",
         },
-        tuning: { characterWidth: 1.16, footAnchorY: 0.91 },
+        tuning: { characterWidth: 1.16, footAnchorY: 0.913 },
     },
     coach: {
         palette: {
@@ -143,7 +146,7 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(255, 248, 210, 0.42)",
             shadow: "rgba(31, 66, 29, 0.66)",
         },
-        tuning: { characterWidth: 1.18, footAnchorY: 0.915 },
+        tuning: { characterWidth: 1.18, footAnchorY: 0.902 },
     },
     th: {
         palette: {
@@ -153,7 +156,11 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(255, 242, 213, 0.42)",
             shadow: "rgba(43, 65, 41, 0.62)",
         },
-        tuning: { characterWidth: 1.17, footAnchorY: 0.92 },
+        tuning: {
+            characterWidth: 1.17,
+            footAnchorY: 0.858,
+            contactShadowWidth: 0.32,
+        },
     },
     stoic: {
         palette: {
@@ -163,7 +170,11 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(239, 216, 189, 0.34)",
             shadow: "rgba(25, 20, 17, 0.76)",
         },
-        tuning: { characterWidth: 1.16, footAnchorY: 0.93 },
+        tuning: {
+            characterWidth: 1.16,
+            footAnchorY: 0.924,
+            contactShadowWidth: 0.29,
+        },
     },
     cowboy: {
         palette: {
@@ -173,7 +184,7 @@ const FOCUS_COMPANION_SCENE_PRESETS: Record<
             light: "rgba(255, 238, 194, 0.46)",
             shadow: "rgba(75, 34, 14, 0.68)",
         },
-        tuning: { characterWidth: 1.13, footAnchorY: 0.93 },
+        tuning: { characterWidth: 1.13, footAnchorY: 0.929 },
     },
 };
 

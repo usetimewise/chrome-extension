@@ -300,6 +300,71 @@ test("creates unified alpha scenes for every companion replica", () => {
     }
 });
 
+test("aligns contact shadows with each companion's feet", () => {
+    const expectedFootAnchors = {
+        butler: 0.896,
+        ceo: 0.913,
+        coach: 0.902,
+        cowboy: 0.929,
+        hbest: 0.934,
+        pirate: 0.91,
+        sarc: 0.922,
+        sgt: 0.937,
+        stoic: 0.924,
+        surfer: 0.907,
+        th: 0.858,
+        zen: 0.908,
+    } as const;
+
+    for (const [companionId, expectedFootAnchor] of Object.entries(
+        expectedFootAnchors,
+    )) {
+        const variant = createFocusCompanionOverlayVariant(companionId, {
+            scenarioId: "1",
+            replicaIndex: 0,
+        });
+
+        assert.equal(variant.visual.kind, "scene");
+        assert.equal(
+            variant.visual.scene.tuning.footAnchorY,
+            expectedFootAnchor,
+        );
+    }
+
+    const sergeantRecoveryVariant = createFocusCompanionOverlayVariant(
+        "sgt",
+        {
+            scenarioId: "6",
+            replicaIndex: 0,
+        },
+    );
+
+    assert.equal(sergeantRecoveryVariant.visual.kind, "scene");
+    assert.equal(
+        sergeantRecoveryVariant.visual.scene.tuning.footAnchorY,
+        0.923,
+    );
+
+    const therapistVariant = createFocusCompanionOverlayVariant("th", {
+        scenarioId: "1",
+        replicaIndex: 0,
+    });
+
+    assert.equal(therapistVariant.visual.kind, "scene");
+    assert.equal(
+        therapistVariant.visual.scene.tuning.contactShadowWidth,
+        0.32,
+    );
+
+    const stoicVariant = createFocusCompanionOverlayVariant("stoic", {
+        scenarioId: "1",
+        replicaIndex: 0,
+    });
+
+    assert.equal(stoicVariant.visual.kind, "scene");
+    assert.equal(stoicVariant.visual.scene.tuning.contactShadowWidth, 0.29);
+});
+
 test("creates localized overlay variant", () => {
     const variant = createFocusCompanionOverlayVariant("sgt", {
         language: "ru",
