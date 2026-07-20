@@ -33,6 +33,7 @@
         {
             "resources": [
                 "images/*/*.avif",
+                "images/speech-bubble-fill.svg",
                 "images/speech-bubble.svg"
             ],
             "matches": ["http://*/*", "https://*/*"]

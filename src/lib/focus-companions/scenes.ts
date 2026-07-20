@@ -20,6 +20,7 @@ type FocusCompanionScenePreset = {
 };
 
 const SPEECH_BUBBLE_IMAGE_PATH = "images/speech-bubble.svg";
+const SPEECH_BUBBLE_FILL_IMAGE_PATH = "images/speech-bubble-fill.svg";
 
 const DEFAULT_SCENE_TUNING: FocusCompanionSceneTuning = {
     characterWidth: 1.18,
@@ -185,6 +186,7 @@ export function getFocusCompanionScene(
 
     return {
         palette: scenario?.palette ?? preset.palette,
+        speechBubbleFillImagePath: SPEECH_BUBBLE_FILL_IMAGE_PATH,
         speechBubbleImagePath: SPEECH_BUBBLE_IMAGE_PATH,
         tuning: {
             ...DEFAULT_SCENE_TUNING,

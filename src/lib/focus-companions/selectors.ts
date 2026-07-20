@@ -99,6 +99,10 @@ function createOverlayVisual(
     return {
         kind: "scene",
         characterSrc: resolvePath(replica.imagePath, resolveAssetUrl),
+        speechBubbleFillSrc: resolvePath(
+            scene.speechBubbleFillImagePath,
+            resolveAssetUrl,
+        ),
         speechBubbleSrc: resolvePath(
             scene.speechBubbleImagePath,
             resolveAssetUrl,

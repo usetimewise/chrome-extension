@@ -14,6 +14,9 @@ export type FocusCompanionScenarioId = "1" | "2" | "3" | "4" | "5" | "6";
 
 export type FocusCompanionOverlayColors = {
     text: string;
+    speechText: string;
+    speechSurface: string;
+    speechOutline: string;
     mutedText: string;
     primary: string;
     primaryHover: string;
@@ -36,6 +39,9 @@ export type FocusCompanionTheme = {
 
 const DARK_PANEL_OVERLAY_COLORS = {
     text: "#ffffff",
+    speechText: "#ffffff",
+    speechSurface: "rgba(255, 255, 255, 0.1)",
+    speechOutline: "rgba(255, 255, 255, 0.38)",
     mutedText: "#f3f4f6",
     primary: "#ffffff",
     primaryHover: "#e5e7eb",
@@ -48,6 +54,9 @@ const DARK_PANEL_OVERLAY_COLORS = {
 
 const LIGHT_PANEL_OVERLAY_COLORS = {
     text: "#000000",
+    speechText: "#111827",
+    speechSurface: "rgba(255, 255, 255, 0.64)",
+    speechOutline: "rgba(17, 24, 39, 0.3)",
     mutedText: "#000000",
     primary: "#000000",
     primaryHover: "#030712",

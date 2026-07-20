@@ -71,6 +71,18 @@ function applyCompanionTheme(
 ): void {
     host.style.setProperty("--overlay-text", theme.overlayColors.text);
     host.style.setProperty(
+        "--speech-text",
+        theme.overlayColors.speechText,
+    );
+    host.style.setProperty(
+        "--speech-surface",
+        theme.overlayColors.speechSurface,
+    );
+    host.style.setProperty(
+        "--speech-outline",
+        theme.overlayColors.speechOutline,
+    );
+    host.style.setProperty(
         "--overlay-muted-text",
         theme.overlayColors.mutedText,
     );
@@ -270,14 +282,22 @@ function buildSiteBadge(host: string, iconSize: number): HTMLDivElement {
 
 function buildTitleContent(
     title: HTMLElement,
+    speechBubbleFillSrc?: string,
     speechBubbleSrc?: string,
 ): HTMLElement {
-    if (!speechBubbleSrc) {
+    if (!speechBubbleFillSrc || !speechBubbleSrc) {
         return title;
     }
 
     const speech = document.createElement("div");
     speech.className = "speech";
+    const speechBubbleFill = document.createElement("div");
+    speechBubbleFill.className = "speech-bubble-fill";
+    speechBubbleFill.style.setProperty(
+        "--speech-bubble-fill-image",
+        `url("${speechBubbleFillSrc}")`,
+    );
+    speechBubbleFill.setAttribute("aria-hidden", "true");
     const speechBubble = document.createElement("div");
     speechBubble.className = "speech-bubble-image";
     speechBubble.style.setProperty(
@@ -285,7 +305,7 @@ function buildTitleContent(
         `url("${speechBubbleSrc}")`,
     );
     speechBubble.setAttribute("aria-hidden", "true");
-    speech.append(speechBubble, title);
+    speech.append(speechBubbleFill, speechBubble, title);
     return speech;
 }
 
@@ -330,7 +350,11 @@ function buildToastOverlay(
         message.mode === "offer" ? message.message : copyVariant.text;
 
     copy.append(
-        buildTitleContent(title, copyVariant.visual.speechBubbleSrc),
+        buildTitleContent(
+            title,
+            copyVariant.visual.speechBubbleFillSrc,
+            copyVariant.visual.speechBubbleSrc,
+        ),
         buildSiteBadge(message.host, 12),
     );
 
@@ -464,7 +488,11 @@ function buildFullscreenOverlay(
     const panelContent = document.createElement("div");
     panelContent.className = "panel-content";
     panelContent.append(
-        buildTitleContent(title, copyVariant.visual.speechBubbleSrc),
+        buildTitleContent(
+            title,
+            copyVariant.visual.speechBubbleFillSrc,
+            copyVariant.visual.speechBubbleSrc,
+        ),
         buildSiteBadge(message.host, 14),
         actions,
         status,

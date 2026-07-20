@@ -78,7 +78,14 @@ test("provides theme metadata for every companion", () => {
         const expectedTextColor = darkPanelCompanionIds.has(companion.id)
             ? "#ffffff"
             : "#000000";
+        const expectedSpeechTextColor = darkPanelCompanionIds.has(companion.id)
+            ? "#ffffff"
+            : "#111827";
         assert.equal(companion.theme.overlayColors.text, expectedTextColor);
+        assert.equal(
+            companion.theme.overlayColors.speechText,
+            expectedSpeechTextColor,
+        );
         assert.ok(
             getContrastRatio(
                 companion.theme.overlayColors.primary,
@@ -272,6 +279,10 @@ test("creates unified alpha scenes for every companion replica", () => {
                 assert.equal(
                     variant.visual.speechBubbleSrc,
                     "chrome-extension://images/speech-bubble.svg",
+                );
+                assert.equal(
+                    variant.visual.speechBubbleFillSrc,
+                    "chrome-extension://images/speech-bubble-fill.svg",
                 );
                 assert.ok(variant.visual.scene.tuning.floorShadowOpacity > 0);
                 assert.ok(
