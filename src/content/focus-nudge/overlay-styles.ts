@@ -394,7 +394,7 @@ ${SHARED_COMPONENT_STYLES}
     }
 
     .title {
-      font-size: clamp(13px, 5.2cqi, 15px);
+      font-size: clamp(15px, 6cqi, 17px);
       font-weight: 600;
       line-height: 1.42;
     }
@@ -574,7 +574,7 @@ ${SHARED_COMPONENT_STYLES}
     }
 
     .title {
-      font-size: clamp(18px, 5.5cqi, 23px);
+      font-size: clamp(21px, 6.3cqi, 26px);
       font-weight: 700;
       line-height: 1.35;
     }
